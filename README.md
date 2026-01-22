@@ -18,6 +18,23 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Autenticación Admin
+
+Para acceder al panel de administración:
+
+1. **Crear usuario admin en Firebase Console:**
+   - Ve a [Firebase Console](https://console.firebase.google.com/)
+   - Selecciona el proyecto `reservas-campings-nacionales`
+   - Ve a **Authentication** → **Users**
+   - Haz clic en **"Add user"**
+   - Ingresa un email y contraseña para el usuario admin
+   - Guarda las credenciales
+
+2. **Acceder al panel:**
+   - Navega a `http://localhost:3000/admin/login`
+   - Ingresa las credenciales del usuario creado
+   - Serás redirigido a `/admin` (dashboard protegido)
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
