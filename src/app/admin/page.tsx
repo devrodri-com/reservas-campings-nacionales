@@ -20,6 +20,7 @@ import type { UserProfile } from "@/types/user";
 import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import { Button, Card, Table, Th, Td } from "@/components/ui";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
@@ -402,6 +403,57 @@ export default function AdminHomePage() {
     }
   };
 
+  const exportCsv = () => {
+    if (!camping) return;
+
+    const header = [
+      "id",
+      "estado",
+      "origen",
+      "camping",
+      "checkIn",
+      "checkOut",
+      "parcelas",
+      "adultos",
+      "menores",
+      "titularNombre",
+      "titularEmail",
+      "titularTelefono",
+      "totalArs",
+    ];
+
+    const rows: string[][] = [header];
+
+    for (const r of reservasEnRango) {
+      rows.push([
+        r.id,
+        r.estado,
+        r.createdByMode ?? "",
+        camping.nombre,
+        formatYmdToDmy(r.checkInDate),
+        formatYmdToDmy(r.checkOutDate),
+        String(r.parcelas),
+        String(r.adultos),
+        String(r.menores),
+        r.titularNombre,
+        r.titularEmail,
+        r.titularTelefono,
+        String(r.montoTotalArs),
+      ]);
+    }
+
+    const csv = toCsv(rows);
+
+    const safeCamping = camping.nombre
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "");
+
+    const filename = `reservas-${safeCamping}-${fromDate}-a-${rangeEndDate}.csv`;
+
+    downloadCsv(filename, csv);
+  };
+
   if (loading || profileLoading) return <main style={{ padding: 24 }}>Cargando…</main>;
   if (!user) return null;
   if (!profile || !profile.activo) {
@@ -461,6 +513,9 @@ export default function AdminHomePage() {
             </Button>
           </>
         ) : null}
+        <Button variant="secondary" onClick={exportCsv} disabled={!camping}>
+          Exportar CSV
+        </Button>
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
