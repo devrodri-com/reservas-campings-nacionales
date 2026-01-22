@@ -14,10 +14,13 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
+import { fetchUserProfile } from "@/lib/userProfile";
 import type { Camping } from "@/types/camping";
+import type { UserProfile } from "@/types/user";
 import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
+import { Button, Card, Table, Th, Td } from "@/components/ui";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
 
@@ -77,6 +80,8 @@ export default function AdminHomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [camping, setCamping] = useState<Camping | null>(null);
   const [campings, setCampings] = useState<Camping[]>([]);
   const [selectedCampingId, setSelectedCampingId] = useState<string>(DEFAULT_CAMPING_ID);
@@ -119,7 +124,32 @@ export default function AdminHomePage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setProfileLoading(true);
+      const p = await fetchUserProfile(user.uid);
+      if (!cancelled) {
+        setProfile(p);
+        setProfileLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (profile?.role === "admin_camping" && profile.campingId) {
+      setSelectedCampingId(profile.campingId);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (!user || !profile || !profile.activo) return;
 
     const load = async () => {
       setError(null);
@@ -168,7 +198,7 @@ export default function AdminHomePage() {
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedCampingId]);
+  }, [user, profile, selectedCampingId]);
 
   const reservasConfirmadas = useMemo(
     () => reservas.filter((r) => r.estado === "confirmada"),
@@ -372,8 +402,30 @@ export default function AdminHomePage() {
     }
   };
 
-  if (loading) return <main style={{ padding: 24 }}>Cargando…</main>;
+  if (loading || profileLoading) return <main style={{ padding: 24 }}>Cargando…</main>;
   if (!user) return null;
+  if (!profile || !profile.activo) {
+    return (
+      <main style={{ padding: 24 }}>
+        <h1 style={{ color: "var(--color-accent)" }}>No autorizado</h1>
+        <p style={{ color: "var(--color-text-muted)" }}>
+          No tenés permiso para acceder al panel o tu usuario está inactivo.
+        </p>
+        <Button
+          variant="ghost"
+          onClick={async () => {
+            await signOut(auth);
+            router.replace("/admin/login");
+          }}
+        >
+          Cerrar sesión
+        </Button>
+      </main>
+    );
+  }
+
+  const canCreateOrCancel = profile.role !== "viewer";
+  const showCampingSelector = profile.role !== "admin_camping";
 
   return (
     <main style={{ padding: 24 }}>
@@ -381,48 +433,53 @@ export default function AdminHomePage() {
       <p>Sesión: {user.email}</p>
 
       <div style={{ display: "flex", gap: 12 }}>
-        <button
+        <Button
+          variant="ghost"
           onClick={async () => {
             await signOut(auth);
             router.replace("/admin/login");
           }}
-          style={{ padding: 10, border: "1px solid #ccc" }}
         >
           Cerrar sesión
-        </button>
+        </Button>
 
-        <button
-          onClick={createDemoReserva}
-          disabled={busy || !camping}
-          style={{ padding: 10, border: "1px solid #ccc" }}
-        >
-          {busy ? "Creando..." : "Crear reserva demo"}
-        </button>
-
-        <button
-          onClick={() => setShowWalkIn(!showWalkIn)}
-          disabled={busy || !camping}
-          style={{ padding: 10, border: "1px solid #ccc" }}
-        >
-          {showWalkIn ? "Ocultar walk-in" : "Crear reserva manual (walk-in)"}
-        </button>
+        {canCreateOrCancel ? (
+          <>
+            <Button
+              variant="primary"
+              onClick={createDemoReserva}
+              disabled={busy || !camping}
+            >
+              {busy ? "Creando..." : "Crear reserva demo"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowWalkIn(!showWalkIn)}
+              disabled={busy || !camping}
+            >
+              {showWalkIn ? "Ocultar walk-in" : "Crear reserva manual (walk-in)"}
+            </Button>
+          </>
+        ) : null}
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span>Camping:</span>
-          <select
-            value={selectedCampingId}
-            onChange={(e) => setSelectedCampingId(e.target.value)}
-            style={{ padding: 8, border: "1px solid #ccc", background: "transparent", color: "inherit" }}
-          >
-            {campings.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre} ({c.areaProtegida})
-              </option>
-            ))}
-          </select>
-        </label>
+        {showCampingSelector ? (
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Camping:</span>
+            <select
+              value={selectedCampingId}
+              onChange={(e) => setSelectedCampingId(e.target.value)}
+              style={{ padding: 8, border: "1px solid #ccc", background: "transparent", color: "inherit" }}
+            >
+              {campings.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre} ({c.areaProtegida})
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span>Desde:</span>
@@ -459,9 +516,9 @@ export default function AdminHomePage() {
 
       {error ? <p style={{ color: "red" }}>{error}</p> : null}
 
-      {showWalkIn && camping ? (
-        <section style={{ marginTop: 16, padding: 16, border: "1px solid #ccc", borderRadius: 4 }}>
-          <h2>Crear reserva manual (walk-in)</h2>
+      {showWalkIn && camping && canCreateOrCancel ? (
+        <div style={{ marginTop: 16 }}>
+          <Card title="Crear reserva manual (walk-in)">
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <label style={{ flex: 1, minWidth: 220 }}>
@@ -565,132 +622,109 @@ export default function AdminHomePage() {
               />
             </label>
 
-            <button
-              onClick={createWalkInReserva}
-              disabled={busy}
-              style={{ padding: 12, border: "1px solid #ccc" }}
-            >
+            <Button variant="primary" onClick={createWalkInReserva} disabled={busy}>
               {busy ? "Creando..." : "Crear reserva walk-in"}
-            </button>
+            </Button>
           </div>
-        </section>
+          </Card>
+        </div>
       ) : null}
 
-      <section style={{ marginTop: 16 }}>
-        <h2>Camping</h2>
-        {camping ? (
-          <p>
-            <strong>{camping.nombre}</strong> - {camping.areaProtegida} - Capacidad:{" "}
-            {camping.capacidadParcelas} parcelas
-          </p>
-        ) : (
-          <p>Cargando camping…</p>
-        )}
-      </section>
+      <div style={{ marginTop: 16 }}>
+        <Card title="Camping">
+          {camping ? (
+            <p>
+              <strong>{camping.nombre}</strong> - {camping.areaProtegida} - Capacidad:{" "}
+              {camping.capacidadParcelas} parcelas
+            </p>
+          ) : (
+            <p>Cargando camping…</p>
+          )}
+        </Card>
+      </div>
 
-      <section style={{ marginTop: 16 }}>
-        <h2>
-          Disponibilidad ({formatYmdToDmy(fromDate || "...")} → {formatYmdToDmy(rangeEndDate || "...")})
-        </h2>
-        {!camping ? (
-          <p>Cargando…</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Fecha
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Ocupadas
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Disponibles
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {availability.map((d) => (
-                <tr key={d.date}>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>{formatYmdToDmy(d.date)}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>{d.ocupadas}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>{d.disponibles}</td>
+      <div style={{ marginTop: 16 }}>
+        <Card
+          title={`Disponibilidad (${formatYmdToDmy(fromDate || "...")} → ${formatYmdToDmy(rangeEndDate || "...")})`}
+        >
+          {!camping ? (
+            <p>Cargando…</p>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Fecha</Th>
+                  <Th>Ocupadas</Th>
+                  <Th>Disponibles</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+              </thead>
+              <tbody>
+                {availability.map((d) => (
+                  <tr key={d.date}>
+                    <Td>{formatYmdToDmy(d.date)}</Td>
+                    <Td>{d.ocupadas}</Td>
+                    <Td>{d.disponibles}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      </div>
 
-      <section style={{ marginTop: 16 }}>
-        <h2>Reservas (en rango)</h2>
-        {reservasEnRango.length === 0 ? (
-          <p>No hay reservas en el rango seleccionado.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Estado
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Fechas
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Titular
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Personas
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Total
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Origen
-                </th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #444", padding: 8 }}>
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservasEnRango.map((r) => (
-                <tr key={r.id}>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>{r.estado}</td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>
-                    {formatYmdToDmy(r.checkInDate)} → {formatYmdToDmy(r.checkOutDate)}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>
-                    {r.titularNombre} ({r.titularEmail})
-                  </td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>
-                    {r.adultos}A / {r.menores}M
-                  </td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>
-                    ${r.montoTotalArs.toLocaleString("es-AR")}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>
-                    {r.createdByMode ?? "-"}
-                  </td>
-                  <td style={{ borderBottom: "1px solid #222", padding: 8 }}>
-                    {r.estado === "confirmada" ? (
-                      <button
-                        disabled={busy}
-                        onClick={() => cancelReserva(r.id)}
-                        style={{ padding: "6px 10px", border: "1px solid #ccc" }}
-                      >
-                        Cancelar
-                      </button>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
+      <div style={{ marginTop: 16 }}>
+        <Card title="Reservas (en rango)">
+          {reservasEnRango.length === 0 ? (
+            <p>No hay reservas en el rango seleccionado.</p>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Estado</Th>
+                  <Th>Fechas</Th>
+                  <Th>Titular</Th>
+                  <Th>Personas</Th>
+                  <Th>Total</Th>
+                  <Th>Origen</Th>
+                  <Th>Acciones</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+              </thead>
+              <tbody>
+                {reservasEnRango.map((r) => (
+                  <tr key={r.id}>
+                    <Td>{r.estado}</Td>
+                    <Td>
+                      {formatYmdToDmy(r.checkInDate)} → {formatYmdToDmy(r.checkOutDate)}
+                    </Td>
+                    <Td>
+                      {r.titularNombre} ({r.titularEmail})
+                    </Td>
+                    <Td>
+                      {r.adultos}A / {r.menores}M
+                    </Td>
+                    <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
+                    <Td>{r.createdByMode ?? "-"}</Td>
+                    <Td>
+                      {canCreateOrCancel && r.estado === "confirmada" ? (
+                        <Button
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() => cancelReserva(r.id)}
+                          style={{ padding: "6px 10px" }}
+                        >
+                          Cancelar
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      </div>
     </main>
   );
 }

@@ -1,62 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, type DocumentData } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import type { Camping } from "@/types/camping";
-
-type CampingDoc = Omit<Camping, "id">;
-
-function isCampingDoc(v: unknown): v is CampingDoc {
-  if (!v || typeof v !== "object") return false;
-  const o = v as Record<string, unknown>;
-
-  return (
-    typeof o.areaProtegida === "string" &&
-    typeof o.nombre === "string" &&
-    typeof o.ubicacionTexto === "string" &&
-    typeof o.titular === "string" &&
-    typeof o.capacidadParcelas === "number" &&
-    typeof o.precioNocheArs === "number" &&
-    typeof o.maxPersonasPorParcela === "number" &&
-    typeof o.checkInHour === "number" &&
-    typeof o.checkOutHour === "number" &&
-    typeof o.activo === "boolean"
-  );
-}
+import { fetchCampings } from "@/lib/campingsRepo";
+import CampingCard from "@/components/CampingCard";
 
 export default function Home() {
   const [campings, setCampings] = useState<Camping[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [debug, setDebug] = useState<string>("");
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        const snap = await getDocs(collection(db, "campings"));
-
-        const rawCount = snap.docs.length;
-        const items: Camping[] = [];
-        const rejected: string[] = [];
-
-        snap.docs.forEach((doc) => {
-          const data: DocumentData = doc.data();
-          if (isCampingDoc(data)) {
-            items.push({ id: doc.id, ...(data as CampingDoc) });
-          } else {
-            rejected.push(doc.id);
-          }
-        });
-
-        setCampings(items);
-        setDebug(
-          `Docs totales: ${rawCount} | Aceptados: ${items.length} | Rechazados: ${rejected.length}` +
-            (rejected.length ? ` | Rechazados: ${rejected.join(", ")}` : "")
-        );
+        const list = await fetchCampings();
+        setCampings(list);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
@@ -68,27 +28,36 @@ export default function Home() {
   }, []);
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>Campings</h1>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
+      <section style={{ display: "grid", gap: 10 }}>
+        <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Reservas de Campings</h1>
+        <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
+          Seleccioná un camping, elegí tus fechas y confirmá tu reserva. La asignación de parcela se realiza en
+          recepción al momento del check-in.
+        </p>
+      </section>
 
-      {debug ? <p style={{ opacity: 0.7 }}>{debug}</p> : null}
+      <section style={{ marginTop: 18 }}>
+        {loading ? <p>Cargando campings…</p> : null}
+        {error ? <p style={{ color: "red" }}>{error}</p> : null}
 
-      {loading ? (
-        <p>Cargando…</p>
-      ) : error ? (
-        <p style={{ color: "red" }}>{error}</p>
-      ) : campings.length === 0 ? (
-        <p>No hay campings válidos cargados.</p>
-      ) : (
-        <ul>
-          {campings.map((c) => (
-            <li key={c.id}>
-              <strong>{c.nombre}</strong> - {c.areaProtegida} - Parcelas:{" "}
-              {c.capacidadParcelas}
-            </li>
-          ))}
-        </ul>
-      )}
+        {!loading && !error && campings.length === 0 ? (
+          <p>No hay campings disponibles.</p>
+        ) : (
+          <div
+            style={{
+              marginTop: 14,
+              display: "grid",
+              gap: 14,
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            }}
+          >
+            {campings.map((c) => (
+              <CampingCard key={c.id} camping={c} />
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }

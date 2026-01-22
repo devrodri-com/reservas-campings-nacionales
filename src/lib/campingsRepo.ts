@@ -1,10 +1,10 @@
-import { collection, getDocs } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Camping } from "@/types/camping";
 
 type CampingDoc = Omit<Camping, "id">;
 
-function isCampingDoc(v: unknown): v is CampingDoc {
+export function isCampingDoc(v: unknown): v is CampingDoc {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
   return (
@@ -17,7 +17,10 @@ function isCampingDoc(v: unknown): v is CampingDoc {
     typeof o.maxPersonasPorParcela === "number" &&
     typeof o.checkInHour === "number" &&
     typeof o.checkOutHour === "number" &&
-    typeof o.activo === "boolean"
+    typeof o.activo === "boolean" &&
+    (o.descripcionCorta === undefined || typeof o.descripcionCorta === "string") &&
+    (o.igUrl === undefined || typeof o.igUrl === "string") &&
+    (o.webUrl === undefined || typeof o.webUrl === "string")
   );
 }
 
@@ -32,4 +35,12 @@ export async function fetchCampings(): Promise<Camping[]> {
 
   list.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   return list;
+}
+
+export async function fetchCampingById(id: string): Promise<Camping | null> {
+  const snap = await getDoc(doc(db, "campings", id));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  if (!isCampingDoc(data)) return null;
+  return { id: snap.id, ...data };
 }

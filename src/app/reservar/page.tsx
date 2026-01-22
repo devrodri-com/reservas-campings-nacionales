@@ -12,7 +12,8 @@ import { buildAvailabilityForRange } from "@/lib/availability";
 import { enumerateNights, todayYmd, addDaysYmd } from "@/lib/dates";
 import { formatArs } from "@/lib/money";
 import { ensureSignedInGuestOrLink } from "@/lib/ensureAuth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button, Card } from "@/components/ui";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -24,6 +25,8 @@ function nightsCount(checkIn: string, checkOut: string): number {
 
 export default function ReservarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCampingId = searchParams.get("campingId");
 
   const [campings, setCampings] = useState<Camping[]>([]);
   const [loadingCampings, setLoadingCampings] = useState(true);
@@ -66,7 +69,11 @@ export default function ReservarPage() {
       try {
         const list = await fetchCampings();
         setCampings(list);
-        setCampingId(list[0]?.id ?? "");
+        const initialId =
+          preselectedCampingId && list.some((c) => c.id === preselectedCampingId)
+            ? preselectedCampingId
+            : (list[0]?.id ?? "");
+        setCampingId(initialId);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
@@ -74,7 +81,7 @@ export default function ReservarPage() {
       }
     };
     load();
-  }, []);
+  }, [preselectedCampingId]);
 
   const validate = (): string | null => {
     if (!selectedCamping) return "Seleccioná un camping.";
@@ -180,7 +187,8 @@ export default function ReservarPage() {
       {loadingCampings ? <p>Cargando campings…</p> : null}
       {error ? <p style={{ color: "red" }}>{error}</p> : null}
 
-      <section style={{ display: "grid", gap: 12 }}>
+      <Card>
+      <div style={{ display: "grid", gap: 12 }}>
         <label>
           Camping
           <select
@@ -322,14 +330,15 @@ export default function ReservarPage() {
           </p>
         ) : null}
 
-        <button
+        <Button
+          variant="primary"
           onClick={onSubmit}
           disabled={submitting || !selectedCamping}
-          style={{ padding: 12, border: "1px solid #ccc" }}
         >
           {submitting ? "Confirmando..." : "Confirmar reserva (pago simulado)"}
-        </button>
-      </section>
+        </Button>
+      </div>
+      </Card>
     </main>
   );
 }

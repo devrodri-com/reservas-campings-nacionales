@@ -8,6 +8,7 @@ import type { Camping } from "@/types/camping";
 import { formatArs } from "@/lib/money";
 import { formatYmdToDmy } from "@/lib/dates";
 import { useParams, useRouter } from "next/navigation";
+import { Button, Card } from "@/components/ui";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -110,7 +111,7 @@ export default function ConfirmadaPage() {
       {!reserva ? (
         <p>Cargando…</p>
       ) : (
-        <>
+        <Card>
           <p>
             <strong>ID:</strong> {reserva.id}
           </p>
@@ -133,26 +134,20 @@ export default function ConfirmadaPage() {
             <strong>Total:</strong> ${formatArs(reserva.montoTotalArs)} (pago simulado)
           </p>
 
-          <div style={{ marginTop: 16, padding: 16, border: "1px dashed #666" }}>
+          <div style={{ marginTop: 16, padding: 16, border: "1px dashed var(--color-border)" }}>
             <p style={{ margin: 0 }}><strong>Código de reserva (demo):</strong></p>
             <p style={{ margin: 0, fontFamily: "monospace", fontSize: 18 }}>{reserva.id}</p>
           </div>
 
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-            <button
-              onClick={() => router.push("/admin")}
-              style={{ padding: 10, border: "1px solid #ccc" }}
-            >
+            <Button variant="secondary" onClick={() => router.push("/admin")}>
               Ir a admin
-            </button>
-            <button
-              onClick={() => router.push("/reservar")}
-              style={{ padding: 10, border: "1px solid #ccc" }}
-            >
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/reservar")}>
               Nueva reserva
-            </button>
+            </Button>
           </div>
-        </>
+        </Card>
       )}
     </main>
   );
