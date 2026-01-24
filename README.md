@@ -1,4 +1,4 @@
-# Plataforma de Reservas – Campings de Parques Nacionales
+# Plataforma de Reservas - Campings de Parques Nacionales
 
 Sistema centralizado de reservas para campings de Parques Nacionales de Argentina. Permite a los visitantes reservar online y a cada camping gestionar su operación de forma independiente, manteniendo control y supervisión centralizada.
 
