@@ -1,14 +1,24 @@
+import React from "react";
 import Link from "next/link";
 import type { Camping } from "@/types/camping";
 import { Card, Button } from "@/components/ui";
 import { formatArs } from "@/lib/money";
+import { UsersIcon, TagIcon, MapPinIcon, CameraIcon } from "@/components/icons";
 
 const DESCRIPCION_DEFAULT =
   "Camping organizado dentro del Parque Nacional, con parcelas delimitadas y servicios básicos.";
 
+function IconRow({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--color-text-muted)" }}>
+      <span style={{ color: "var(--color-accent)" }}>{icon}</span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
 export default function CampingCard({ camping }: { camping: Camping }) {
   const descripcion = camping.descripcionCorta ?? DESCRIPCION_DEFAULT;
-  const precio = formatArs(camping.precioNocheArs);
 
   return (
     <Card>
@@ -22,10 +32,19 @@ export default function CampingCard({ camping }: { camping: Camping }) {
           </p>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, color: "var(--color-text-muted)", fontSize: 14 }}>
-          <span>👥 {camping.capacidadParcelas} parcelas</span>
-          <span>💲 $ {precio} / noche</span>
-          <span>📍 {camping.ubicacionTexto}</span>
+        <div style={{ display: "grid", gap: 6, marginTop: 6, fontSize: 14 }}>
+          <IconRow
+            icon={<UsersIcon title="Capacidad" />}
+            text={`${camping.capacidadParcelas} parcelas`}
+          />
+          <IconRow
+            icon={<TagIcon title="Precio" />}
+            text={`$${formatArs(camping.precioNocheArs)} / noche / parcela`}
+          />
+          <IconRow
+            icon={<MapPinIcon title="Ubicación" />}
+            text={camping.ubicacionTexto}
+          />
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
@@ -42,7 +61,12 @@ export default function CampingCard({ camping }: { camping: Camping }) {
               rel="noopener noreferrer"
               style={{ textDecoration: "none" }}
             >
-              <Button variant="ghost">📷 Instagram</Button>
+              <Button variant="ghost">
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <CameraIcon title="Instagram" />
+                  Instagram
+                </span>
+              </Button>
             </a>
           ) : null}
         </div>
