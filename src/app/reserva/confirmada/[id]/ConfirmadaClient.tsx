@@ -230,8 +230,8 @@ export default function ConfirmadaClient() {
           </div>
 
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-            <Button variant="secondary" onClick={() => router.push("/admin")}>
-              Ir a admin
+            <Button variant="secondary" onClick={() => router.push("/consultar")}>
+              Consultar reserva
             </Button>
             <Button variant="secondary" onClick={() => router.push("/reservar")}>
               Nueva reserva
