@@ -45,7 +45,8 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
         o.paymentStatus === "cancelled")) &&
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
-    (o.paidAtMs === undefined || typeof o.paidAtMs === "number")
+    (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
   );
 }
 

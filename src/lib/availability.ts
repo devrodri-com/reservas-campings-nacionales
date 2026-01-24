@@ -11,7 +11,7 @@ export function buildAvailabilityForRange(params: {
   fromDate: string; // YYYY-MM-DD
   days: number;
   capacidadParcelas: number;
-  reservas: Reserva[]; // solo pagadas (bloquean disponibilidad)
+  reservas: Reserva[]; // pagadas + pendientes no expiradas (bloquean disponibilidad)
 }): AvailabilityDay[] {
   const { fromDate, days, capacidadParcelas, reservas } = params;
 

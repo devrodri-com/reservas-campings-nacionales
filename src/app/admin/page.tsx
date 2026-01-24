@@ -6,6 +6,7 @@ import { signOut } from "firebase/auth";
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDocs,
   query,
@@ -87,7 +88,8 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
         o.paymentStatus === "cancelled")) &&
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
-    (o.paidAtMs === undefined || typeof o.paidAtMs === "number")
+    (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
   );
 }
 
@@ -215,8 +217,15 @@ export default function AdminHomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile, selectedCampingId]);
 
-  const reservasPagadas = useMemo(
-    () => reservas.filter((r) => r.estado === "pagada"),
+  const reservasQueBloquean = useMemo(
+    () =>
+      reservas.filter(
+        (r) =>
+          r.estado === "pagada" ||
+          (r.estado === "pendiente_pago" &&
+            typeof r.expiresAtMs === "number" &&
+            r.expiresAtMs > Date.now())
+      ),
     [reservas]
   );
 
@@ -237,9 +246,9 @@ export default function AdminHomePage() {
       fromDate,
       days,
       capacidadParcelas: camping.capacidadParcelas,
-      reservas: reservasPagadas,
+      reservas: reservasQueBloquean,
     });
-  }, [camping, reservasPagadas, fromDate, days]);
+  }, [camping, reservasQueBloquean, fromDate, days]);
 
   const createDemoReserva = async () => {
     if (!camping) return;
@@ -305,7 +314,46 @@ export default function AdminHomePage() {
         cancelMotivo: motivo.trim(),
       });
 
-      // recargar reservas
+      if (camping) {
+        const items = await loadReservasForCamping(camping.id);
+        setReservas(items);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markAsPaid = async (reservaId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateDoc(doc(db, "reservas", reservaId), {
+        estado: "pagada",
+        paymentStatus: "approved",
+        paidAtMs: Date.now(),
+        expiresAtMs: deleteField(),
+      });
+      if (camping) {
+        const items = await loadReservasForCamping(camping.id);
+        setReservas(items);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const expireReserva = async (reservaId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateDoc(doc(db, "reservas", reservaId), {
+        estado: "fallida",
+        paymentStatus: "cancelled",
+      });
       if (camping) {
         const items = await loadReservasForCamping(camping.id);
         setReservas(items);
@@ -357,15 +405,21 @@ export default function AdminHomePage() {
         return;
       }
 
-      // Validar disponibilidad (solo reservas pagadas bloquean)
+      // Validar disponibilidad (pagadas + pendientes no expiradas bloquean)
       const all = await loadReservasForCamping(camping.id);
-      const pagadas = all.filter((r) => r.estado === "pagada");
+      const bloquean = all.filter(
+        (r) =>
+          r.estado === "pagada" ||
+          (r.estado === "pendiente_pago" &&
+            typeof r.expiresAtMs === "number" &&
+            r.expiresAtMs > Date.now())
+      );
 
       const availability = buildAvailabilityForRange({
         fromDate: walkInCheckIn,
         days: noches,
         capacidadParcelas: camping.capacidadParcelas,
-        reservas: pagadas,
+        reservas: bloquean,
       });
 
       const noDisponible = availability.find((d) => d.disponibles < walkInParcelas);
@@ -882,15 +936,39 @@ export default function AdminHomePage() {
                     <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
                     <Td>{r.createdByMode ?? "-"}</Td>
                     <Td>
-                      {canCreateOrCancel && (r.estado === "pendiente_pago" || r.estado === "pagada") ? (
-                        <Button
-                          variant="ghost"
-                          disabled={busy}
-                          onClick={() => cancelReserva(r.id)}
-                          style={{ padding: "6px 10px" }}
-                        >
-                          Cancelar
-                        </Button>
+                      {!canCreateOrCancel ? (
+                        "-"
+                      ) : r.estado === "pendiente_pago" || r.estado === "pagada" ? (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {r.estado === "pendiente_pago" ? (
+                            <>
+                              <Button
+                                variant="secondary"
+                                disabled={busy}
+                                onClick={() => markAsPaid(r.id)}
+                                style={{ padding: "6px 10px" }}
+                              >
+                                Marcar como pagada
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={() => expireReserva(r.id)}
+                                style={{ padding: "6px 10px" }}
+                              >
+                                Expirar
+                              </Button>
+                            </>
+                          ) : null}
+                          <Button
+                            variant="ghost"
+                            disabled={busy}
+                            onClick={() => cancelReserva(r.id)}
+                            style={{ padding: "6px 10px" }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
                       ) : (
                         "-"
                       )}

@@ -30,4 +30,6 @@ export type Reserva = {
   mpPreferenceId?: string;
   mpPaymentId?: string;
   paidAtMs?: number;
+  /** Hold: hasta cuándo bloquea cupo si pendiente_pago. */
+  expiresAtMs?: number;
 };
