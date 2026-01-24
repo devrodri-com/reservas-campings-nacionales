@@ -22,4 +22,6 @@ export type Camping = {
   mpAccountLabel?: string;
   /** Clave de env para token MP (ej: "MP_TOKEN_TALAMPAYA"). */
   mpTokenEnvKey?: string;
+  /** Opcional. URL de imagen de portada. */
+  coverImageUrl?: string;
 };

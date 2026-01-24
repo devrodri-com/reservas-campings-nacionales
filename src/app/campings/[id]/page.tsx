@@ -51,8 +51,21 @@ export default function CampingDetailPage() {
   if (error) return <main style={{ maxWidth: 720, margin: "0 auto", padding: 24 }}><p style={{ color: "red" }}>{error}</p></main>;
   if (!camping) return <main style={{ maxWidth: 720, margin: "0 auto", padding: 24 }}><p>Camping no encontrado.</p></main>;
 
+  const imageUrl = camping.coverImageUrl ?? "/campings/placeholder.jpg";
+
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
+      <img
+        src={imageUrl}
+        alt={`Imagen de ${camping.nombre}`}
+        style={{
+          width: "100%",
+          maxHeight: 320,
+          objectFit: "cover",
+          borderRadius: 12,
+          marginBottom: 16,
+        }}
+      />
       <Card>
         <div style={{ display: "grid", gap: 12 }}>
           <div>

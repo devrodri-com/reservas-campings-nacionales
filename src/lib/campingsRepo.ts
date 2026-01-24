@@ -24,7 +24,8 @@ export function isCampingDoc(v: unknown): v is CampingDoc {
     (o.paymentsProvider === undefined || o.paymentsProvider === "mercadopago") &&
     (o.mpEnabled === undefined || typeof o.mpEnabled === "boolean") &&
     (o.mpAccountLabel === undefined || typeof o.mpAccountLabel === "string") &&
-    (o.mpTokenEnvKey === undefined || typeof o.mpTokenEnvKey === "string")
+    (o.mpTokenEnvKey === undefined || typeof o.mpTokenEnvKey === "string") &&
+    (o.coverImageUrl === undefined || typeof o.coverImageUrl === "string")
   );
 }
 

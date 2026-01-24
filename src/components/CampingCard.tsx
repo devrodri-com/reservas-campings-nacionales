@@ -19,9 +19,20 @@ function IconRow({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 export default function CampingCard({ camping }: { camping: Camping }) {
   const descripcion = camping.descripcionCorta ?? DESCRIPCION_DEFAULT;
+  const imageUrl = camping.coverImageUrl ?? "/campings/placeholder.jpg";
 
   return (
     <Card>
+      <img
+        src={imageUrl}
+        alt={`Imagen de ${camping.nombre}`}
+        style={{
+          width: "100%",
+          height: 160,
+          objectFit: "cover",
+          borderRadius: 8,
+        }}
+      />
       <div style={{ display: "grid", gap: 10 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-accent)" }}>
