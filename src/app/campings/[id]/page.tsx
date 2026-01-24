@@ -51,7 +51,7 @@ export default function CampingDetailPage() {
   if (error) return <main style={{ maxWidth: 720, margin: "0 auto", padding: 24 }}><p style={{ color: "red" }}>{error}</p></main>;
   if (!camping) return <main style={{ maxWidth: 720, margin: "0 auto", padding: 24 }}><p>Camping no encontrado.</p></main>;
 
-  const imageUrl = camping.coverImageUrl ?? "/campings/placeholder.jpg";
+  const imageUrl = (camping.coverImageUrl?.trim() || "") || "/campings/placeholder.jpg";
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>

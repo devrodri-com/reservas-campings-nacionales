@@ -692,6 +692,11 @@ export default function AdminHomePage() {
             Exportar CSV global
           </Button>
         ) : null}
+        {profile.role === "admin_global" ? (
+          <Button variant="secondary" onClick={() => router.push("/admin/campings")}>
+            Editar campings
+          </Button>
+        ) : null}
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>

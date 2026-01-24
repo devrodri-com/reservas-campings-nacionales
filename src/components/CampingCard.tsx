@@ -19,7 +19,7 @@ function IconRow({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 export default function CampingCard({ camping }: { camping: Camping }) {
   const descripcion = camping.descripcionCorta ?? DESCRIPCION_DEFAULT;
-  const imageUrl = camping.coverImageUrl ?? "/campings/placeholder.jpg";
+  const imageUrl = (camping.coverImageUrl?.trim() || "") || "/campings/placeholder.jpg";
 
   return (
     <Card>
