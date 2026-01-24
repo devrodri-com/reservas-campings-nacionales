@@ -16,4 +16,8 @@ export type Camping = {
   igUrl?: string;
   /** Opcional. URL del sitio oficial. */
   webUrl?: string;
+  /** Opcional. Configuración de pagos (sin credenciales). */
+  paymentsProvider?: "mercadopago";
+  mpEnabled?: boolean;
+  mpAccountLabel?: string;
 };

@@ -47,7 +47,12 @@ function isCampingDoc(v: unknown): v is CampingDoc {
 type ReservaDoc = Omit<Reserva, "id">;
 
 function isReservaEstado(v: unknown): v is ReservaEstado {
-  return v === "confirmada" || v === "cancelada";
+  return (
+    v === "pendiente_pago" ||
+    v === "pagada" ||
+    v === "fallida" ||
+    v === "cancelada"
+  );
 }
 
 function isCreatedByMode(v: unknown): v is CreatedByMode {
@@ -73,7 +78,16 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     typeof o.montoTotalArs === "number" &&
     typeof o.createdAtMs === "number" &&
     (o.createdByUid === undefined || typeof o.createdByUid === "string") &&
-    (o.createdByMode === undefined || isCreatedByMode(o.createdByMode))
+    (o.createdByMode === undefined || isCreatedByMode(o.createdByMode)) &&
+    (o.paymentProvider === undefined || o.paymentProvider === "mercadopago") &&
+    (o.paymentStatus === undefined ||
+      (o.paymentStatus === "pending" ||
+        o.paymentStatus === "approved" ||
+        o.paymentStatus === "rejected" ||
+        o.paymentStatus === "cancelled")) &&
+    (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
+    (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
+    (o.paidAtMs === undefined || typeof o.paidAtMs === "number")
   );
 }
 
@@ -201,8 +215,8 @@ export default function AdminHomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile, selectedCampingId]);
 
-  const reservasConfirmadas = useMemo(
-    () => reservas.filter((r) => r.estado === "confirmada"),
+  const reservasPagadas = useMemo(
+    () => reservas.filter((r) => r.estado === "pagada"),
     [reservas]
   );
 
@@ -223,9 +237,9 @@ export default function AdminHomePage() {
       fromDate,
       days,
       capacidadParcelas: camping.capacidadParcelas,
-      reservas: reservasConfirmadas,
+      reservas: reservasPagadas,
     });
-  }, [camping, reservasConfirmadas, fromDate, days]);
+  }, [camping, reservasPagadas, fromDate, days]);
 
   const createDemoReserva = async () => {
     if (!camping) return;
@@ -257,11 +271,14 @@ export default function AdminHomePage() {
         titularEmail: "demo@demo.com",
         titularTelefono: "000000000",
         titularEdad: 30,
-        estado: "confirmada",
+        estado: "pagada",
         montoTotalArs,
         createdAtMs: Date.now(),
         createdByUid: user?.uid ?? undefined,
         createdByMode: "admin",
+        paymentProvider: "mercadopago",
+        paymentStatus: "approved",
+        paidAtMs: Date.now(),
       };
 
       await addDoc(collection(db, "reservas"), doc);
@@ -340,15 +357,15 @@ export default function AdminHomePage() {
         return;
       }
 
-      // Validar disponibilidad
+      // Validar disponibilidad (solo reservas pagadas bloquean)
       const all = await loadReservasForCamping(camping.id);
-      const confirmadas = all.filter((r) => r.estado === "confirmada");
+      const pagadas = all.filter((r) => r.estado === "pagada");
 
       const availability = buildAvailabilityForRange({
         fromDate: walkInCheckIn,
         days: noches,
         capacidadParcelas: camping.capacidadParcelas,
-        reservas: confirmadas,
+        reservas: pagadas,
       });
 
       const noDisponible = availability.find((d) => d.disponibles < walkInParcelas);
@@ -372,11 +389,14 @@ export default function AdminHomePage() {
         titularEmail: walkInEmail.trim(),
         titularTelefono: walkInTelefono.trim(),
         titularEdad: walkInEdad,
-        estado: "confirmada",
+        estado: "pagada",
         montoTotalArs,
         createdAtMs: Date.now(),
         createdByUid: user.uid,
         createdByMode: "admin",
+        paymentProvider: "mercadopago",
+        paymentStatus: "approved",
+        paidAtMs: Date.now(),
       };
 
       await addDoc(collection(db, "reservas"), docReserva);
@@ -862,7 +882,7 @@ export default function AdminHomePage() {
                     <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
                     <Td>{r.createdByMode ?? "-"}</Td>
                     <Td>
-                      {canCreateOrCancel && r.estado === "confirmada" ? (
+                      {canCreateOrCancel && (r.estado === "pendiente_pago" || r.estado === "pagada") ? (
                         <Button
                           variant="ghost"
                           disabled={busy}

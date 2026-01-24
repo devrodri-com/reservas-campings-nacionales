@@ -20,7 +20,10 @@ export function isCampingDoc(v: unknown): v is CampingDoc {
     typeof o.activo === "boolean" &&
     (o.descripcionCorta === undefined || typeof o.descripcionCorta === "string") &&
     (o.igUrl === undefined || typeof o.igUrl === "string") &&
-    (o.webUrl === undefined || typeof o.webUrl === "string")
+    (o.webUrl === undefined || typeof o.webUrl === "string") &&
+    (o.paymentsProvider === undefined || o.paymentsProvider === "mercadopago") &&
+    (o.mpEnabled === undefined || typeof o.mpEnabled === "boolean") &&
+    (o.mpAccountLabel === undefined || typeof o.mpAccountLabel === "string")
   );
 }
 

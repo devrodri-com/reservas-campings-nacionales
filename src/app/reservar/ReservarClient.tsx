@@ -118,16 +118,16 @@ export default function ReservarClient() {
 
       const uid = auth.currentUser?.uid ?? undefined;
 
-      // 2) Chequear disponibilidad (demo, contra reservas confirmadas existentes)
+      // 2) Chequear disponibilidad (solo reservas pagadas bloquean)
       const all = await fetchReservasByCamping(selectedCamping.id);
-      const confirmadas = all.filter((r) => r.estado === "confirmada");
+      const pagadas = all.filter((r) => r.estado === "pagada");
 
       const rangeDays = nightsCount(checkInDate, checkOutDate);
       const availability = buildAvailabilityForRange({
         fromDate: checkInDate,
         days: rangeDays,
         capacidadParcelas: selectedCamping.capacidadParcelas,
-        reservas: confirmadas,
+        reservas: pagadas,
       });
 
       const noDisponible = availability.find((d) => d.disponibles < parcelas);
@@ -137,7 +137,7 @@ export default function ReservarClient() {
         return;
       }
 
-      // 3) Crear reserva (pago simulado -> confirmada)
+      // 3) Crear reserva (pendiente de pago)
       const input: ReservaCreateInput = {
         campingId: selectedCamping.id,
         checkInDate,
@@ -163,11 +163,13 @@ export default function ReservarClient() {
         titularEmail: input.titularEmail,
         titularTelefono: input.titularTelefono,
         titularEdad: input.titularEdad,
-        estado: "confirmada",
+        estado: "pendiente_pago",
         montoTotalArs: totalArs,
         createdAtMs: Date.now(),
         createdByUid: uid,
         createdByMode: "public",
+        paymentProvider: "mercadopago",
+        paymentStatus: "pending",
       };
 
       const created = await addDoc(collection(db, "reservas"), docReserva);

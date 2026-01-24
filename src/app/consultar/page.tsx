@@ -12,7 +12,12 @@ import { formatYmdToDmy } from "@/lib/dates";
 type ReservaDoc = Omit<Reserva, "id">;
 
 function isReservaEstado(v: unknown): v is ReservaEstado {
-  return v === "confirmada" || v === "cancelada";
+  return (
+    v === "pendiente_pago" ||
+    v === "pagada" ||
+    v === "fallida" ||
+    v === "cancelada"
+  );
 }
 
 function isReservaDoc(v: unknown): v is ReservaDoc {
@@ -33,9 +38,17 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     isReservaEstado(o.estado) &&
     typeof o.montoTotalArs === "number" &&
     typeof o.createdAtMs === "number" &&
-    // Auditoría opcional
     (o.createdByUid === undefined || typeof o.createdByUid === "string") &&
-    (o.createdByMode === undefined || o.createdByMode === "public" || o.createdByMode === "admin")
+    (o.createdByMode === undefined || o.createdByMode === "public" || o.createdByMode === "admin") &&
+    (o.paymentProvider === undefined || o.paymentProvider === "mercadopago") &&
+    (o.paymentStatus === undefined ||
+      (o.paymentStatus === "pending" ||
+        o.paymentStatus === "approved" ||
+        o.paymentStatus === "rejected" ||
+        o.paymentStatus === "cancelled")) &&
+    (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
+    (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
+    (o.paidAtMs === undefined || typeof o.paidAtMs === "number")
   );
 }
 

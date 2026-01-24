@@ -1,4 +1,4 @@
-export type ReservaEstado = "confirmada" | "cancelada";
+export type ReservaEstado = "pendiente_pago" | "pagada" | "fallida" | "cancelada";
 export type CreatedByMode = "public" | "admin";
 
 export type Reserva = {
@@ -24,4 +24,10 @@ export type Reserva = {
   cancelMotivo?: string;
   createdByUid?: string;
   createdByMode?: CreatedByMode;
+
+  paymentProvider?: "mercadopago";
+  paymentStatus?: "pending" | "approved" | "rejected" | "cancelled";
+  mpPreferenceId?: string;
+  mpPaymentId?: string;
+  paidAtMs?: number;
 };
