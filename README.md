@@ -1,53 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Plataforma de Reservas – Campings de Parques Nacionales
 
-## Getting Started
+Sistema centralizado de reservas para campings de Parques Nacionales de Argentina. Permite a los visitantes reservar online y a cada camping gestionar su operación de forma independiente, manteniendo control y supervisión centralizada.
 
-First, run the development server:
+---
+
+## 🎯 Objetivo del proyecto
+
+- Centralizar las reservas de múltiples campings bajo una única plataforma.
+- Mantener la autonomía operativa de cada camping.
+- Acreditar los pagos directamente en la cuenta de Mercado Pago de cada camping.
+- Brindar control, transparencia y reportes a Parques Nacionales.
+
+---
+
+## 🧩 Funcionalidades principales
+
+### Público
+- Reserva online sin registro obligatorio.
+- Hold temporal de **15 minutos** para completar el pago.
+- Pago online (flujo simulado, preparado para Mercado Pago real).
+- Consulta de reserva por código.
+
+### Administración
+- Panel administrativo protegido por roles:
+  - **admin_global**: supervisión total y reportes globales.
+  - **admin_camping**: gestión exclusiva de su camping.
+  - **viewer**: acceso de solo lectura (auditoría / comisiones).
+- Control de disponibilidad en tiempo real.
+- Registro de reservas presenciales (walk‑in).
+- Cancelaciones y expiración de reservas.
+- Exportación CSV por camping y **CSV global**.
+
+---
+
+## 💳 Pagos
+
+- Modelo de pago **100% online**.
+- Cada camping utiliza su **propia cuenta de Mercado Pago**.
+- Arquitectura preparada para:
+  - 17 cuentas de Mercado Pago distintas.
+  - Backend seguro (tokens nunca expuestos al frontend).
+  - Webhooks centralizados.
+
+> Actualmente el flujo de pago es **simulado** (mock). La integración real con Mercado Pago se realiza en fase productiva.
+
+---
+
+## 🔐 Seguridad y arquitectura
+
+- Frontend: Next.js (App Router), responsive y mobile‑first.
+- Backend: API Routes de Next.js para operaciones críticas.
+- Base de datos: Firebase / Firestore con reglas por rol.
+- Estados de reserva:
+  - `pendiente_pago`
+  - `pagada`
+  - `fallida`
+  - `cancelada`
+- El frontend **nunca** marca una reserva como pagada; solo el backend lo hace.
+
+---
+
+## 🛠️ Desarrollo local
+
+### Requisitos
+- Node.js 18+
+- Cuenta de Firebase
+
+### Instalación
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir: http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-## Autenticación Admin
+## 👤 Acceso al panel admin
 
-Para acceder al panel de administración:
+1. Crear usuarios en **Firebase Console → Authentication**.
+2. Crear el perfil correspondiente en **Firestore → `users/{uid}`** con:
 
-1. **Crear usuario admin en Firebase Console:**
-   - Ve a [Firebase Console](https://console.firebase.google.com/)
-   - Selecciona el proyecto `reservas-campings-nacionales`
-   - Ve a **Authentication** → **Users**
-   - Haz clic en **"Add user"**
-   - Ingresa un email y contraseña para el usuario admin
-   - Guarda las credenciales
+```json
+{
+  "email": "usuario@ejemplo.com",
+  "role": "admin_global | admin_camping | viewer",
+  "activo": true,
+  "campingId": "opcional-para-admin_camping"
+}
+```
 
-2. **Acceder al panel:**
-   - Navega a `http://localhost:3000/admin/login`
-   - Ingresa las credenciales del usuario creado
-   - Serás redirigido a `/admin` (dashboard protegido)
+3. Acceder a:
+```
+/admin/login
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 📦 Roadmap
 
-To learn more about Next.js, take a look at the following resources:
+- Integración real con Mercado Pago (17 cuentas).
+- Webhooks de pago y conciliación automática.
+- Emails de confirmación.
+- Reglas por temporada.
+- Aplicación móvil (iOS / Android).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🚀 Deploy
 
-## Deploy on Vercel
+El proyecto está preparado para desplegarse en **Vercel**.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Configurar variables de entorno de Firebase en el panel de Vercel antes de hacer deploy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 📄 Estado del proyecto
+
+- MVP funcional completo.
+- Preparado para licitación y validación institucional.
+- Arquitectura lista para producción.
+
+---
+
+© Plataforma de Reservas – Parques Nacionales
