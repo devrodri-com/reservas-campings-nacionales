@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
 import type { Camping } from "@/types/camping";
@@ -43,6 +43,13 @@ export default function AdminCampingsPage() {
   });
 
   const [saving, setSaving] = useState(false);
+  const [showNewCamping, setShowNewCamping] = useState(false);
+  const [newCampingId, setNewCampingId] = useState("");
+  const [newNombre, setNewNombre] = useState("");
+  const [newArea, setNewArea] = useState("");
+  const [newUbicacion, setNewUbicacion] = useState("");
+  const [newCapacidad, setNewCapacidad] = useState<number>(20);
+  const [newPrecio, setNewPrecio] = useState<number>(10000);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -126,6 +133,66 @@ export default function AdminCampingsPage() {
     }
   };
 
+  const createCamping = async () => {
+    const id = newCampingId.trim().toLowerCase();
+
+    if (!id || !/^[a-z0-9-]+$/.test(id)) {
+      setError("El ID debe contener solo letras minúsculas, números y guiones (sin espacios).");
+      return;
+    }
+    if (!newNombre.trim() || !newArea.trim() || !newUbicacion.trim()) {
+      setError("Nombre, Área protegida y Ubicación son obligatorios.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await setDoc(doc(db, "campings", id), {
+        areaProtegida: newArea.trim(),
+        nombre: newNombre.trim(),
+        ubicacionTexto: newUbicacion.trim(),
+        titular: "-",
+        capacidadParcelas: Number(newCapacidad),
+        precioNocheArs: Number(newPrecio),
+        maxPersonasPorParcela: 6,
+        checkInHour: 15,
+        checkOutHour: 11,
+        activo: true,
+        descripcionCorta: "",
+        igUrl: "",
+        webUrl: "",
+        coverImageUrl: "",
+      });
+
+      const list = await fetchCampings();
+      setCampings(list);
+      setSelectedId(id);
+
+      setNewCampingId("");
+      setNewNombre("");
+      setNewArea("");
+      setNewUbicacion("");
+      setNewCapacidad(20);
+      setNewPrecio(10000);
+      setShowNewCamping(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle: CSSProperties = {
+    width: "100%",
+    padding: 10,
+    border: "1px solid var(--color-border)",
+    borderRadius: 10,
+    background: "var(--color-surface)",
+    color: "var(--color-text)",
+  };
+
   if (loading || profileLoading) {
     return <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>Cargando…</main>;
   }
@@ -177,38 +244,101 @@ export default function AdminCampingsPage() {
         <Card title="Listado">
           {loadingData ? (
             <p>Cargando…</p>
-          ) : campings.length === 0 ? (
-            <p>No hay campings cargados.</p>
-          ) : (
+          ) : showNewCamping ? (
             <div style={{ display: "grid", gap: 10 }}>
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Camping</span>
-                <select
-                  value={selectedId}
-                  onChange={(e) => setSelectedId(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 10,
-                    background: "var(--color-surface)",
-                    color: "var(--color-text)",
-                  }}
-                >
-                  {campings.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} ({c.areaProtegida})
-                    </option>
-                  ))}
-                </select>
+                <span style={{ fontWeight: 700 }}>ID (slug)</span>
+                <input
+                  value={newCampingId}
+                  onChange={(e) => setNewCampingId(e.target.value)}
+                  placeholder="ej: mi-camping"
+                  style={inputStyle}
+                />
               </label>
-
-              {selectedCamping ? (
-                <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
-                  <strong>{selectedCamping.capacidadParcelas}</strong> parcelas · ${selectedCamping.precioNocheArs}/noche
-                </p>
-              ) : null}
-
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Nombre</span>
+                <input
+                  value={newNombre}
+                  onChange={(e) => setNewNombre(e.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Área protegida</span>
+                <input
+                  value={newArea}
+                  onChange={(e) => setNewArea(e.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Ubicación</span>
+                <input
+                  value={newUbicacion}
+                  onChange={(e) => setNewUbicacion(e.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Capacidad (parcelas)</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={newCapacidad}
+                  onChange={(e) => setNewCapacidad(Number(e.target.value) || 0)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Precio/noche (ARS)</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={newPrecio}
+                  onChange={(e) => setNewPrecio(Number(e.target.value) || 0)}
+                  style={inputStyle}
+                />
+              </label>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Button variant="primary" onClick={createCamping} disabled={saving}>
+                  {saving ? "Creando…" : "Crear"}
+                </Button>
+                <Button variant="secondary" onClick={() => setShowNewCamping(false)} disabled={saving}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              <Button variant="secondary" onClick={() => setShowNewCamping(true)}>
+                Crear nuevo camping
+              </Button>
+              {campings.length === 0 ? (
+                <p style={{ margin: 0, color: "var(--color-text-muted)" }}>No hay campings cargados.</p>
+              ) : (
+                <>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontWeight: 700 }}>Camping</span>
+                    <select
+                      value={selectedId}
+                      onChange={(e) => setSelectedId(e.target.value)}
+                      style={inputStyle}
+                    >
+                      {campings.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre} ({c.areaProtegida})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selectedCamping ? (
+                    <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
+                      <strong>{selectedCamping.capacidadParcelas}</strong> parcelas · $
+                      {selectedCamping.precioNocheArs}/noche
+                    </p>
+                  ) : null}
+                </>
+              )}
               <Button variant="ghost" onClick={() => router.push("/admin")}>
                 Volver al panel
               </Button>
@@ -217,7 +347,9 @@ export default function AdminCampingsPage() {
         </Card>
 
         <Card title="Datos del camping">
-          {!selectedCamping ? (
+          {showNewCamping ? (
+            <p style={{ color: "var(--color-text-muted)" }}>Completá el formulario a la izquierda y hacé clic en Crear.</p>
+          ) : !selectedCamping ? (
             <p>Seleccioná un camping.</p>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
