@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, getDoc, updateDoc, deleteField } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
 import type { Camping } from "@/types/camping";
@@ -129,12 +129,10 @@ export default function ConfirmadaClient() {
 
     (async () => {
       try {
-        await updateDoc(doc(db, "reservas", reserva.id), {
-          estado: "pagada",
-          paymentProvider: "mercadopago",
-          paymentStatus: "approved",
-          paidAtMs: Date.now(),
-          expiresAtMs: deleteField(),
+        await fetch("/api/payments/mercadopago/mark-paid", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reservaId: reserva.id }),
         });
         await load();
       } catch (e) {
@@ -201,14 +199,11 @@ export default function ConfirmadaClient() {
                           setPayError(json.error ?? "Error al crear pago");
                           return;
                         }
-                        const { checkoutUrl, preferenceId } = json;
-                        if (!checkoutUrl || !preferenceId) {
+                        const { checkoutUrl } = json;
+                        if (!checkoutUrl) {
                           setPayError("Respuesta inválida del servidor");
                           return;
                         }
-                        await updateDoc(doc(db, "reservas", reserva.id), {
-                          mpPreferenceId: preferenceId,
-                        });
                         router.push(checkoutUrl);
                       } catch (e) {
                         setPayError(e instanceof Error ? e.message : "Error desconocido");

@@ -20,4 +20,6 @@ export type Camping = {
   paymentsProvider?: "mercadopago";
   mpEnabled?: boolean;
   mpAccountLabel?: string;
+  /** Clave de env para token MP (ej: "MP_TOKEN_TALAMPAYA"). */
+  mpTokenEnvKey?: string;
 };

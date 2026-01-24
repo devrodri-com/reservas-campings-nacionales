@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
 
@@ -48,6 +48,14 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
     (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
   );
+}
+
+export async function fetchReservaById(id: string): Promise<Reserva | null> {
+  const snap = await getDoc(doc(db, "reservas", id));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  if (!isReservaDoc(data)) return null;
+  return { id: snap.id, ...data };
 }
 
 export async function fetchReservasByCamping(campingId: string): Promise<Reserva[]> {
