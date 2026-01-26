@@ -43,15 +43,17 @@ export default function Home() {
       <section
         style={{
           display: "grid",
-          gap: 16,
+          gap: 14,
           marginBottom: 40,
           textAlign: "center",
+          paddingTop: 10,
+          paddingBottom: 10,
         }}
       >
-        <h1 style={{ margin: 0, fontSize: "clamp(1.5rem, 4vw, 2.25rem)", color: "var(--color-accent)" }}>
+        <h1 style={{ margin: 0, fontSize: "clamp(26px, 5vw, 40px)", lineHeight: 1.1, color: "var(--color-accent)" }}>
           Reservá tu estadía en campings de Parques Nacionales
         </h1>
-        <p style={{ margin: 0, color: "var(--color-text-muted)", maxWidth: 560, justifySelf: "center" }}>
+        <p style={{ margin: 0, color: "var(--color-text-muted)", maxWidth: 720, justifySelf: "center", lineHeight: 1.5 }}>
           Un sistema centralizado para reservar campings en áreas protegidas de todo el país, con gestión local y pago
           seguro.
         </p>

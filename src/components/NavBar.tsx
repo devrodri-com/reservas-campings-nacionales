@@ -142,7 +142,6 @@ export default function NavBar() {
               border: "1px solid rgba(255,255,255,0.35)",
               background: "rgba(255,255,255,0.10)",
               color: "white",
-              display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",

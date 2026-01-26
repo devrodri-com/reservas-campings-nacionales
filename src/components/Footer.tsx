@@ -14,8 +14,8 @@ export default function Footer() {
             <div style={{ color: "var(--color-text-muted)", fontSize: 14, lineHeight: 1.5 }}>
               Plataforma centralizada de reservas para campings de Parques Nacionales.
               <br />
-              <span style={{ opacity: 0.9 }}>
-                (Placeholder) Contacto:{" "}
+              <span style={{ fontStyle: "italic", opacity: 0.8 }}>
+                (Pendiente de confirmación) Contacto:{" "}
                 <a href="mailto:soporte@parquesnacionales.gob.ar" style={{ textDecoration: "underline" }}>
                   soporte@parquesnacionales.gob.ar
                 </a>
@@ -24,16 +24,20 @@ export default function Footer() {
 
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 14 }}>
               <Link href="#" style={{ color: "var(--color-text-muted)" }}>
-                (Placeholder) Términos y condiciones
+                <span style={{ fontStyle: "italic", opacity: 0.8 }}>(Pendiente de confirmación) </span>
+                Términos y condiciones
               </Link>
               <Link href="#" style={{ color: "var(--color-text-muted)" }}>
-                (Placeholder) Política de privacidad
+                <span style={{ fontStyle: "italic", opacity: 0.8 }}>(Pendiente de confirmación) </span>
+                Política de privacidad
               </Link>
               <Link href="#" style={{ color: "var(--color-text-muted)" }}>
-                (Placeholder) Contacto
+                <span style={{ fontStyle: "italic", opacity: 0.8 }}>(Pendiente de confirmación) </span>
+                Contacto
               </Link>
               <Link href="#" style={{ color: "var(--color-text-muted)" }}>
-                (Placeholder) Arrepentimiento de compra
+                <span style={{ fontStyle: "italic", opacity: 0.8 }}>(Pendiente de confirmación) </span>
+                Arrepentimiento de compra
               </Link>
             </div>
           </div>

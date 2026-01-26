@@ -21,7 +21,7 @@ const ITEMS: FAQItem[] = [
   },
   {
     q: "¿Qué pasa si no puedo asistir?",
-    a: "(Placeholder) Las políticas de cancelación dependen de cada camping. La plataforma permite gestionar cancelaciones y reintegros según reglas definidas por Parques Nacionales.",
+    a: "Las políticas de cancelación dependen de cada camping. La plataforma permite gestionar cancelaciones y reintegros según reglas definidas por Parques Nacionales. ",
   },
 ];
 

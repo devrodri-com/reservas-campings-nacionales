@@ -43,7 +43,18 @@ export default function CampingCard({ camping }: { camping: Camping }) {
           <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-accent)" }}>
             {camping.nombre}
           </div>
-          <p style={{ margin: "6px 0 0 0", fontSize: 14, color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+          <p
+            style={{
+              margin: "6px 0 0 0",
+              fontSize: 14,
+              color: "var(--color-text-muted)",
+              lineHeight: 1.4,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {descripcion}
           </p>
         </div>
@@ -63,36 +74,40 @@ export default function CampingCard({ camping }: { camping: Camping }) {
           />
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
-          <Link href={`/reservar?campingId=${encodeURIComponent(camping.id)}`} style={{ textDecoration: "none" }}>
-            <Button variant="primary">Reservar</Button>
-          </Link>
-          <Link href={`/campings/${camping.id}`} style={{ textDecoration: "none" }}>
-            <Button variant="ghost">Ver detalles</Button>
-          </Link>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Link href={`/reservar?campingId=${encodeURIComponent(camping.id)}`} style={{ textDecoration: "none" }}>
+              <Button variant="primary">Reservar</Button>
+            </Link>
+            <Link href={`/campings/${camping.id}`} style={{ textDecoration: "none" }}>
+              <Button variant="ghost">Ver detalles</Button>
+            </Link>
+          </div>
           {camping.igUrl ? (
-            <a
-              href={camping.igUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Instagram"
-              aria-label="Instagram"
-              style={{ textDecoration: "none" }}
-            >
-              <Button
-                variant="ghost"
-                style={{
-                  width: 40,
-                  height: 40,
-                  padding: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+            <div style={{ marginLeft: "auto" }}>
+              <a
+                href={camping.igUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Instagram"
+                aria-label="Instagram"
+                style={{ textDecoration: "none" }}
               >
-                <InstagramIcon title="Instagram" />
-              </Button>
-            </a>
+                <Button
+                  variant="ghost"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    padding: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <InstagramIcon title="Instagram" />
+                </Button>
+              </a>
+            </div>
           ) : null}
         </div>
       </div>
