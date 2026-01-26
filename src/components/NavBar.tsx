@@ -1,7 +1,9 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SunIcon, MoonIcon } from "@/components/icons";
 
 type NavItem = {
   href: string;
@@ -22,6 +24,36 @@ function isActive(pathname: string, href: string): boolean {
 
 export default function NavBar() {
   const pathname = usePathname();
+
+  const [theme, setTheme] = React.useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    const stored = window.localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      setTheme(stored);
+      if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
+      return;
+    }
+
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+    if (prefersDark) {
+      setTheme("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+
+    if (next === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+      window.localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      window.localStorage.setItem("theme", "light");
+    }
+  };
 
   return (
     <header
@@ -52,7 +84,7 @@ export default function NavBar() {
           Reservas Campings
         </Link>
 
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {ITEMS.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -72,6 +104,25 @@ export default function NavBar() {
               </Link>
             );
           })}
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.35)",
+              background: "rgba(255,255,255,0.10)",
+              color: "white",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
+          </button>
         </div>
       </nav>
     </header>
