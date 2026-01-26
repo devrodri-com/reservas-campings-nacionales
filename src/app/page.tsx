@@ -7,6 +7,7 @@ import { fetchCampings } from "@/lib/campingsRepo";
 import CampingCard from "@/components/CampingCard";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
+import DevCredits from "@/components/DevCredits";
 import { Button } from "@/components/ui";
 
 const COMO_FUNCIONA = [
@@ -137,6 +138,7 @@ export default function Home() {
     </main>
 
     <Footer />
+    <DevCredits />
     </>
   );
 }
