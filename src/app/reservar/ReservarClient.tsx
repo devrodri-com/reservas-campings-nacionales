@@ -32,6 +32,7 @@ export default function ReservarClient() {
   const [campings, setCampings] = useState<Camping[]>([]);
   const [loadingCampings, setLoadingCampings] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   // Form state
   const [campingId, setCampingId] = useState<string>("");
@@ -51,6 +52,8 @@ export default function ReservarClient() {
   const [passwordConfirm, setPasswordConfirm] = useState<string>("");
 
   const [submitting, setSubmitting] = useState(false);
+
+  const errorBorder = "1px solid rgba(239,68,68,0.8)";
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -99,9 +102,15 @@ export default function ReservarClient() {
   }, [preselectedCampingId]);
 
   const validate = (): string | null => {
-    if (!selectedCamping) return "Seleccioná un camping.";
-    if (!checkInDate || !checkOutDate) return "Seleccioná fechas.";
-    if (noches < 1) return "La estadía mínima es 1 noche.";
+    if (!selectedCamping) {
+      setFieldError("camping");
+      return "Seleccioná un camping.";
+    }
+    if (!checkInDate || !checkOutDate || noches < 1) {
+      setFieldError("fechas");
+      if (!checkInDate || !checkOutDate) return "Seleccioná fechas.";
+      return "La estadía mínima es 1 noche.";
+    }
     if (parcelas < 1 || parcelas > MAX_PARCELAS) return `Parcelas debe estar entre 1 y ${MAX_PARCELAS}.`;
     if (adultos < 0 || menores < 0) return "Adultos/menores inválido.";
     if (totalPersonas <= 0) return "Debe haber al menos 1 persona.";
@@ -109,12 +118,21 @@ export default function ReservarClient() {
       return `Excede el máximo: ${selectedCamping.maxPersonasPorParcela} personas por parcela.`;
     }
     if (!titularNombre.trim()) return "Nombre y apellido es obligatorio.";
-    if (!titularEmail.trim()) return "Email es obligatorio.";
-    if (!composePhone({ countryCode: telefonoPais, number: telefonoNumero, manualDialCode: telefonoDialManual }).trim())
+    if (!titularEmail.trim()) {
+      setFieldError("email");
+      return "Email es obligatorio.";
+    }
+    if (!composePhone({ countryCode: telefonoPais, number: telefonoNumero, manualDialCode: telefonoDialManual }).trim()) {
+      setFieldError("telefono");
       return "Teléfono es obligatorio.";
+    }
     if (titularEdad < 18) return "El titular debe ser mayor de edad.";
     if (password && password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
-    if (password && password !== passwordConfirm) return "Las contraseñas no coinciden.";
+    if (password && password !== passwordConfirm) {
+      setFieldError("passwordConfirm");
+      return "Las contraseñas no coinciden.";
+    }
+    setFieldError(null);
     return null;
   };
 
@@ -128,6 +146,7 @@ export default function ReservarClient() {
 
     setSubmitting(true);
     setError(null);
+    setFieldError(null);
 
     try {
       // 1) Asegurar auth (anónimo) y si hay password, vincular cuenta
@@ -234,6 +253,7 @@ export default function ReservarClient() {
           <select
             value={campingId}
             onChange={(e) => setCampingId(e.target.value)}
+            disabled={submitting}
             style={selectStyle}
           >
             {campings.map((c) => (
@@ -251,7 +271,11 @@ export default function ReservarClient() {
               type="date"
               value={checkInDate}
               onChange={(e) => setCheckInDate(e.target.value)}
-              style={inputStyle}
+              disabled={submitting}
+              style={{
+                ...inputStyle,
+                border: fieldError === "fechas" ? errorBorder : inputStyle.border,
+              }}
             />
           </label>
 
@@ -261,7 +285,11 @@ export default function ReservarClient() {
               type="date"
               value={checkOutDate}
               onChange={(e) => setCheckOutDate(e.target.value)}
-              style={inputStyle}
+              disabled={submitting}
+              style={{
+                ...inputStyle,
+                border: fieldError === "fechas" ? errorBorder : inputStyle.border,
+              }}
             />
           </label>
         </div>
@@ -272,6 +300,7 @@ export default function ReservarClient() {
             <select
               value={parcelas}
               onChange={(e) => setParcelas(Number(e.target.value))}
+              disabled={submitting}
               style={selectStyle}
             >
               {Array.from({ length: MAX_PARCELAS }, (_, i) => i + 1).map((n) => (
@@ -289,6 +318,7 @@ export default function ReservarClient() {
               min={0}
               value={adultos}
               onChange={(e) => setAdultos(Number(e.target.value))}
+              disabled={submitting}
               style={inputStyle}
             />
           </label>
@@ -300,6 +330,7 @@ export default function ReservarClient() {
               min={0}
               value={menores}
               onChange={(e) => setMenores(Number(e.target.value))}
+              disabled={submitting}
               style={inputStyle}
             />
           </label>
@@ -314,6 +345,7 @@ export default function ReservarClient() {
           <input
             value={titularNombre}
             onChange={(e) => setTitularNombre(e.target.value)}
+            disabled={submitting}
             style={inputStyle}
           />
         </label>
@@ -324,7 +356,11 @@ export default function ReservarClient() {
             type="email"
             value={titularEmail}
             onChange={(e) => setTitularEmail(e.target.value)}
-            style={inputStyle}
+            disabled={submitting}
+            style={{
+              ...inputStyle,
+              border: fieldError === "email" ? errorBorder : inputStyle.border,
+            }}
           />
         </label>
 
@@ -338,6 +374,8 @@ export default function ReservarClient() {
           onManualDialCodeChange={setTelefonoDialManual}
           placeholder="11 1234 5678"
           required
+          disabled={submitting}
+          hasError={fieldError === "telefono"}
         />
 
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
@@ -348,6 +386,7 @@ export default function ReservarClient() {
               min={18}
               value={titularEdad}
               onChange={(e) => setTitularEdad(Number(e.target.value))}
+              disabled={submitting}
               style={inputStyle}
             />
           </label>
@@ -362,6 +401,7 @@ export default function ReservarClient() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Dejar vacío si no querés registrarte"
+                disabled={submitting}
                 style={inputStyle}
                 autoComplete="new-password"
               />
@@ -373,7 +413,11 @@ export default function ReservarClient() {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 placeholder="Repetí la contraseña"
-                style={inputStyle}
+                disabled={submitting}
+                style={{
+                  ...inputStyle,
+                  border: fieldError === "passwordConfirm" ? errorBorder : inputStyle.border,
+                }}
                 autoComplete="new-password"
               />
             </label>
@@ -386,6 +430,7 @@ export default function ReservarClient() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Dejar vacío si no querés registrarte"
+              disabled={submitting}
               style={inputStyle}
               autoComplete="new-password"
             />
@@ -425,7 +470,7 @@ export default function ReservarClient() {
           onClick={onSubmit}
           disabled={submitting || !selectedCamping}
         >
-          {submitting ? "Confirmando..." : "Confirmar reserva (pago simulado)"}
+          {submitting ? "Procesando..." : "Confirmar reserva (pago simulado)"}
         </Button>
       </div>
       </Card>

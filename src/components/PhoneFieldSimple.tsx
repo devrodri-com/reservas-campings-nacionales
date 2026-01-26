@@ -36,6 +36,8 @@ type Props = {
   onManualDialCodeChange?: (v: string) => void;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
+  hasError?: boolean;
 };
 
 export default function PhoneFieldSimple(props: Props) {
@@ -95,10 +97,11 @@ export default function PhoneFieldSimple(props: Props) {
           <button
             type="button"
             onClick={() => setOpen(!open)}
+            disabled={props.disabled}
             style={{
               width: "100%",
               padding: 10,
-              border: "1px solid var(--color-border)",
+              border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
               borderRadius: 10,
               background: "var(--color-surface)",
               color: "var(--color-text)",
@@ -106,7 +109,8 @@ export default function PhoneFieldSimple(props: Props) {
               alignItems: "center",
               justifyContent: "space-between",
               gap: 8,
-              cursor: "pointer",
+              cursor: props.disabled ? "not-allowed" : "pointer",
+              opacity: props.disabled ? 0.6 : 1,
             }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -217,10 +221,11 @@ export default function PhoneFieldSimple(props: Props) {
             display: "flex",
             alignItems: "center",
             gap: 8,
-            border: "1px solid var(--color-border)",
+            border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
             borderRadius: 10,
             background: "var(--color-surface)",
             padding: "0 10px",
+            opacity: props.disabled ? 0.6 : 1,
           }}
         >
           {isManual && props.onManualDialCodeChange ? (
@@ -228,6 +233,7 @@ export default function PhoneFieldSimple(props: Props) {
               value={props.manualDialCode ?? "+"}
               onChange={(e) => props.onManualDialCodeChange?.(e.target.value)}
               placeholder="+"
+              disabled={props.disabled}
               style={{
                 width: 70,
                 padding: "10px 0",
@@ -249,6 +255,7 @@ export default function PhoneFieldSimple(props: Props) {
             onChange={(e) => props.onNumberChange(e.target.value)}
             placeholder={props.placeholder ?? "Ej: 11 1234 5678"}
             required={props.required}
+            disabled={props.disabled}
             style={{
               width: "100%",
               padding: "10px 0",
