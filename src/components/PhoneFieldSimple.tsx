@@ -99,7 +99,7 @@ export default function PhoneFieldSimple(props: Props) {
         }
         style={
           useCompactLayout
-            ? undefined
+            ? { minWidth: 0 }
             : {
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -107,13 +107,14 @@ export default function PhoneFieldSimple(props: Props) {
               }
         }
       >
-        <div ref={containerRef} style={{ position: "relative" }}>
+        <div ref={containerRef} style={{ position: "relative", minWidth: 0 }}>
           <button
             type="button"
             onClick={() => setOpen(!open)}
             disabled={props.disabled}
             style={{
               width: "100%",
+              minWidth: 0,
               padding: 10,
               border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
               borderRadius: 10,
@@ -238,39 +239,46 @@ export default function PhoneFieldSimple(props: Props) {
             disabled={props.disabled}
             style={{
               width: "100%",
+              minWidth: 0,
               padding: 10,
               border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
               borderRadius: 10,
               background: "var(--color-surface)",
               color: "var(--color-text-muted)",
+              textAlign: "left",
               opacity: props.disabled ? 0.6 : 1,
+              boxSizing: "border-box",
             }}
             inputMode="text"
           />
         ) : null}
 
         {useCompactLayout ? (
-          <input
-            value={props.number}
-            onChange={(e) => {
-              const onlyDigits = e.target.value.replace(/\D/g, "");
-              props.onNumberChange(onlyDigits);
-            }}
-            placeholder={props.placeholder ?? "Ej: 11 1234 5678"}
-            required={props.required}
-            disabled={props.disabled}
-            style={{
-              width: "100%",
-              padding: 10,
-              border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
-              borderRadius: 10,
-              background: "var(--color-surface)",
-              color: "var(--color-text)",
-              opacity: props.disabled ? 0.6 : 1,
-            }}
-            autoComplete="tel"
-            inputMode="numeric"
-          />
+          <div style={{ minWidth: 0 }}>
+            <input
+              value={props.number}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, "");
+                props.onNumberChange(onlyDigits);
+              }}
+              placeholder={props.placeholder ?? "Ej: 11 1234 5678"}
+              required={props.required}
+              disabled={props.disabled}
+              style={{
+                width: "100%",
+                minWidth: 0,
+                padding: 10,
+                border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
+                borderRadius: 10,
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                opacity: props.disabled ? 0.6 : 1,
+                boxSizing: "border-box",
+              }}
+              autoComplete="tel"
+              inputMode="numeric"
+            />
+          </div>
         ) : (
           <div
             style={{

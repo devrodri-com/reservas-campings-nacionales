@@ -17,6 +17,7 @@ import { Button, Card } from "@/components/ui";
 import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
+import InfoTooltip from "@/components/InfoTooltip";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -417,18 +418,9 @@ export default function ReservarClient() {
 
         <div className="reservar-grid-20-40-40">
           <div style={{ display: "grid", gap: 6 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
               Edad
-              <span
-                title="Edad del titular de la reserva (mayor de 18 años)"
-                style={{
-                  fontSize: 12,
-                  color: "var(--color-text-muted)",
-                  cursor: "help",
-                }}
-              >
-                ?
-              </span>
+              <InfoTooltip text="Edad del titular de la reserva (mayor de 18 años)." />
             </span>
             <SelectDropdown
               label=""
