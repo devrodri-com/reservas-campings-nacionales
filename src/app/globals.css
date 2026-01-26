@@ -84,3 +84,22 @@ select, input, textarea, button {
     display: none;
   }
 }
+
+.footer-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .footer-content {
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .footer-links {
+    justify-self: end;
+    text-align: right;
+  }
+}
