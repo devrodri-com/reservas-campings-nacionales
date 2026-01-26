@@ -38,6 +38,7 @@ type Props = {
   required?: boolean;
   disabled?: boolean;
   hasError?: boolean;
+  layout?: "compact";
 };
 
 export default function PhoneFieldSimple(props: Props) {
@@ -82,16 +83,29 @@ export default function PhoneFieldSimple(props: Props) {
     setQuery("");
   };
 
+  const useCompactLayout = props.layout === "compact";
+
   return (
     <label style={{ display: "grid", gap: 6 }}>
       {props.label ? <span style={{ fontWeight: 700 }}>{props.label}</span> : null}
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 10,
-        }}
+        className={
+          useCompactLayout
+            ? isManual
+              ? "phone-grid phone-grid-intl"
+              : "phone-grid"
+            : undefined
+        }
+        style={
+          useCompactLayout
+            ? undefined
+            : {
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }
+        }
       >
         <div ref={containerRef} style={{ position: "relative" }}>
           <button
@@ -216,40 +230,26 @@ export default function PhoneFieldSimple(props: Props) {
           ) : null}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
-            borderRadius: 10,
-            background: "var(--color-surface)",
-            padding: "0 10px",
-            opacity: props.disabled ? 0.6 : 1,
-          }}
-        >
-          {isManual && props.onManualDialCodeChange ? (
-            <input
-              value={props.manualDialCode ?? "+"}
-              onChange={(e) => props.onManualDialCodeChange?.(e.target.value)}
-              placeholder="+"
-              disabled={props.disabled}
-              style={{
-                width: 70,
-                padding: "10px 0",
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                color: "var(--color-text-muted)",
-              }}
-              inputMode="text"
-            />
-          ) : (
-            <span style={{ color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
-              {selected.dialCode}
-            </span>
-          )}
+        {useCompactLayout && isManual && props.onManualDialCodeChange ? (
+          <input
+            value={props.manualDialCode ?? "+"}
+            onChange={(e) => props.onManualDialCodeChange?.(e.target.value)}
+            placeholder="+"
+            disabled={props.disabled}
+            style={{
+              width: "100%",
+              padding: 10,
+              border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
+              borderRadius: 10,
+              background: "var(--color-surface)",
+              color: "var(--color-text-muted)",
+              opacity: props.disabled ? 0.6 : 1,
+            }}
+            inputMode="text"
+          />
+        ) : null}
 
+        {useCompactLayout ? (
           <input
             value={props.number}
             onChange={(e) => props.onNumberChange(e.target.value)}
@@ -258,16 +258,70 @@ export default function PhoneFieldSimple(props: Props) {
             disabled={props.disabled}
             style={{
               width: "100%",
-              padding: "10px 0",
-              border: "none",
-              outline: "none",
-              background: "transparent",
+              padding: 10,
+              border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
+              borderRadius: 10,
+              background: "var(--color-surface)",
               color: "var(--color-text)",
+              opacity: props.disabled ? 0.6 : 1,
             }}
             autoComplete="tel"
             inputMode="tel"
           />
-        </div>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              border: props.hasError ? "1px solid rgba(239,68,68,0.8)" : "1px solid var(--color-border)",
+              borderRadius: 10,
+              background: "var(--color-surface)",
+              padding: "0 10px",
+              opacity: props.disabled ? 0.6 : 1,
+            }}
+          >
+            {isManual && props.onManualDialCodeChange ? (
+              <input
+                value={props.manualDialCode ?? "+"}
+                onChange={(e) => props.onManualDialCodeChange?.(e.target.value)}
+                placeholder="+"
+                disabled={props.disabled}
+                style={{
+                  width: 70,
+                  padding: "10px 0",
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  color: "var(--color-text-muted)",
+                }}
+                inputMode="text"
+              />
+            ) : (
+              <span style={{ color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+                {selected.dialCode}
+              </span>
+            )}
+
+            <input
+              value={props.number}
+              onChange={(e) => props.onNumberChange(e.target.value)}
+              placeholder={props.placeholder ?? "Ej: 11 1234 5678"}
+              required={props.required}
+              disabled={props.disabled}
+              style={{
+                width: "100%",
+                padding: "10px 0",
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                color: "var(--color-text)",
+              }}
+              autoComplete="tel"
+              inputMode="tel"
+            />
+          </div>
+        )}
       </div>
     </label>
   );

@@ -15,6 +15,8 @@ import { ensureSignedInGuestOrLink } from "@/lib/ensureAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card } from "@/components/ui";
 import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
+import SelectDropdown from "@/components/SelectDropdown";
+import type { SelectOption } from "@/components/SelectDropdown";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -62,6 +64,7 @@ export default function ReservarClient() {
     borderRadius: 10,
     background: "var(--color-surface)",
     color: "var(--color-text)",
+    boxSizing: "border-box",
   };
 
   const selectStyle: React.CSSProperties = { ...inputStyle };
@@ -69,6 +72,25 @@ export default function ReservarClient() {
   const selectedCamping = useMemo(
     () => campings.find((c) => c.id === campingId) ?? null,
     [campings, campingId]
+  );
+
+  const campingOptions: SelectOption[] = useMemo(
+    () =>
+      campings.map((c) => ({
+        value: c.id,
+        label: `${c.nombre} (${c.areaProtegida})`,
+        description: c.ubicacionTexto,
+      })),
+    [campings]
+  );
+
+  const parcelasOptions: SelectOption[] = useMemo(
+    () =>
+      Array.from({ length: MAX_PARCELAS }, (_, i) => {
+        const n = i + 1;
+        return { value: String(n), label: `${n} parcela${n > 1 ? "s" : ""}` };
+      }),
+    []
   );
 
   const noches = useMemo(() => nightsCount(checkInDate, checkOutDate), [checkInDate, checkOutDate]);
@@ -226,7 +248,7 @@ export default function ReservarClient() {
   };
 
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px", overflowX: "hidden" }}>
       <h1>Reservar</h1>
 
       {loadingCampings ? <p>Cargando campings…</p> : null}
@@ -248,23 +270,18 @@ export default function ReservarClient() {
 
       <Card>
       <div style={{ display: "grid", gap: 12 }}>
-        <label>
-          Camping
-          <select
-            value={campingId}
-            onChange={(e) => setCampingId(e.target.value)}
-            disabled={submitting}
-            style={selectStyle}
-          >
-            {campings.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre} ({c.areaProtegida})
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectDropdown
+          label="Camping"
+          value={campingId}
+          options={campingOptions}
+          onChange={setCampingId}
+          placeholder="Seleccionar camping…"
+          disabled={submitting || loadingCampings}
+          hasError={fieldError === "camping"}
+          searchable
+        />
 
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div className="reservar-grid-5">
           <label>
             Check-in
             <input
@@ -292,24 +309,15 @@ export default function ReservarClient() {
               }}
             />
           </label>
-        </div>
 
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-          <label>
-            Parcelas
-            <select
-              value={parcelas}
-              onChange={(e) => setParcelas(Number(e.target.value))}
-              disabled={submitting}
-              style={selectStyle}
-            >
-              {Array.from({ length: MAX_PARCELAS }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SelectDropdown
+            label="Parcelas"
+            value={String(parcelas)}
+            options={parcelasOptions}
+            onChange={(v) => setParcelas(Number(v))}
+            disabled={submitting}
+            searchable={false}
+          />
 
           <label>
             Adultos
@@ -340,29 +348,31 @@ export default function ReservarClient() {
 
         <h2>Datos de contacto</h2>
 
-        <label>
-          Nombre y apellido
-          <input
-            value={titularNombre}
-            onChange={(e) => setTitularNombre(e.target.value)}
-            disabled={submitting}
-            style={inputStyle}
-          />
-        </label>
+        <div className="reservar-grid-60-40">
+          <label>
+            Nombre y apellido
+            <input
+              value={titularNombre}
+              onChange={(e) => setTitularNombre(e.target.value)}
+              disabled={submitting}
+              style={inputStyle}
+            />
+          </label>
 
-        <label>
-          Email
-          <input
-            type="email"
-            value={titularEmail}
-            onChange={(e) => setTitularEmail(e.target.value)}
-            disabled={submitting}
-            style={{
-              ...inputStyle,
-              border: fieldError === "email" ? errorBorder : inputStyle.border,
-            }}
-          />
-        </label>
+          <label>
+            Email
+            <input
+              type="email"
+              value={titularEmail}
+              onChange={(e) => setTitularEmail(e.target.value)}
+              disabled={submitting}
+              style={{
+                ...inputStyle,
+                border: fieldError === "email" ? errorBorder : inputStyle.border,
+              }}
+            />
+          </label>
+        </div>
 
         <PhoneFieldSimple
           label="Teléfono"
@@ -376,11 +386,24 @@ export default function ReservarClient() {
           required
           disabled={submitting}
           hasError={fieldError === "telefono"}
+          layout="compact"
         />
 
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div className="reservar-grid-20-40-40">
           <label>
-            Edad del titular
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              Edad
+              <span
+                title="Edad del titular de la reserva (mayor de 18 años)"
+                style={{
+                  fontSize: 12,
+                  color: "var(--color-text-muted)",
+                  cursor: "help",
+                }}
+              >
+                ?
+              </span>
+            </span>
             <input
               type="number"
               min={18}
@@ -390,52 +413,55 @@ export default function ReservarClient() {
               style={inputStyle}
             />
           </label>
-        </div>
 
-        {password.trim().length > 0 ? (
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-            <label>
-              (Opcional) Crear contraseña para registrar cuenta
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Dejar vacío si no querés registrarte"
-                disabled={submitting}
-                style={inputStyle}
-                autoComplete="new-password"
-              />
-            </label>
-            <label>
-              Confirmar contraseña
-              <input
-                type="password"
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                placeholder="Repetí la contraseña"
-                disabled={submitting}
-                style={{
-                  ...inputStyle,
-                  border: fieldError === "passwordConfirm" ? errorBorder : inputStyle.border,
-                }}
-                autoComplete="new-password"
-              />
-            </label>
-          </div>
-        ) : (
-          <label>
-            (Opcional) Crear contraseña para registrar cuenta
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Dejar vacío si no querés registrarte"
-              disabled={submitting}
-              style={inputStyle}
-              autoComplete="new-password"
-            />
-          </label>
-        )}
+          {password.trim().length > 0 ? (
+            <>
+              <label>
+                (Opcional) Crear contraseña para registrar cuenta
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Dejar vacío si no querés registrarte"
+                  disabled={submitting}
+                  style={inputStyle}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label>
+                Confirmar contraseña
+                <input
+                  type="password"
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
+                  placeholder="Repetí la contraseña"
+                  disabled={submitting}
+                  style={{
+                    ...inputStyle,
+                    border: fieldError === "passwordConfirm" ? errorBorder : inputStyle.border,
+                  }}
+                  autoComplete="new-password"
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <label>
+                (Opcional) Crear contraseña para registrar cuenta
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Dejar vacío si no querés registrarte"
+                  disabled={submitting}
+                  style={inputStyle}
+                  autoComplete="new-password"
+                />
+              </label>
+              <div></div>
+            </>
+          )}
+        </div>
 
         <hr />
 

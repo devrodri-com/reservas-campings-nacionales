@@ -103,3 +103,58 @@ select, input, textarea, button {
     text-align: right;
   }
 }
+
+/* Reservar grids */
+.reservar-grid-5 {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .reservar-grid-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.reservar-grid-60-40 {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .reservar-grid-60-40 {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.reservar-grid-20-40-40 {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .reservar-grid-20-40-40 {
+    grid-template-columns: 1fr 2fr 2fr;
+    align-items: end;
+  }
+}
+
+/* Phone field grids */
+.phone-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .phone-grid {
+    grid-template-columns: 2fr 3fr;
+  }
+
+  .phone-grid-intl {
+    grid-template-columns: 4fr 1fr 5fr;
+  }
+}
