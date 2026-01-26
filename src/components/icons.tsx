@@ -107,3 +107,15 @@ export function MoonIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function ExternalLinkIcon(props: IconProps) {
+  const p = baseProps(props);
+  return (
+    <svg {...p} className={props.className}>
+      {props.title ? <title>{props.title}</title> : null}
+      <path d="M14 3h7v7" />
+      <path d="M10 14L21 3" />
+      <path d="M21 14v7H3V3h7" />
+    </svg>
+  );
+}
