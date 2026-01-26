@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Camping } from "@/types/camping";
 import { Card, Button } from "@/components/ui";
 import { formatArs } from "@/lib/money";
-import { UsersIcon, TagIcon, MapPinIcon, CameraIcon } from "@/components/icons";
+import { UsersIcon, TagIcon, MapPinIcon, InstagramIcon } from "@/components/icons";
 
 const DESCRIPCION_DEFAULT =
   "Camping organizado dentro del Parque Nacional, con parcelas delimitadas y servicios básicos.";
@@ -70,13 +70,22 @@ export default function CampingCard({ camping }: { camping: Camping }) {
               href={camping.igUrl}
               target="_blank"
               rel="noopener noreferrer"
+              title="Instagram"
+              aria-label="Instagram"
               style={{ textDecoration: "none" }}
             >
-              <Button variant="ghost">
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <CameraIcon title="Instagram" />
-                  Instagram
-                </span>
+              <Button
+                variant="ghost"
+                style={{
+                  width: 40,
+                  height: 40,
+                  padding: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <InstagramIcon title="Instagram" />
               </Button>
             </a>
           ) : null}
