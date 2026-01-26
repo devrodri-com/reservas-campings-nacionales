@@ -1,28 +1,29 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 
 export type PhoneCountry = {
   code: string;      // ISO 2: "ar"
   label: string;     // "Argentina"
   dialCode: string;  // "+54"
+  flag: string;      // "🇦🇷"
 };
 
 const COUNTRIES: PhoneCountry[] = [
-  { code: "intl", label: "Internacional (manual)", dialCode: "+" },
-  { code: "ar", label: "Argentina", dialCode: "+54" },
-  { code: "uy", label: "Uruguay", dialCode: "+598" },
-  { code: "br", label: "Brasil", dialCode: "+55" },
-  { code: "cl", label: "Chile", dialCode: "+56" },
-  { code: "py", label: "Paraguay", dialCode: "+595" },
-  { code: "bo", label: "Bolivia", dialCode: "+591" },
-  { code: "ve", label: "Venezuela", dialCode: "+58" },
-  { code: "ec", label: "Ecuador", dialCode: "+593" },
-  { code: "pe", label: "Perú", dialCode: "+51" },
-  { code: "co", label: "Colombia", dialCode: "+57" },
-  { code: "mx", label: "México", dialCode: "+52" },
-  { code: "es", label: "España", dialCode: "+34" },
-  { code: "us", label: "Estados Unidos", dialCode: "+1" },
+  { code: "intl", label: "Internacional (manual)", dialCode: "+", flag: "🌐" },
+  { code: "ar", label: "Argentina", dialCode: "+54", flag: "🇦🇷" },
+  { code: "uy", label: "Uruguay", dialCode: "+598", flag: "🇺🇾" },
+  { code: "br", label: "Brasil", dialCode: "+55", flag: "🇧🇷" },
+  { code: "cl", label: "Chile", dialCode: "+56", flag: "🇨🇱" },
+  { code: "py", label: "Paraguay", dialCode: "+595", flag: "🇵🇾" },
+  { code: "bo", label: "Bolivia", dialCode: "+591", flag: "🇧🇴" },
+  { code: "ve", label: "Venezuela", dialCode: "+58", flag: "🇻🇪" },
+  { code: "ec", label: "Ecuador", dialCode: "+593", flag: "🇪🇨" },
+  { code: "pe", label: "Perú", dialCode: "+51", flag: "🇵🇪" },
+  { code: "co", label: "Colombia", dialCode: "+57", flag: "🇨🇴" },
+  { code: "mx", label: "México", dialCode: "+52", flag: "🇲🇽" },
+  { code: "es", label: "España", dialCode: "+34", flag: "🇪🇸" },
+  { code: "us", label: "Estados Unidos", dialCode: "+1", flag: "🇺🇸" },
 ];
 
 type Props = {
@@ -38,11 +39,46 @@ type Props = {
 };
 
 export default function PhoneFieldSimple(props: Props) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const selected = useMemo(() => {
     return COUNTRIES.find((c) => c.code === props.countryCode) ?? COUNTRIES[0];
   }, [props.countryCode]);
 
   const isManual = selected.code === "intl";
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return COUNTRIES;
+    const q = query.toLowerCase();
+    return COUNTRIES.filter(
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.dialCode.includes(q) ||
+        c.code.toLowerCase().includes(q)
+    );
+  }, [query]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
+
+  const handleSelect = (code: string) => {
+    props.onCountryCodeChange(code);
+    setOpen(false);
+    setQuery("");
+  };
 
   return (
     <label style={{ display: "grid", gap: 6 }}>
@@ -55,24 +91,126 @@ export default function PhoneFieldSimple(props: Props) {
           gap: 10,
         }}
       >
-        <select
-          value={selected.code}
-          onChange={(e) => props.onCountryCodeChange(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 10,
-            border: "1px solid var(--color-border)",
-            borderRadius: 10,
-            background: "var(--color-surface)",
-            color: "var(--color-text)",
-          }}
-        >
-          {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.label} ({c.dialCode})
-            </option>
-          ))}
-        </select>
+        <div ref={containerRef} style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            style={{
+              width: "100%",
+              padding: 10,
+              border: "1px solid var(--color-border)",
+              borderRadius: 10,
+              background: "var(--color-surface)",
+              color: "var(--color-text)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{selected.flag}</span>
+              <span style={{ fontSize: 14 }}>
+                {selected.label} ({selected.dialCode})
+              </span>
+            </span>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>▼</span>
+          </button>
+
+          {open ? (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: 4,
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: 10,
+                boxShadow: "var(--shadow-md)",
+                zIndex: 1000,
+                maxHeight: 300,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div style={{ padding: 8, borderBottom: "1px solid var(--color-border)" }}>
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar país..."
+                  style={{
+                    width: "100%",
+                    padding: 8,
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 8,
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                    fontSize: 14,
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div
+                style={{
+                  overflowY: "auto",
+                  maxHeight: 250,
+                }}
+              >
+                {filtered.map((c) => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => handleSelect(c.code)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "none",
+                      background: c.code === selected.code ? "var(--color-primary)" : "transparent",
+                      color: c.code === selected.code ? "var(--color-primary-contrast)" : "var(--color-text)",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 14,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (c.code !== selected.code) {
+                        e.currentTarget.style.background = "var(--color-background)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (c.code !== selected.code) {
+                        e.currentTarget.style.background = "transparent";
+                      }
+                    }}
+                  >
+                    <span>{c.flag}</span>
+                    <span style={{ flex: 1 }}>{c.label}</span>
+                    <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{c.dialCode}</span>
+                  </button>
+                ))}
+                {filtered.length === 0 ? (
+                  <div
+                    style={{
+                      padding: 12,
+                      textAlign: "center",
+                      color: "var(--color-text-muted)",
+                      fontSize: 14,
+                    }}
+                  >
+                    No se encontraron países
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         <div
           style={{
