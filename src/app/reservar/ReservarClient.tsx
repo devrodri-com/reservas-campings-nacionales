@@ -48,8 +48,20 @@ export default function ReservarClient() {
   const [telefonoDialManual, setTelefonoDialManual] = useState<string>("+");
   const [titularEdad, setTitularEdad] = useState<number>(30);
   const [password, setPassword] = useState<string>(""); // opcional
+  const [passwordConfirm, setPasswordConfirm] = useState<string>("");
 
   const [submitting, setSubmitting] = useState(false);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: 10,
+    border: "1px solid var(--color-border)",
+    borderRadius: 10,
+    background: "var(--color-surface)",
+    color: "var(--color-text)",
+  };
+
+  const selectStyle: React.CSSProperties = { ...inputStyle };
 
   const selectedCamping = useMemo(
     () => campings.find((c) => c.id === campingId) ?? null,
@@ -102,6 +114,7 @@ export default function ReservarClient() {
       return "Teléfono es obligatorio.";
     if (titularEdad < 18) return "El titular debe ser mayor de edad.";
     if (password && password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
+    if (password && password !== passwordConfirm) return "Las contraseñas no coinciden.";
     return null;
   };
 
@@ -194,11 +207,11 @@ export default function ReservarClient() {
   };
 
   return (
-    <main style={{ padding: 24, maxWidth: 720 }}>
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
       <h1>Reservar</h1>
 
       {loadingCampings ? <p>Cargando campings…</p> : null}
-      {error ? <p style={{ color: "red" }}>{error}</p> : null}
+      {error ? <p style={{ color: "#ef4444" }}>{error}</p> : null}
 
       <Card>
       <div style={{ display: "grid", gap: 12 }}>
@@ -207,7 +220,7 @@ export default function ReservarClient() {
           <select
             value={campingId}
             onChange={(e) => setCampingId(e.target.value)}
-            style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+            style={selectStyle}
           >
             {campings.map((c) => (
               <option key={c.id} value={c.id}>
@@ -217,35 +230,35 @@ export default function ReservarClient() {
           </select>
         </label>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <label style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          <label>
             Check-in
             <input
               type="date"
               value={checkInDate}
               onChange={(e) => setCheckInDate(e.target.value)}
-              style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+              style={inputStyle}
             />
           </label>
 
-          <label style={{ flex: 1, minWidth: 220 }}>
+          <label>
             Check-out
             <input
               type="date"
               value={checkOutDate}
               onChange={(e) => setCheckOutDate(e.target.value)}
-              style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+              style={inputStyle}
             />
           </label>
         </div>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <label style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          <label>
             Parcelas
             <select
               value={parcelas}
               onChange={(e) => setParcelas(Number(e.target.value))}
-              style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+              style={selectStyle}
             >
               {Array.from({ length: MAX_PARCELAS }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
@@ -255,25 +268,25 @@ export default function ReservarClient() {
             </select>
           </label>
 
-          <label style={{ flex: 1, minWidth: 160 }}>
+          <label>
             Adultos
             <input
               type="number"
               min={0}
               value={adultos}
               onChange={(e) => setAdultos(Number(e.target.value))}
-              style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+              style={inputStyle}
             />
           </label>
 
-          <label style={{ flex: 1, minWidth: 160 }}>
+          <label>
             Menores
             <input
               type="number"
               min={0}
               value={menores}
               onChange={(e) => setMenores(Number(e.target.value))}
-              style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+              style={inputStyle}
             />
           </label>
         </div>
@@ -287,7 +300,7 @@ export default function ReservarClient() {
           <input
             value={titularNombre}
             onChange={(e) => setTitularNombre(e.target.value)}
-            style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+            style={inputStyle}
           />
         </label>
 
@@ -297,7 +310,7 @@ export default function ReservarClient() {
             type="email"
             value={titularEmail}
             onChange={(e) => setTitularEmail(e.target.value)}
-            style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+            style={inputStyle}
           />
         </label>
 
@@ -313,28 +326,57 @@ export default function ReservarClient() {
           required
         />
 
-        <label>
-          Edad del titular
-          <input
-            type="number"
-            min={18}
-            value={titularEdad}
-            onChange={(e) => setTitularEdad(Number(e.target.value))}
-            style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-          />
-        </label>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          <label>
+            Edad del titular
+            <input
+              type="number"
+              min={18}
+              value={titularEdad}
+              onChange={(e) => setTitularEdad(Number(e.target.value))}
+              style={inputStyle}
+            />
+          </label>
+        </div>
 
-        <label>
-          (Opcional) Crear contraseña para registrar cuenta
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Dejar vacío si no querés registrarte"
-            style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-            autoComplete="new-password"
-          />
-        </label>
+        {password.trim().length > 0 ? (
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+            <label>
+              (Opcional) Crear contraseña para registrar cuenta
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Dejar vacío si no querés registrarte"
+                style={inputStyle}
+                autoComplete="new-password"
+              />
+            </label>
+            <label>
+              Confirmar contraseña
+              <input
+                type="password"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                placeholder="Repetí la contraseña"
+                style={inputStyle}
+                autoComplete="new-password"
+              />
+            </label>
+          </div>
+        ) : (
+          <label>
+            (Opcional) Crear contraseña para registrar cuenta
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Dejar vacío si no querés registrarte"
+              style={inputStyle}
+              autoComplete="new-password"
+            />
+          </label>
+        )}
 
         <hr />
 
