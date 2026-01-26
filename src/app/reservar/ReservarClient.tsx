@@ -18,6 +18,7 @@ import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import InfoTooltip from "@/components/InfoTooltip";
+import DateRangePicker from "@/components/DateRangePicker";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -314,34 +315,20 @@ export default function ReservarClient() {
           searchable
         />
 
-        <div className="reservar-grid-5">
-          <label>
-            Check-in
-            <input
-              type="date"
-              value={checkInDate}
-              onChange={(e) => setCheckInDate(e.target.value)}
-              disabled={submitting}
-              style={{
-                ...inputStyle,
-                border: fieldError === "fechas" ? errorBorder : inputStyle.border,
+        <div className="reservar-grid-top">
+          <div style={{ minWidth: 0 }}>
+            <DateRangePicker
+              label="Fechas"
+              checkInDate={checkInDate}
+              checkOutDate={checkOutDate}
+              onChange={({ checkInDate, checkOutDate }) => {
+                setCheckInDate(checkInDate);
+                setCheckOutDate(checkOutDate);
               }}
-            />
-          </label>
-
-          <label>
-            Check-out
-            <input
-              type="date"
-              value={checkOutDate}
-              onChange={(e) => setCheckOutDate(e.target.value)}
               disabled={submitting}
-              style={{
-                ...inputStyle,
-                border: fieldError === "fechas" ? errorBorder : inputStyle.border,
-              }}
+              hasError={fieldError === "fechas"}
             />
-          </label>
+          </div>
 
           <SelectDropdown
             label="Parcelas"

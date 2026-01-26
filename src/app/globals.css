@@ -105,16 +105,25 @@ select, input, textarea, button {
 }
 
 /* Reservar grids */
-.reservar-grid-5 {
+.reservar-grid-top {
   display: grid;
   gap: 12px;
   grid-template-columns: 1fr;
 }
 
 @media (min-width: 900px) {
-  .reservar-grid-5 {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+  .reservar-grid-top {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    align-items: start;
   }
+}
+
+/* permitir que los hijos del grid se achiquen */
+.reservar-grid-top > * {
+  min-width: 0;
+}
+.reservar-grid-top button {
+  min-width: 0;
 }
 
 .reservar-grid-60-40 {
