@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
 import type { Camping } from "@/types/camping";
 import { Card, Button } from "@/components/ui";
@@ -19,12 +21,15 @@ function IconRow({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 export default function CampingCard({ camping }: { camping: Camping }) {
   const descripcion = camping.descripcionCorta ?? DESCRIPCION_DEFAULT;
-  const imageUrl = (camping.coverImageUrl?.trim() || "") || "/campings/placeholder.jpg";
+  const [imgSrc, setImgSrc] = useState<string>(
+    (camping.coverImageUrl?.trim() || "") || `/campings/${camping.id}.jpg` || "/campings/placeholder.jpg"
+  );
 
   return (
     <Card>
       <img
-        src={imageUrl}
+        src={imgSrc}
+        onError={() => setImgSrc("/campings/placeholder.jpg")}
         alt={`Imagen de ${camping.nombre}`}
         style={{
           width: "100%",

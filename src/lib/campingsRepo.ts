@@ -27,7 +27,8 @@ export function isCampingDoc(v: unknown): v is CampingDoc {
     (o.mpTokenEnvKey === undefined || typeof o.mpTokenEnvKey === "string") &&
     (o.coverImageUrl === undefined || typeof o.coverImageUrl === "string") &&
     (o.direccion === undefined || typeof o.direccion === "string") &&
-    (o.mapsUrl === undefined || typeof o.mapsUrl === "string")
+    (o.mapsUrl === undefined || typeof o.mapsUrl === "string") &&
+    (o.mapsEmbedUrl === undefined || typeof o.mapsEmbedUrl === "string")
   );
 }
 

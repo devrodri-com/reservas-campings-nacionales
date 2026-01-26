@@ -15,6 +15,7 @@ export default function CampingDetailPage() {
   const [camping, setCamping] = useState<Camping | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [imgSrc, setImgSrc] = useState<string>("/campings/placeholder.jpg");
 
   useEffect(() => {
     if (!id) {
@@ -36,16 +37,26 @@ export default function CampingDetailPage() {
     load();
   }, [id]);
 
+  useEffect(() => {
+    if (!camping) {
+      setImgSrc("/campings/placeholder.jpg");
+      return;
+    }
+    const next =
+      (camping.coverImageUrl?.trim() || "") ||
+      `/campings/${camping.id}.jpg`;
+    setImgSrc(next);
+  }, [camping]);
+
   if (loading) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}><p>Cargando…</p></main>;
   if (error) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}><p style={{ color: "red" }}>{error}</p></main>;
   if (!camping) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}><p>Camping no encontrado.</p></main>;
 
-  const imageUrl = (camping.coverImageUrl?.trim() || "") || "/campings/placeholder.jpg";
-
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
       <img
-        src={imageUrl}
+        src={imgSrc}
+        onError={() => setImgSrc("/campings/placeholder.jpg")}
         alt={`Imagen de ${camping.nombre}`}
         style={{
           width: "100%",
@@ -188,18 +199,22 @@ export default function CampingDetailPage() {
                 (Placeholder) Dirección pendiente de carga.
               </p>
             )}
-            {camping.mapsUrl ? (
-              <a
-                href={camping.mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ marginTop: 8, display: "inline-block" }}
-              >
-                <Button variant="secondary">Abrir en Google Maps</Button>
-              </a>
+            {camping.mapsEmbedUrl ? (
+              <div style={{ marginTop: 12 }}>
+                <iframe
+                  src={camping.mapsEmbedUrl}
+                  width="100%"
+                  height="360"
+                  style={{ border: 0, borderRadius: 12 }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                  title={`Mapa de ${camping.nombre}`}
+                />
+              </div>
             ) : (
               <p style={{ marginTop: 8, fontSize: 14, color: "var(--color-text-muted)", fontStyle: "italic" }}>
-                (Placeholder) Mapa se incorporará próximamente.
+                (Placeholder) Mapa embebido pendiente de carga.
               </p>
             )}
           </div>

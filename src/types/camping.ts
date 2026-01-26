@@ -28,4 +28,6 @@ export type Camping = {
   direccion?: string;
   /** Opcional. URL de Google Maps. */
   mapsUrl?: string;
+  /** Opcional. URL embebida de Google Maps (iframe src). */
+  mapsEmbedUrl?: string;
 };

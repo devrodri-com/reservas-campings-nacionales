@@ -13,7 +13,7 @@ import { Button, Card } from "@/components/ui";
 
 type EditableFields = Pick<
   Camping,
-  "descripcionCorta" | "igUrl" | "webUrl" | "coverImageUrl" | "direccion" | "mapsUrl"
+  "descripcionCorta" | "igUrl" | "webUrl" | "coverImageUrl" | "direccion" | "mapsUrl" | "mapsEmbedUrl"
 >;
 
 function sanitizeUrl(url: string): string {
@@ -21,6 +21,17 @@ function sanitizeUrl(url: string): string {
   if (!v) return "";
   if (v.startsWith("http://") || v.startsWith("https://")) return v;
   return `https://${v}`;
+}
+
+function extractIframeSrc(input: string): string {
+  const v = input.trim();
+  if (!v) return "";
+  // si ya es una URL normal
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  // si es iframe completo, extraer src=""
+  const match = v.match(/src\s*=\s*"([^"]+)"/i);
+  if (match && match[1]) return match[1];
+  return v;
 }
 
 export default function AdminCampingsPage() {
@@ -42,6 +53,7 @@ export default function AdminCampingsPage() {
     coverImageUrl: "",
     direccion: "",
     mapsUrl: "",
+    mapsEmbedUrl: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -108,6 +120,7 @@ export default function AdminCampingsPage() {
       coverImageUrl: selectedCamping.coverImageUrl ?? "",
       direccion: selectedCamping.direccion ?? "",
       mapsUrl: selectedCamping.mapsUrl ?? "",
+      mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
     });
   }, [selectedCamping]);
 
@@ -125,6 +138,7 @@ export default function AdminCampingsPage() {
         coverImageUrl: sanitizeUrl(form.coverImageUrl || ""),
         direccion: form.direccion?.trim() || "",
         mapsUrl: sanitizeUrl(form.mapsUrl || ""),
+        mapsEmbedUrl: sanitizeUrl(extractIframeSrc(form.mapsEmbedUrl || "")),
       };
 
       await updateDoc(doc(db, "campings", selectedCamping.id), payload);
@@ -172,6 +186,7 @@ export default function AdminCampingsPage() {
         coverImageUrl: "",
         direccion: "",
         mapsUrl: "",
+        mapsEmbedUrl: "",
       });
 
       const list = await fetchCampings();
@@ -458,6 +473,16 @@ export default function AdminCampingsPage() {
                 />
               </label>
 
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Google Maps (Embed URL)</span>
+                <input
+                  value={form.mapsEmbedUrl ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, mapsEmbedUrl: e.target.value }))}
+                  placeholder="https://www.google.com/maps/embed?p=... o pegar iframe completo"
+                  style={inputStyle}
+                />
+              </label>
+
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
                 <Button variant="primary" onClick={onSave} disabled={saving}>
                   {saving ? "Guardando..." : "Guardar cambios"}
@@ -472,6 +497,7 @@ export default function AdminCampingsPage() {
                       coverImageUrl: selectedCamping.coverImageUrl ?? "",
                       direccion: selectedCamping.direccion ?? "",
                       mapsUrl: selectedCamping.mapsUrl ?? "",
+                      mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
                     })
                   }
                   disabled={saving}
