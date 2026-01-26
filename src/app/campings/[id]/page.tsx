@@ -179,9 +179,29 @@ export default function CampingDetailPage() {
             <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
               {camping.ubicacionTexto}
             </p>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
-              (Placeholder) Mapa y detalles de ubicación se incorporarán próximamente.
-            </p>
+            {camping.direccion ? (
+              <p style={{ margin: 0, color: "var(--color-text)" }}>
+                {camping.direccion}
+              </p>
+            ) : (
+              <p style={{ margin: 0, color: "var(--color-text-muted)", fontStyle: "italic" }}>
+                (Placeholder) Dirección pendiente de carga.
+              </p>
+            )}
+            {camping.mapsUrl ? (
+              <a
+                href={camping.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ marginTop: 8, display: "inline-block" }}
+              >
+                <Button variant="secondary">Abrir en Google Maps</Button>
+              </a>
+            ) : (
+              <p style={{ marginTop: 8, fontSize: 14, color: "var(--color-text-muted)", fontStyle: "italic" }}>
+                (Placeholder) Mapa se incorporará próximamente.
+              </p>
+            )}
           </div>
         </Card>
       </div>

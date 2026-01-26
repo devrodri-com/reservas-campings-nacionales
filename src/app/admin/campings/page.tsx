@@ -13,7 +13,7 @@ import { Button, Card } from "@/components/ui";
 
 type EditableFields = Pick<
   Camping,
-  "descripcionCorta" | "igUrl" | "webUrl" | "coverImageUrl"
+  "descripcionCorta" | "igUrl" | "webUrl" | "coverImageUrl" | "direccion" | "mapsUrl"
 >;
 
 function sanitizeUrl(url: string): string {
@@ -40,6 +40,8 @@ export default function AdminCampingsPage() {
     igUrl: "",
     webUrl: "",
     coverImageUrl: "",
+    direccion: "",
+    mapsUrl: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -104,6 +106,8 @@ export default function AdminCampingsPage() {
       igUrl: selectedCamping.igUrl ?? "",
       webUrl: selectedCamping.webUrl ?? "",
       coverImageUrl: selectedCamping.coverImageUrl ?? "",
+      direccion: selectedCamping.direccion ?? "",
+      mapsUrl: selectedCamping.mapsUrl ?? "",
     });
   }, [selectedCamping]);
 
@@ -119,6 +123,8 @@ export default function AdminCampingsPage() {
         igUrl: sanitizeUrl(form.igUrl || ""),
         webUrl: sanitizeUrl(form.webUrl || ""),
         coverImageUrl: sanitizeUrl(form.coverImageUrl || ""),
+        direccion: form.direccion?.trim() || "",
+        mapsUrl: sanitizeUrl(form.mapsUrl || ""),
       };
 
       await updateDoc(doc(db, "campings", selectedCamping.id), payload);
@@ -164,6 +170,8 @@ export default function AdminCampingsPage() {
         igUrl: "",
         webUrl: "",
         coverImageUrl: "",
+        direccion: "",
+        mapsUrl: "",
       });
 
       const list = await fetchCampings();
@@ -430,6 +438,26 @@ export default function AdminCampingsPage() {
                 />
               </label>
 
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Dirección</span>
+                <input
+                  value={form.direccion ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, direccion: e.target.value }))}
+                  placeholder="Dirección del camping"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 700 }}>Google Maps (URL)</span>
+                <input
+                  value={form.mapsUrl ?? ""}
+                  onChange={(e) => setForm((p) => ({ ...p, mapsUrl: e.target.value }))}
+                  placeholder="https://maps.google.com/..."
+                  style={inputStyle}
+                />
+              </label>
+
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
                 <Button variant="primary" onClick={onSave} disabled={saving}>
                   {saving ? "Guardando..." : "Guardar cambios"}
@@ -442,6 +470,8 @@ export default function AdminCampingsPage() {
                       igUrl: selectedCamping.igUrl ?? "",
                       webUrl: selectedCamping.webUrl ?? "",
                       coverImageUrl: selectedCamping.coverImageUrl ?? "",
+                      direccion: selectedCamping.direccion ?? "",
+                      mapsUrl: selectedCamping.mapsUrl ?? "",
                     })
                   }
                   disabled={saving}

@@ -24,4 +24,8 @@ export type Camping = {
   mpTokenEnvKey?: string;
   /** Opcional. URL de imagen de portada. */
   coverImageUrl?: string;
+  /** Opcional. Dirección del camping. */
+  direccion?: string;
+  /** Opcional. URL de Google Maps. */
+  mapsUrl?: string;
 };
