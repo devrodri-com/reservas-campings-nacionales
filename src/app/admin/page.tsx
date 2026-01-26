@@ -23,6 +23,7 @@ import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { Button, Card, Table, Th, Td } from "@/components/ui";
+import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
 
@@ -116,7 +117,9 @@ export default function AdminHomePage() {
   const [walkInMenores, setWalkInMenores] = useState<number>(0);
   const [walkInNombre, setWalkInNombre] = useState("");
   const [walkInEmail, setWalkInEmail] = useState("");
-  const [walkInTelefono, setWalkInTelefono] = useState("");
+  const [walkInTelefonoPais, setWalkInTelefonoPais] = useState<string>("ar");
+  const [walkInTelefonoNumero, setWalkInTelefonoNumero] = useState<string>("");
+  const [walkInTelefonoDialManual, setWalkInTelefonoDialManual] = useState<string>("+");
   const [walkInEdad, setWalkInEdad] = useState<number>(30);
 
   const [fromDate, setFromDate] = useState<string>(todayYmd());
@@ -393,7 +396,7 @@ export default function AdminHomePage() {
         return;
       }
 
-      if (!walkInNombre.trim() || !walkInEmail.trim() || !walkInTelefono.trim()) {
+      if (!walkInNombre.trim() || !walkInEmail.trim() || !composePhone({ countryCode: walkInTelefonoPais, number: walkInTelefonoNumero, manualDialCode: walkInTelefonoDialManual }).trim()) {
         setError("Nombre, email y teléfono son obligatorios.");
         setBusy(false);
         return;
@@ -441,7 +444,11 @@ export default function AdminHomePage() {
         menores: walkInMenores,
         titularNombre: walkInNombre.trim(),
         titularEmail: walkInEmail.trim(),
-        titularTelefono: walkInTelefono.trim(),
+        titularTelefono: composePhone({
+          countryCode: walkInTelefonoPais,
+          number: walkInTelefonoNumero,
+          manualDialCode: walkInTelefonoDialManual,
+        }),
         titularEdad: walkInEdad,
         estado: "pagada",
         montoTotalArs,
@@ -467,7 +474,9 @@ export default function AdminHomePage() {
       setWalkInMenores(0);
       setWalkInNombre("");
       setWalkInEmail("");
-      setWalkInTelefono("");
+      setWalkInTelefonoPais("ar");
+      setWalkInTelefonoNumero("");
+      setWalkInTelefonoDialManual("+");
       setWalkInEdad(30);
       setShowWalkIn(false);
     } catch (e) {
@@ -838,14 +847,17 @@ export default function AdminHomePage() {
               />
             </label>
 
-            <label>
-              Teléfono
-              <input
-                value={walkInTelefono}
-                onChange={(e) => setWalkInTelefono(e.target.value)}
-                style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-              />
-            </label>
+            <PhoneFieldSimple
+              label="Teléfono"
+              countryCode={walkInTelefonoPais}
+              onCountryCodeChange={setWalkInTelefonoPais}
+              number={walkInTelefonoNumero}
+              onNumberChange={setWalkInTelefonoNumero}
+              manualDialCode={walkInTelefonoDialManual}
+              onManualDialCodeChange={setWalkInTelefonoDialManual}
+              placeholder="11 1234 5678"
+              required
+            />
 
             <label>
               Edad del titular

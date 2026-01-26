@@ -14,6 +14,7 @@ import { formatArs } from "@/lib/money";
 import { ensureSignedInGuestOrLink } from "@/lib/ensureAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card } from "@/components/ui";
+import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -42,7 +43,9 @@ export default function ReservarClient() {
 
   const [titularNombre, setTitularNombre] = useState("");
   const [titularEmail, setTitularEmail] = useState("");
-  const [titularTelefono, setTitularTelefono] = useState("");
+  const [telefonoPais, setTelefonoPais] = useState<string>("ar");
+  const [telefonoNumero, setTelefonoNumero] = useState<string>("");
+  const [telefonoDialManual, setTelefonoDialManual] = useState<string>("+");
   const [titularEdad, setTitularEdad] = useState<number>(30);
   const [password, setPassword] = useState<string>(""); // opcional
 
@@ -95,7 +98,8 @@ export default function ReservarClient() {
     }
     if (!titularNombre.trim()) return "Nombre y apellido es obligatorio.";
     if (!titularEmail.trim()) return "Email es obligatorio.";
-    if (!titularTelefono.trim()) return "Teléfono es obligatorio.";
+    if (!composePhone({ countryCode: telefonoPais, number: telefonoNumero, manualDialCode: telefonoDialManual }).trim())
+      return "Teléfono es obligatorio.";
     if (titularEdad < 18) return "El titular debe ser mayor de edad.";
     if (password && password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
     return null;
@@ -153,7 +157,7 @@ export default function ReservarClient() {
         menores,
         titularNombre: titularNombre.trim(),
         titularEmail: titularEmail.trim(),
-        titularTelefono: titularTelefono.trim(),
+        titularTelefono: composePhone({ countryCode: telefonoPais, number: telefonoNumero, manualDialCode: telefonoDialManual }),
         titularEdad,
         password: password.trim() || undefined,
       };
@@ -297,14 +301,17 @@ export default function ReservarClient() {
           />
         </label>
 
-        <label>
-          Teléfono
-          <input
-            value={titularTelefono}
-            onChange={(e) => setTitularTelefono(e.target.value)}
-            style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-          />
-        </label>
+        <PhoneFieldSimple
+          label="Teléfono"
+          countryCode={telefonoPais}
+          onCountryCodeChange={setTelefonoPais}
+          number={telefonoNumero}
+          onNumberChange={setTelefonoNumero}
+          manualDialCode={telefonoDialManual}
+          onManualDialCodeChange={setTelefonoDialManual}
+          placeholder="11 1234 5678"
+          required
+        />
 
         <label>
           Edad del titular
