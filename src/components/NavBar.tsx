@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SunIcon, MoonIcon } from "@/components/icons";
+import { SunIcon, MoonIcon, MenuIcon, CloseIcon } from "@/components/icons";
 
 type NavItem = {
   href: string;
@@ -26,6 +26,7 @@ export default function NavBar() {
   const pathname = usePathname();
 
   const [theme, setTheme] = React.useState<"light" | "dark">("light");
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   React.useEffect(() => {
     const stored = window.localStorage.getItem("theme");
@@ -41,6 +42,10 @@ export default function NavBar() {
       document.documentElement.setAttribute("data-theme", "dark");
     }
   }, []);
+
+  React.useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -85,25 +90,27 @@ export default function NavBar() {
         </Link>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          {ITEMS.map((item) => {
-            const active = isActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  textDecoration: "none",
-                  padding: "6px 10px",
-                  borderRadius: 8,
-                  color: "var(--color-primary-contrast)",
-                  background: active ? "rgba(255, 255, 255, 0.18)" : "transparent",
-                  opacity: active ? 1 : 0.9,
-                }}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          <div className="nav-links-desktop">
+            {ITEMS.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    textDecoration: "none",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    color: "var(--color-primary-contrast)",
+                    background: active ? "rgba(255, 255, 255, 0.18)" : "transparent",
+                    opacity: active ? 1 : 0.9,
+                  }}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
@@ -123,8 +130,51 @@ export default function NavBar() {
           >
             {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
           </button>
+          <button
+            className="nav-menu-btn"
+            onClick={() => setMobileOpen((v) => !v)}
+            title={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.35)",
+              background: "rgba(255,255,255,0.10)",
+              color: "white",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            {mobileOpen ? <CloseIcon title="Cerrar" /> : <MenuIcon title="Menú" />}
+          </button>
         </div>
       </nav>
+      {mobileOpen ? (
+        <div className="nav-links-mobile" style={{ background: "var(--color-primary)" }}>
+          {ITEMS.map((item) => {
+            const active = isActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  textDecoration: "none",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  color: "var(--color-primary-contrast)",
+                  background: active ? "rgba(255, 255, 255, 0.18)" : "transparent",
+                  opacity: active ? 1 : 0.9,
+                }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
     </header>
   );
 }

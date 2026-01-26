@@ -119,3 +119,26 @@ export function ExternalLinkIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function MenuIcon(props: IconProps) {
+  const p = baseProps(props);
+  return (
+    <svg {...p} className={props.className}>
+      {props.title ? <title>{props.title}</title> : null}
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+    </svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  const p = baseProps(props);
+  return (
+    <svg {...p} className={props.className}>
+      {props.title ? <title>{props.title}</title> : null}
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
