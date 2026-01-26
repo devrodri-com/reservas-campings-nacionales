@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import type { Camping } from "@/types/camping";
 import { fetchCampings } from "@/lib/campingsRepo";
 import CampingCard from "@/components/CampingCard";
+import FAQ from "@/components/FAQ";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui";
 
 const COMO_FUNCIONA = [
@@ -36,6 +38,7 @@ export default function Home() {
   }, []);
 
   return (
+    <>
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
       <section
         style={{
@@ -127,6 +130,11 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <FAQ />
     </main>
+
+    <Footer />
+    </>
   );
 }

@@ -124,4 +124,4 @@ Configurar variables de entorno de Firebase en el panel de Vercel antes de hacer
 
 ---
 
-© Plataforma de Reservas – Parques Nacionales
+© Plataforma de Reservas - Parques Nacionales
