@@ -93,6 +93,38 @@ export default function ReservarClient() {
     []
   );
 
+  const maxPersonas = useMemo(() => {
+    const base = selectedCamping?.maxPersonasPorParcela ?? 6;
+    return Math.max(0, parcelas * base);
+  }, [selectedCamping, parcelas]);
+
+  const adultosOptions: SelectOption[] = useMemo(
+    () =>
+      Array.from({ length: maxPersonas + 1 }, (_, i) => ({
+        value: String(i),
+        label: String(i),
+      })),
+    [maxPersonas]
+  );
+
+  const menoresOptions: SelectOption[] = useMemo(
+    () =>
+      Array.from({ length: maxPersonas + 1 }, (_, i) => ({
+        value: String(i),
+        label: String(i),
+      })),
+    [maxPersonas]
+  );
+
+  const edadOptions: SelectOption[] = useMemo(
+    () =>
+      Array.from({ length: 99 - 18 + 1 }, (_, i) => {
+        const age = 18 + i;
+        return { value: String(age), label: String(age) };
+      }),
+    []
+  );
+
   const noches = useMemo(() => nightsCount(checkInDate, checkOutDate), [checkInDate, checkOutDate]);
 
   const totalPersonas = adultos + menores;
@@ -319,29 +351,23 @@ export default function ReservarClient() {
             searchable={false}
           />
 
-          <label>
-            Adultos
-            <input
-              type="number"
-              min={0}
-              value={adultos}
-              onChange={(e) => setAdultos(Number(e.target.value))}
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </label>
+          <SelectDropdown
+            label="Adultos"
+            value={String(adultos)}
+            options={adultosOptions}
+            onChange={(v) => setAdultos(Number(v))}
+            disabled={submitting}
+            searchable={false}
+          />
 
-          <label>
-            Menores
-            <input
-              type="number"
-              min={0}
-              value={menores}
-              onChange={(e) => setMenores(Number(e.target.value))}
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </label>
+          <SelectDropdown
+            label="Menores"
+            value={String(menores)}
+            options={menoresOptions}
+            onChange={(v) => setMenores(Number(v))}
+            disabled={submitting}
+            searchable={false}
+          />
         </div>
 
         <hr />
@@ -390,8 +416,8 @@ export default function ReservarClient() {
         />
 
         <div className="reservar-grid-20-40-40">
-          <label>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ display: "grid", gap: 6 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
               Edad
               <span
                 title="Edad del titular de la reserva (mayor de 18 años)"
@@ -404,20 +430,20 @@ export default function ReservarClient() {
                 ?
               </span>
             </span>
-            <input
-              type="number"
-              min={18}
-              value={titularEdad}
-              onChange={(e) => setTitularEdad(Number(e.target.value))}
+            <SelectDropdown
+              label=""
+              value={String(titularEdad)}
+              options={edadOptions}
+              onChange={(v) => setTitularEdad(Number(v))}
               disabled={submitting}
-              style={inputStyle}
+              searchable={false}
             />
-          </label>
+          </div>
 
           {password.trim().length > 0 ? (
             <>
               <label>
-                (Opcional) Crear contraseña para registrar cuenta
+                (Opcional) Crear cuenta
                 <input
                   type="password"
                   value={password}
@@ -447,7 +473,7 @@ export default function ReservarClient() {
           ) : (
             <>
               <label>
-                (Opcional) Crear contraseña para registrar cuenta
+                (Opcional) Crear cuenta
                 <input
                   type="password"
                   value={password}

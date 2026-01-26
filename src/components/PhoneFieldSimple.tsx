@@ -252,7 +252,10 @@ export default function PhoneFieldSimple(props: Props) {
         {useCompactLayout ? (
           <input
             value={props.number}
-            onChange={(e) => props.onNumberChange(e.target.value)}
+            onChange={(e) => {
+              const onlyDigits = e.target.value.replace(/\D/g, "");
+              props.onNumberChange(onlyDigits);
+            }}
             placeholder={props.placeholder ?? "Ej: 11 1234 5678"}
             required={props.required}
             disabled={props.disabled}
@@ -266,7 +269,7 @@ export default function PhoneFieldSimple(props: Props) {
               opacity: props.disabled ? 0.6 : 1,
             }}
             autoComplete="tel"
-            inputMode="tel"
+            inputMode="numeric"
           />
         ) : (
           <div
@@ -305,7 +308,10 @@ export default function PhoneFieldSimple(props: Props) {
 
             <input
               value={props.number}
-              onChange={(e) => props.onNumberChange(e.target.value)}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, "");
+                props.onNumberChange(onlyDigits);
+              }}
               placeholder={props.placeholder ?? "Ej: 11 1234 5678"}
               required={props.required}
               disabled={props.disabled}
@@ -318,7 +324,7 @@ export default function PhoneFieldSimple(props: Props) {
                 color: "var(--color-text)",
               }}
               autoComplete="tel"
-              inputMode="tel"
+              inputMode="numeric"
             />
           </div>
         )}

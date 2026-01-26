@@ -51,7 +51,7 @@ export default function SelectDropdown(props: Props) {
 
   return (
     <label style={{ display: "grid", gap: 6 }}>
-      <span style={{ fontWeight: 700 }}>{props.label}</span>
+      {props.label ? <span style={{ fontWeight: 700 }}>{props.label}</span> : null}
 
       <div ref={containerRef} style={{ position: "relative" }}>
         <button
