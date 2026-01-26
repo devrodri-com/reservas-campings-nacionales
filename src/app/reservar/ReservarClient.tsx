@@ -211,7 +211,21 @@ export default function ReservarClient() {
       <h1>Reservar</h1>
 
       {loadingCampings ? <p>Cargando campings…</p> : null}
-      {error ? <p style={{ color: "#ef4444" }}>{error}</p> : null}
+      {error ? (
+        <div
+          style={{
+            border: "1px solid rgba(239,68,68,0.5)",
+            background: "rgba(239,68,68,0.08)",
+            color: "var(--color-text)",
+            padding: 12,
+            borderRadius: 12,
+            marginBottom: 16,
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 6 }}>Revisá estos datos</strong>
+          <span style={{ color: "var(--color-text-muted)" }}>{error}</span>
+        </div>
+      ) : null}
 
       <Card>
       <div style={{ display: "grid", gap: 12 }}>
@@ -380,13 +394,31 @@ export default function ReservarClient() {
 
         <hr />
 
-        <h2>Resumen</h2>
-        {selectedCamping ? (
-          <p>
-            <strong>{selectedCamping.nombre}</strong> - {noches} noche(s) - {parcelas} parcela(s) - Total:{" "}
-            <strong>${formatArs(totalArs)}</strong>
-          </p>
-        ) : null}
+        <div
+          style={{
+            border: "1px solid var(--color-border)",
+            borderRadius: 12,
+            padding: 12,
+            background: "var(--color-bg)",
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <div style={{ fontWeight: 800, color: "var(--color-accent)" }}>Resumen</div>
+          {selectedCamping ? (
+            <>
+              <div><strong>Camping:</strong> {selectedCamping.nombre}</div>
+              <div><strong>Fechas:</strong> {checkInDate} → {checkOutDate}</div>
+              <div><strong>Noches:</strong> {noches}</div>
+              <div><strong>Parcelas:</strong> {parcelas}</div>
+              <div><strong>Personas:</strong> {adultos} adultos / {menores} menores</div>
+              <div><strong>Total:</strong> ${formatArs(totalArs)}</div>
+              <div style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 4 }}>
+                Tenés 15 minutos para completar el pago. Si no se completa, la disponibilidad se libera automáticamente.
+              </div>
+            </>
+          ) : null}
+        </div>
 
         <Button
           variant="primary"
