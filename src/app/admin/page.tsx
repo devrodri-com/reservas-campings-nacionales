@@ -268,6 +268,40 @@ export default function AdminHomePage() {
     });
   }, [camping, reservasQueBloquean, fromDate, days]);
 
+  // Walk-in options
+  const walkInMaxPersonas = useMemo(() => {
+    const maxPer = camping?.maxPersonasPorParcela ?? 6;
+    return walkInParcelas * maxPer;
+  }, [camping, walkInParcelas]);
+
+  const parcelasOptions: SelectOption[] = useMemo(
+    () =>
+      Array.from({ length: 5 }, (_, i) => {
+        const n = i + 1;
+        return { value: String(n), label: `${n} parcela${n > 1 ? "s" : ""}` };
+      }),
+    []
+  );
+
+  const adultosOptions: SelectOption[] = useMemo(
+    () => Array.from({ length: walkInMaxPersonas + 1 }, (_, i) => ({ value: String(i), label: String(i) })),
+    [walkInMaxPersonas]
+  );
+
+  const menoresOptions: SelectOption[] = useMemo(
+    () => Array.from({ length: walkInMaxPersonas + 1 }, (_, i) => ({ value: String(i), label: String(i) })),
+    [walkInMaxPersonas]
+  );
+
+  const edadOptions: SelectOption[] = useMemo(
+    () =>
+      Array.from({ length: 82 }, (_, i) => {
+        const age = 18 + i;
+        return { value: String(age), label: String(age) };
+      }),
+    []
+  );
+
   const createDemoReserva = async () => {
     if (!camping) return;
     setBusy(true);
@@ -781,121 +815,132 @@ export default function AdminHomePage() {
 
       <hr style={{ margin: "24px 0" }} />
 
-      {error ? <p style={{ color: "red" }}>{error}</p> : null}
+      {error ? (
+        <div
+          style={{
+            border: "1px solid rgba(239,68,68,0.5)",
+            background: "rgba(239,68,68,0.08)",
+            color: "var(--color-text)",
+            padding: 12,
+            borderRadius: 12,
+            marginTop: 12,
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 6 }}>Revisá estos datos</strong>
+          <span style={{ color: "var(--color-text-muted)" }}>{error}</span>
+        </div>
+      ) : null}
 
       {showWalkIn && camping && canCreateOrCancel ? (
         <div style={{ marginTop: 16 }}>
           <Card title="Crear reserva manual (walk-in)">
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <label style={{ flex: 1, minWidth: 220 }}>
-                Check-in
-                <input
-                  type="date"
-                  value={walkInCheckIn}
-                  onChange={(e) => setWalkInCheckIn(e.target.value)}
-                  style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-                />
-              </label>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div className="reservar-grid-top">
+                <div style={{ minWidth: 0 }}>
+                  <DateRangePicker
+                    label="Fechas"
+                    checkInDate={walkInCheckIn}
+                    checkOutDate={walkInCheckOut}
+                    onChange={({ checkInDate, checkOutDate }) => {
+                      setWalkInCheckIn(checkInDate);
+                      setWalkInCheckOut(checkOutDate);
+                    }}
+                    disabled={busy}
+                  />
+                </div>
 
-              <label style={{ flex: 1, minWidth: 220 }}>
-                Check-out
-                <input
-                  type="date"
-                  value={walkInCheckOut}
-                  onChange={(e) => setWalkInCheckOut(e.target.value)}
-                  style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
+                <SelectDropdown
+                  label="Parcelas"
+                  value={String(walkInParcelas)}
+                  options={parcelasOptions}
+                  onChange={(v) => setWalkInParcelas(Number(v))}
+                  disabled={busy}
                 />
-              </label>
+                <SelectDropdown
+                  label="Adultos"
+                  value={String(walkInAdultos)}
+                  options={adultosOptions}
+                  onChange={(v) => setWalkInAdultos(Number(v))}
+                  disabled={busy}
+                />
+                <SelectDropdown
+                  label="Menores"
+                  value={String(walkInMenores)}
+                  options={menoresOptions}
+                  onChange={(v) => setWalkInMenores(Number(v))}
+                  disabled={busy}
+                />
+              </div>
+
+              <hr />
+
+              <h2 style={{ margin: "12px 0 0 0", color: "var(--color-accent)" }}>Datos de contacto</h2>
+
+              <div className="reservar-grid-60-40">
+                <label>
+                  Nombre y apellido
+                  <input
+                    value={walkInNombre}
+                    onChange={(e) => setWalkInNombre(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 10,
+                      background: "var(--color-surface)",
+                      color: "var(--color-text)",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </label>
+
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    value={walkInEmail}
+                    onChange={(e) => setWalkInEmail(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 10,
+                      background: "var(--color-surface)",
+                      color: "var(--color-text)",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </label>
+              </div>
+
+              <PhoneFieldSimple
+                label="Teléfono"
+                countryCode={walkInTelefonoPais}
+                onCountryCodeChange={setWalkInTelefonoPais}
+                number={walkInTelefonoNumero}
+                onNumberChange={setWalkInTelefonoNumero}
+                manualDialCode={walkInTelefonoDialManual}
+                onManualDialCodeChange={setWalkInTelefonoDialManual}
+                placeholder="11 1234 5678"
+                required
+                layout="compact"
+                disabled={busy}
+              />
+
+              <div style={{ maxWidth: 220 }}>
+                <SelectDropdown
+                  label="Edad del titular"
+                  value={String(walkInEdad)}
+                  options={edadOptions}
+                  onChange={(v) => setWalkInEdad(Number(v))}
+                  disabled={busy}
+                />
+              </div>
+
+              <Button variant="primary" onClick={createWalkInReserva} disabled={busy}>
+                {busy ? "Creando..." : "Crear reserva walk-in"}
+              </Button>
             </div>
-
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <label style={{ flex: 1, minWidth: 160 }}>
-                Parcelas
-                <select
-                  value={walkInParcelas}
-                  onChange={(e) => setWalkInParcelas(Number(e.target.value))}
-                  style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-                >
-                  {Array.from({ length: 5 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label style={{ flex: 1, minWidth: 160 }}>
-                Adultos
-                <input
-                  type="number"
-                  min={0}
-                  value={walkInAdultos}
-                  onChange={(e) => setWalkInAdultos(Number(e.target.value))}
-                  style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-                />
-              </label>
-
-              <label style={{ flex: 1, minWidth: 160 }}>
-                Menores
-                <input
-                  type="number"
-                  min={0}
-                  value={walkInMenores}
-                  onChange={(e) => setWalkInMenores(Number(e.target.value))}
-                  style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-                />
-              </label>
-            </div>
-
-            <hr />
-
-            <label>
-              Nombre y apellido
-              <input
-                value={walkInNombre}
-                onChange={(e) => setWalkInNombre(e.target.value)}
-                style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-              />
-            </label>
-
-            <label>
-              Email
-              <input
-                type="email"
-                value={walkInEmail}
-                onChange={(e) => setWalkInEmail(e.target.value)}
-                style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-              />
-            </label>
-
-            <PhoneFieldSimple
-              label="Teléfono"
-              countryCode={walkInTelefonoPais}
-              onCountryCodeChange={setWalkInTelefonoPais}
-              number={walkInTelefonoNumero}
-              onNumberChange={setWalkInTelefonoNumero}
-              manualDialCode={walkInTelefonoDialManual}
-              onManualDialCodeChange={setWalkInTelefonoDialManual}
-              placeholder="11 1234 5678"
-              required
-            />
-
-            <label>
-              Edad del titular
-              <input
-                type="number"
-                min={18}
-                value={walkInEdad}
-                onChange={(e) => setWalkInEdad(Number(e.target.value))}
-                style={{ width: "100%", padding: 8, border: "1px solid #ccc" }}
-              />
-            </label>
-
-            <Button variant="primary" onClick={createWalkInReserva} disabled={busy}>
-              {busy ? "Creando..." : "Crear reserva walk-in"}
-            </Button>
-          </div>
           </Card>
         </div>
       ) : null}
