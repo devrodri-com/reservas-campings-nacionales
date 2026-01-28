@@ -236,6 +236,8 @@ export default function AdminCampingsPage() {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
     fontSize: 12,
     lineHeight: 1.4,
+    maxWidth: "100%",
+    display: "block",
   };
 
   if (loading || profileLoading) {
@@ -302,10 +304,11 @@ export default function AdminCampingsPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "320px minmax(0, 1fr)",
           gap: 16,
           alignItems: "start",
+          gridTemplateColumns: "1fr",
         }}
+        className="admin-campings-grid"
       >
         <Card title="Listado">
           {loadingData ? (
@@ -407,7 +410,7 @@ export default function AdminCampingsPage() {
           )}
         </Card>
 
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
           <Card title="Datos del camping">
           {showNewCamping ? (
             <p style={{ color: "var(--color-text-muted)" }}>Completá el formulario a la izquierda y hacé clic en Crear.</p>
@@ -430,14 +433,7 @@ export default function AdminCampingsPage() {
                   value={form.descripcionCorta ?? ""}
                   onChange={(e) => setForm((p) => ({ ...p, descripcionCorta: e.target.value }))}
                   rows={3}
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 10,
-                    background: "var(--color-surface)",
-                    color: "var(--color-text)",
-                  }}
+                  style={textAreaStyle}
                 />
               </label>
 

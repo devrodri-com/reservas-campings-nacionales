@@ -165,13 +165,23 @@ select, input, textarea, button {
   }
 }
 
-.phone-grid-intl {
-  /* en mobile sigue apilado */
-}
-
 @media (min-width: 900px) {
   .phone-grid.phone-grid-intl {
     grid-template-columns: 4fr 1fr 5fr;
     align-items: stretch;
+  }
+}
+
+/* Admin campings grid */
+.admin-campings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .admin-campings-grid {
+    grid-template-columns: 320px minmax(0, 1fr);
   }
 }
