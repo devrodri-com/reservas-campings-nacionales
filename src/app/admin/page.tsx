@@ -302,6 +302,79 @@ export default function AdminHomePage() {
     []
   );
 
+  // UI Helpers
+  function Badge(props: { text: string; tone: "green" | "yellow" | "red" | "gray" | "blue" }) {
+    const tones: Record<typeof props.tone, { bg: string; border: string; color: string }> = {
+      green: { bg: "rgba(34,197,94,0.15)", border: "rgba(34,197,94,0.35)", color: "var(--color-text)" },
+      yellow: { bg: "rgba(234,179,8,0.15)", border: "rgba(234,179,8,0.35)", color: "var(--color-text)" },
+      red: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.35)", color: "var(--color-text)" },
+      gray: { bg: "rgba(148,163,184,0.15)", border: "rgba(148,163,184,0.35)", color: "var(--color-text)" },
+      blue: { bg: "rgba(59,130,246,0.15)", border: "rgba(59,130,246,0.35)", color: "var(--color-text)" },
+    };
+
+    const t = tones[props.tone];
+
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          padding: "4px 10px",
+          borderRadius: 999,
+          border: `1px solid ${t.border}`,
+          background: t.bg,
+          color: t.color,
+          fontSize: 12,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {props.text}
+      </span>
+    );
+  }
+
+  function estadoBadge(estado: string): { text: string; tone: "green" | "yellow" | "red" | "gray" } {
+    switch (estado) {
+      case "pagada":
+        return { text: "Pagada", tone: "green" };
+      case "pendiente_pago":
+        return { text: "Pendiente", tone: "yellow" };
+      case "fallida":
+        return { text: "Fallida", tone: "red" };
+      case "cancelada":
+        return { text: "Cancelada", tone: "gray" };
+      default:
+        return { text: estado, tone: "gray" };
+    }
+  }
+
+  function origenBadge(origen: string): { text: string; tone: "blue" | "gray" } {
+    if (origen === "admin") return { text: "Admin", tone: "blue" };
+    if (origen === "public") return { text: "Web", tone: "gray" };
+    return { text: origen || "-", tone: "gray" };
+  }
+
+  // KPIs
+  const nowMs = Date.now();
+
+  const kpis = useMemo(() => {
+    const total = reservasEnRango.length;
+    const pagadas = reservasEnRango.filter((r) => r.estado === "pagada").length;
+    const pendientes = reservasEnRango.filter(
+      (r) => r.estado === "pendiente_pago" && typeof r.expiresAtMs === "number" && r.expiresAtMs > nowMs
+    ).length;
+    const canceladas = reservasEnRango.filter((r) => r.estado === "cancelada").length;
+    const fallidas = reservasEnRango.filter((r) => r.estado === "fallida").length;
+
+    // "Hoy" dentro del rango visible: usar fromDate (primer día mostrado)
+    const firstDay = availability[0];
+    const ocupadasHoy = firstDay ? firstDay.ocupadas : 0;
+    const disponiblesHoy = firstDay ? firstDay.disponibles : 0;
+
+    return { total, pagadas, pendientes, canceladas, fallidas, ocupadasHoy, disponiblesHoy };
+  }, [reservasEnRango, availability, nowMs]);
+
   const createDemoReserva = async () => {
     if (!camping) return;
     setBusy(true);
@@ -813,6 +886,34 @@ export default function AdminHomePage() {
         </div>
       </div>
 
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          marginTop: 12,
+        }}
+      >
+        <Card title="Reservas (rango)">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.total}</div>
+        </Card>
+        <Card title="Pagadas">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.pagadas}</div>
+        </Card>
+        <Card title="Pendientes (hold)">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.pendientes}</div>
+        </Card>
+        <Card title="Canceladas / Fallidas">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.canceladas + kpis.fallidas}</div>
+        </Card>
+        <Card title="Ocupación (primer día)">
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+            <span style={{ fontSize: 24, fontWeight: 900 }}>{kpis.ocupadasHoy}</span>
+            <span style={{ color: "var(--color-text-muted)" }}>/ {kpis.ocupadasHoy + kpis.disponiblesHoy}</span>
+          </div>
+        </Card>
+      </div>
+
       <hr style={{ margin: "24px 0" }} />
 
       {error ? (
@@ -1005,20 +1106,27 @@ export default function AdminHomePage() {
                 </tr>
               </thead>
               <tbody>
-                {reservasEnRango.map((r) => (
-                  <tr key={r.id}>
-                    <Td>{r.estado}</Td>
-                    <Td>
-                      {formatYmdToDmy(r.checkInDate)} → {formatYmdToDmy(r.checkOutDate)}
-                    </Td>
-                    <Td>
-                      {r.titularNombre} ({r.titularEmail})
-                    </Td>
-                    <Td>
-                      {r.adultos}A / {r.menores}M
-                    </Td>
-                    <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
-                    <Td>{r.createdByMode ?? "-"}</Td>
+                {reservasEnRango.map((r) => {
+                  const estadoB = estadoBadge(r.estado);
+                  const origenB = origenBadge(r.createdByMode ?? "");
+                  return (
+                    <tr key={r.id}>
+                      <Td>
+                        <Badge text={estadoB.text} tone={estadoB.tone} />
+                      </Td>
+                      <Td>
+                        {formatYmdToDmy(r.checkInDate)} → {formatYmdToDmy(r.checkOutDate)}
+                      </Td>
+                      <Td>
+                        {r.titularNombre} ({r.titularEmail})
+                      </Td>
+                      <Td>
+                        {r.adultos}A / {r.menores}M
+                      </Td>
+                      <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
+                      <Td>
+                        <Badge text={origenB.text} tone={origenB.tone} />
+                      </Td>
                     <Td>
                       {!canCreateOrCancel ? (
                         "-"
@@ -1058,7 +1166,8 @@ export default function AdminHomePage() {
                       )}
                     </Td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </Table>
           )}
