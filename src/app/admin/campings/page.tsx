@@ -10,6 +10,8 @@ import type { UserProfile } from "@/types/user";
 import { fetchCampings } from "@/lib/campingsRepo";
 import { fetchUserProfile } from "@/lib/userProfile";
 import { Button, Card } from "@/components/ui";
+import SelectDropdown from "@/components/SelectDropdown";
+import type { SelectOption } from "@/components/SelectDropdown";
 
 type EditableFields = Pick<
   Camping,
@@ -109,6 +111,16 @@ export default function AdminCampingsPage() {
   const selectedCamping = useMemo(
     () => campings.find((c) => c.id === selectedId) ?? null,
     [campings, selectedId]
+  );
+
+  const campingOptions: SelectOption[] = useMemo(
+    () =>
+      campings.map((c) => ({
+        value: c.id,
+        label: `${c.nombre} (${c.areaProtegida})`,
+        description: c.ubicacionTexto,
+      })),
+    [campings]
   );
 
   useEffect(() => {
@@ -214,6 +226,16 @@ export default function AdminCampingsPage() {
     borderRadius: 10,
     background: "var(--color-surface)",
     color: "var(--color-text)",
+    boxSizing: "border-box",
+    minWidth: 0,
+  };
+
+  const textAreaStyle: CSSProperties = {
+    ...inputStyle,
+    resize: "vertical",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    fontSize: 12,
+    lineHeight: 1.4,
   };
 
   if (loading || profileLoading) {
@@ -261,9 +283,30 @@ export default function AdminCampingsPage() {
         Cargá descripción corta, links y portada. Los cambios impactan en la Home y en el detalle del camping.
       </p>
 
-      {error ? <p style={{ color: "red" }}>{error}</p> : null}
+      {error ? (
+        <div
+          style={{
+            border: "1px solid rgba(239,68,68,0.5)",
+            background: "rgba(239,68,68,0.08)",
+            color: "var(--color-text)",
+            padding: 12,
+            borderRadius: 12,
+            marginBottom: 16,
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 6 }}>Revisá estos datos</strong>
+          <span style={{ color: "var(--color-text-muted)" }}>{error}</span>
+        </div>
+      ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 16, alignItems: "start" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "320px minmax(0, 1fr)",
+          gap: 16,
+          alignItems: "start",
+        }}
+      >
         <Card title="Listado">
           {loadingData ? (
             <p>Cargando…</p>
@@ -340,20 +383,15 @@ export default function AdminCampingsPage() {
                 <p style={{ margin: 0, color: "var(--color-text-muted)" }}>No hay campings cargados.</p>
               ) : (
                 <>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontWeight: 700 }}>Camping</span>
-                    <select
-                      value={selectedId}
-                      onChange={(e) => setSelectedId(e.target.value)}
-                      style={inputStyle}
-                    >
-                      {campings.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre} ({c.areaProtegida})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SelectDropdown
+                    label="Camping"
+                    value={selectedId}
+                    options={campingOptions}
+                    onChange={setSelectedId}
+                    placeholder="Seleccionar camping…"
+                    disabled={loadingData || campings.length === 0 || saving}
+                    searchable
+                  />
                   {selectedCamping ? (
                     <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
                       <strong>{selectedCamping.capacidadParcelas}</strong> parcelas · $
@@ -369,7 +407,8 @@ export default function AdminCampingsPage() {
           )}
         </Card>
 
-        <Card title="Datos del camping">
+        <div style={{ minWidth: 0 }}>
+          <Card title="Datos del camping">
           {showNewCamping ? (
             <p style={{ color: "var(--color-text-muted)" }}>Completá el formulario a la izquierda y hacé clic en Crear.</p>
           ) : !selectedCamping ? (
@@ -404,35 +443,25 @@ export default function AdminCampingsPage() {
 
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 700 }}>Instagram (URL)</span>
-                <input
+                <textarea
                   value={form.igUrl ?? ""}
                   onChange={(e) => setForm((p) => ({ ...p, igUrl: e.target.value }))}
                   placeholder="https://instagram.com/..."
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 10,
-                    background: "var(--color-surface)",
-                    color: "var(--color-text)",
-                  }}
+                  rows={2}
+                  style={textAreaStyle}
+                  spellCheck={false}
                 />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 700 }}>Sitio oficial (URL)</span>
-                <input
+                <textarea
                   value={form.webUrl ?? ""}
                   onChange={(e) => setForm((p) => ({ ...p, webUrl: e.target.value }))}
                   placeholder="https://..."
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 10,
-                    background: "var(--color-surface)",
-                    color: "var(--color-text)",
-                  }}
+                  rows={2}
+                  style={textAreaStyle}
+                  spellCheck={false}
                 />
               </label>
 
@@ -465,25 +494,29 @@ export default function AdminCampingsPage() {
 
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 700 }}>Google Maps (URL)</span>
-                <input
+                <textarea
                   value={form.mapsUrl ?? ""}
                   onChange={(e) => setForm((p) => ({ ...p, mapsUrl: e.target.value }))}
                   placeholder="https://maps.google.com/..."
-                  style={inputStyle}
+                  rows={2}
+                  style={textAreaStyle}
+                  spellCheck={false}
                 />
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 700 }}>Google Maps (Embed URL)</span>
-                <input
+                <textarea
                   value={form.mapsEmbedUrl ?? ""}
                   onChange={(e) => setForm((p) => ({ ...p, mapsEmbedUrl: e.target.value }))}
-                  placeholder="https://www.google.com/maps/embed?p=... o pegar iframe completo"
-                  style={inputStyle}
+                  placeholder="Pegá el iframe completo o el src https://www.google.com/maps/embed?pb=..."
+                  rows={2}
+                  style={textAreaStyle}
+                  spellCheck={false}
                 />
               </label>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <Button variant="primary" onClick={onSave} disabled={saving}>
                   {saving ? "Guardando..." : "Guardar cambios"}
                 </Button>
@@ -511,7 +544,8 @@ export default function AdminCampingsPage() {
               </p>
             </div>
           )}
-        </Card>
+          </Card>
+        </div>
       </div>
     </main>
   );
