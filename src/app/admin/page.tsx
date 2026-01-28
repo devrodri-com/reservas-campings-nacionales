@@ -24,6 +24,9 @@ import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dat
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { Button, Card, Table, Th, Td } from "@/components/ui";
 import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
+import SelectDropdown from "@/components/SelectDropdown";
+import type { SelectOption } from "@/components/SelectDropdown";
+import DateRangePicker from "@/components/DateRangePicker";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
 
@@ -106,7 +109,7 @@ export default function AdminHomePage() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [days, setDays] = useState<number>(7);
+  const [toDate, setToDate] = useState<string>(addDaysYmd(todayYmd(), 7));
   const [showWalkIn, setShowWalkIn] = useState(false);
 
   // Walk-in form state
@@ -220,6 +223,16 @@ export default function AdminHomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile, selectedCampingId]);
 
+  const campingOptions: SelectOption[] = useMemo(
+    () =>
+      campings.map((c) => ({
+        value: c.id,
+        label: `${c.nombre} (${c.areaProtegida})`,
+        description: c.ubicacionTexto,
+      })),
+    [campings]
+  );
+
   const reservasQueBloquean = useMemo(
     () =>
       reservas.filter(
@@ -232,10 +245,12 @@ export default function AdminHomePage() {
     [reservas]
   );
 
-  const rangeEndDate = useMemo(() => {
-    const end = addDaysYmd(fromDate, days);
-    return end || fromDate; // fallback a fromDate si es inválido
-  }, [fromDate, days]);
+  const rangeEndDate = useMemo(() => toDate || fromDate, [toDate, fromDate]);
+
+  const days = useMemo(() => {
+    const n = enumerateNights(fromDate, rangeEndDate).length;
+    return Math.max(1, n);
+  }, [fromDate, rangeEndDate]);
 
   const reservasEnRango = useMemo(() => {
     // Solapa si: checkIn < rangeEnd && checkOut > fromDate
@@ -708,53 +723,60 @@ export default function AdminHomePage() {
         ) : null}
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         {showCampingSelector ? (
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span>Camping:</span>
-            <select
+          <div style={{ minWidth: 280 }}>
+            <SelectDropdown
+              label="Camping"
               value={selectedCampingId}
-              onChange={(e) => setSelectedCampingId(e.target.value)}
-              style={{ padding: 8, border: "1px solid #ccc", background: "transparent", color: "inherit" }}
-            >
-              {campings.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre} ({c.areaProtegida})
-                </option>
-              ))}
-            </select>
-          </label>
+              options={campingOptions}
+              onChange={setSelectedCampingId}
+              placeholder="Seleccionar camping…"
+              disabled={busy || campings.length === 0}
+              searchable
+            />
+          </div>
         ) : null}
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span>Desde:</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!v) {
-                setFromDate(todayYmd());
-                return;
-              }
-              setFromDate(v);
+        <div style={{ minWidth: 320 }}>
+          <DateRangePicker
+            label="Rango"
+            checkInDate={fromDate}
+            checkOutDate={toDate}
+            onChange={({ checkInDate, checkOutDate }) => {
+              setFromDate(checkInDate);
+              setToDate(checkOutDate);
             }}
-            style={{ padding: 8, border: "1px solid #ccc", background: "transparent", color: "inherit" }}
+            disabled={busy}
           />
-        </label>
+        </div>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span>Rango:</span>
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            style={{ padding: 8, border: "1px solid #ccc", background: "transparent", color: "inherit" }}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            variant="ghost"
+            onClick={() => setToDate(addDaysYmd(fromDate, 7))}
+            disabled={busy}
+            style={{ padding: "6px 12px" }}
           >
-            <option value={7}>7 días</option>
-            <option value={14}>14 días</option>
-            <option value={30}>30 días</option>
-          </select>
-        </label>
+            7 días
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setToDate(addDaysYmd(fromDate, 14))}
+            disabled={busy}
+            style={{ padding: "6px 12px" }}
+          >
+            14 días
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setToDate(addDaysYmd(fromDate, 30))}
+            disabled={busy}
+            style={{ padding: "6px 12px" }}
+          >
+            30 días
+          </Button>
+        </div>
       </div>
 
       <hr style={{ margin: "24px 0" }} />
