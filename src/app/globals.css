@@ -185,3 +185,30 @@ select, input, textarea, button {
     grid-template-columns: 320px minmax(0, 1fr);
   }
 }
+
+/* Admin actions responsive */
+.admin-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+@media (min-width: 900px) {
+  .admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+.admin-actions button {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 900px) {
+  .admin-actions button {
+    width: auto;
+  }
+}

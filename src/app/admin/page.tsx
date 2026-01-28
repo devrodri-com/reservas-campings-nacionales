@@ -751,11 +751,11 @@ export default function AdminHomePage() {
     }
   };
 
-  if (loading || profileLoading) return <main style={{ padding: 24 }}>Cargando…</main>;
+  if (loading || profileLoading) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>Cargando…</main>;
   if (!user) return null;
   if (!profile || !profile.activo) {
     return (
-      <main style={{ padding: 24 }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
         <h1 style={{ color: "var(--color-accent)" }}>No autorizado</h1>
         <p style={{ color: "var(--color-text-muted)" }}>
           No tenés permiso para acceder al panel o tu usuario está inactivo.
@@ -778,11 +778,11 @@ export default function AdminHomePage() {
   const canExportGlobal = profile.role === "viewer" || profile.role === "admin_global";
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
       <h1>Panel Admin</h1>
       <p>Sesión: {user.email}</p>
 
-      <div style={{ display: "flex", gap: 12 }}>
+      <div className="admin-actions">
         <Button
           variant="ghost"
           onClick={async () => {
@@ -800,14 +800,14 @@ export default function AdminHomePage() {
               onClick={createDemoReserva}
               disabled={busy || !camping}
             >
-              {busy ? "Creando..." : "Crear reserva demo"}
+              {busy ? "Creando..." : "Demo"}
             </Button>
             <Button
               variant="secondary"
               onClick={() => setShowWalkIn(!showWalkIn)}
               disabled={busy || !camping}
             >
-              {showWalkIn ? "Ocultar walk-in" : "Crear reserva manual (walk-in)"}
+              {showWalkIn ? "Ocultar walk-in" : "Walk-in"}
             </Button>
           </>
         ) : null}
@@ -820,19 +820,19 @@ export default function AdminHomePage() {
             onClick={exportCsvGlobal}
             disabled={busy || campings.length === 0}
           >
-            Exportar CSV global
+            CSV global
           </Button>
         ) : null}
         {profile.role === "admin_global" ? (
           <Button variant="secondary" onClick={() => router.push("/admin/campings")}>
-            Editar campings
+            Campings
           </Button>
         ) : null}
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", rowGap: 10 }}>
         {showCampingSelector ? (
-          <div style={{ minWidth: 280 }}>
+          <div style={{ minWidth: 0, flex: "1 1 280px" }}>
             <SelectDropdown
               label="Camping"
               value={selectedCampingId}
@@ -845,7 +845,7 @@ export default function AdminHomePage() {
           </div>
         ) : null}
 
-        <div style={{ minWidth: 320 }}>
+        <div style={{ minWidth: 0, flex: "1 1 320px" }}>
           <DateRangePicker
             label="Rango"
             checkInDate={fromDate}
