@@ -48,6 +48,7 @@ export default function Home() {
           width: "100%",
           height: "420px",
           marginBottom: 48,
+          overflow: "hidden",
         }}
         className="home-hero"
       >
@@ -65,6 +66,7 @@ export default function Home() {
             priority
             style={{
               objectFit: "cover",
+              objectPosition: "center bottom",
             }}
           />
         </div>
@@ -176,8 +178,9 @@ export default function Home() {
           </Card>
           <Card>
             <div style={{ textAlign: "center" }}>
+              {/* TODO: volver a dinámico cuando estén cargados los 17 campings en Firestore */}
               <div style={{ fontSize: 32, fontWeight: 900, color: "var(--color-accent)", lineHeight: 1 }}>
-                {loading ? "..." : campings.length}
+                17
               </div>
               <div style={{ fontSize: 14, color: "var(--color-text-muted)", marginTop: 4 }}>
                 campings habilitados
