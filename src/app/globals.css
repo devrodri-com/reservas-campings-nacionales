@@ -212,3 +212,14 @@ select, input, textarea, button {
     width: auto;
   }
 }
+
+/* Home hero responsive */
+.home-hero {
+  height: 420px;
+}
+
+@media (min-width: 900px) {
+  .home-hero {
+    height: 520px;
+  }
+}
