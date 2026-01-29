@@ -11,7 +11,7 @@ import { fetchReservasByCamping } from "@/lib/reservasRepo";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { enumerateNights, todayYmd, addDaysYmd } from "@/lib/dates";
 import { formatArs } from "@/lib/money";
-import { ensureSignedInGuestOrLink } from "@/lib/ensureAuth";
+import { ensureSignedInGuest } from "@/lib/ensureAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card } from "@/components/ui";
 import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
@@ -52,8 +52,6 @@ export default function ReservarClient() {
   const [telefonoNumero, setTelefonoNumero] = useState<string>("");
   const [telefonoDialManual, setTelefonoDialManual] = useState<string>("+");
   const [titularEdad, setTitularEdad] = useState<number>(30);
-  const [password, setPassword] = useState<string>(""); // opcional
-  const [passwordConfirm, setPasswordConfirm] = useState<string>("");
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -183,11 +181,6 @@ export default function ReservarClient() {
       return "Teléfono es obligatorio.";
     }
     if (titularEdad < 18) return "El titular debe ser mayor de edad.";
-    if (password && password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
-    if (password && password !== passwordConfirm) {
-      setFieldError("passwordConfirm");
-      return "Las contraseñas no coinciden.";
-    }
     setFieldError(null);
     return null;
   };
@@ -205,10 +198,8 @@ export default function ReservarClient() {
     setFieldError(null);
 
     try {
-      // 1) Asegurar auth (anónimo) y si hay password, vincular cuenta
-      await ensureSignedInGuestOrLink({ email: titularEmail.trim(), password: password.trim() || undefined });
-
-      const uid = auth.currentUser?.uid ?? undefined;
+      // 1) Asegurar auth anónima
+      const uid = await ensureSignedInGuest();
 
       // 2) Chequear disponibilidad (solo reservas pagadas bloquean)
       const all = await fetchReservasByCamping(selectedCamping.id);
@@ -247,7 +238,6 @@ export default function ReservarClient() {
         titularEmail: titularEmail.trim(),
         titularTelefono: composePhone({ countryCode: telefonoPais, number: telefonoNumero, manualDialCode: telefonoDialManual }),
         titularEdad,
-        password: password.trim() || undefined,
       };
 
       const docReserva: ReservaDoc = {
@@ -418,54 +408,6 @@ export default function ReservarClient() {
               searchable={false}
             />
           </div>
-
-          {password.trim().length > 0 ? (
-            <>
-              <label>
-                (Opcional) Crear cuenta
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Dejar vacío si no querés registrarte"
-                  disabled={submitting}
-                  style={inputStyle}
-                  autoComplete="new-password"
-                />
-              </label>
-              <label>
-                Confirmar contraseña
-                <input
-                  type="password"
-                  value={passwordConfirm}
-                  onChange={(e) => setPasswordConfirm(e.target.value)}
-                  placeholder="Repetí la contraseña"
-                  disabled={submitting}
-                  style={{
-                    ...inputStyle,
-                    border: fieldError === "passwordConfirm" ? errorBorder : inputStyle.border,
-                  }}
-                  autoComplete="new-password"
-                />
-              </label>
-            </>
-          ) : (
-            <>
-              <label>
-                (Opcional) Crear cuenta
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Dejar vacío si no querés registrarte"
-                  disabled={submitting}
-                  style={inputStyle}
-                  autoComplete="new-password"
-                />
-              </label>
-              <div></div>
-            </>
-          )}
         </div>
 
         <hr />

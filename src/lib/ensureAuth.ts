@@ -7,6 +7,15 @@ import {
   signInAnonymously,
 } from "firebase/auth";
 
+export async function ensureSignedInGuest(): Promise<string> {
+  if (!auth.currentUser) {
+    await signInAnonymously(auth);
+  }
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("No se pudo obtener sesión");
+  return uid;
+}
+
 export async function ensureSignedInGuestOrLink(params: {
   email: string;
   password?: string;
