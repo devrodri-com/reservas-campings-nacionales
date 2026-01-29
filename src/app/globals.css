@@ -70,6 +70,18 @@ select, input, textarea, button {
   cursor: pointer;
 }
 
+.nav-brand-logo {
+  height: auto;
+  object-fit: contain;
+}
+
+@media (max-width: 767px) {
+  .nav-brand-logo {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
 @media (min-width: 768px) {
   .nav-links-desktop {
     display: flex;

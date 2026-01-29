@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { SunIcon, MoonIcon, MenuIcon, CloseIcon } from "@/components/icons";
 
@@ -14,7 +15,7 @@ const ITEMS: NavItem[] = [
   { href: "/", label: "Inicio" },
   { href: "/reservar", label: "Reservar" },
   { href: "/consultar", label: "Consultar" },
-  { href: "/admin", label: "Admin" },
+  { href: "/admin/login", label: "Ingresar" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -80,13 +81,18 @@ export default function NavBar() {
       >
         <Link
           href="/"
-          style={{
-            fontWeight: 700,
-            textDecoration: "none",
-            color: "var(--color-primary-contrast)",
-          }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 10, textDecoration: "none" }}
         >
-          Reservas Campings
+          <Image
+            src="/parques-nacionales-logo.png"
+            alt="Administración de Parques Nacionales"
+            width={48}
+            height={48}
+            className="nav-brand-logo"
+            style={{ height: "auto", objectFit: "contain" }}
+            priority
+          />
+          <span style={{ fontWeight: 800, color: "white" }}>Reservas Campings</span>
         </Link>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
