@@ -58,7 +58,7 @@ export default function Home() {
         >
           <Image
             src="/home/hero-apn.jpg"
-            alt="Parques Nacionales de la Argentina"
+            alt="Parques Nacionales de Argentina"
             fill
             priority
             style={{
@@ -100,7 +100,7 @@ export default function Home() {
               textShadow: "0 2px 8px rgba(0,0,0,0.5)",
             }}
           >
-            Parques Nacionales de la Argentina
+            Parques Nacionales de Argentina
           </h1>
           <p
             style={{
