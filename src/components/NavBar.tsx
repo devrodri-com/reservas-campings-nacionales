@@ -92,7 +92,7 @@ export default function NavBar() {
             style={{ height: "auto", objectFit: "contain" }}
             priority
           />
-          <span style={{ fontWeight: 800, color: "white" }}>Reservas Campings</span>
+          <span style={{ fontWeight: 800, color: "white" }}>Reservas de Campings</span>
         </Link>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
