@@ -52,10 +52,8 @@ export default function AdminLoginPage() {
         />
         <div>
           <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Acceso exclusivo para operadores</h1>
-          <p style={{ margin: "6px 0 0 0", color: "var(--color-text-muted)" }}>
-            Sistema de Reservas - Administración de Parques Nacionales.
-            <br />
-            Visitantes: consulten su reserva con el código.
+          <p style={{ margin: "6px 0 0 0", color: "var(--color-text-muted)", fontSize: 13, opacity: 0.85, maxWidth: 520 }}>
+            Sistema de Reservas — Administración de Parques Nacionales.
           </p>
         </div>
       </div>
@@ -106,9 +104,12 @@ export default function AdminLoginPage() {
             </div>
           ) : null}
 
-          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          <div style={{ display: "grid", gap: 8, marginTop: 14 }}>
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", opacity: 0.85 }}>
+              Visitantes
+            </div>
             <Link href="/consultar" style={{ color: "var(--color-text-muted)", textDecoration: "underline" }}>
-              Consultar reserva (visitantes)
+              Consultar reserva con código
             </Link>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -119,7 +120,7 @@ export default function AdminLoginPage() {
           </div>
 
           <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "var(--color-text-muted)" }}>
-            Acceso protegido. La actividad puede ser registrada con fines de auditoría.
+            La actividad es registrada con fines de auditoría.
           </p>
         </form>
       </Card>
