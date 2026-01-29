@@ -413,8 +413,10 @@ select, input, textarea, button {
     padding: 0 4px;
     margin-bottom: 24px;
     background: var(--color-surface);
-    border: none;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
     box-shadow: none;
+    overflow: hidden;
   }
 
   .admin-login-header-mobile {

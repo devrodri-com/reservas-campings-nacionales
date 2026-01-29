@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -24,6 +24,15 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const prev = document.documentElement.getAttribute("data-theme");
+    document.documentElement.setAttribute("data-theme", "dark");
+    return () => {
+      if (prev) document.documentElement.setAttribute("data-theme", prev);
+      else document.documentElement.removeAttribute("data-theme");
+    };
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
