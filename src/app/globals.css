@@ -220,6 +220,17 @@ select, input, textarea, button {
 
 @media (min-width: 900px) {
   .home-hero {
-    height: 520px;
+    height: 580px;
   }
+  .home-hero img {
+    object-position: center 60%;
+  }
+}
+
+.hero-secondary-cta button:hover {
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+.hero-secondary-cta button:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
 }

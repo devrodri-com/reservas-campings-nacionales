@@ -46,7 +46,6 @@ export default function Home() {
         style={{
           position: "relative",
           width: "100%",
-          height: "420px",
           marginBottom: 48,
           overflow: "hidden",
         }}
@@ -133,9 +132,20 @@ export default function Home() {
             <Link href="/reservar" style={{ textDecoration: "none" }}>
               <Button variant="primary">Reservar camping</Button>
             </Link>
-            <Link href="#institucional" style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Conocer APN</Button>
-            </Link>
+            <span className="hero-secondary-cta">
+              <Link href="#institucional" style={{ textDecoration: "none" }}>
+                <Button
+                  variant="ghost"
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.75)",
+                    background: "rgba(0,0,0,0.35)",
+                    color: "white",
+                  }}
+                >
+                  Conocer APN
+                </Button>
+              </Link>
+            </span>
           </div>
         </div>
       </section>
