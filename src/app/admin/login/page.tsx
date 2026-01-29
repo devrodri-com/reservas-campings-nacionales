@@ -51,9 +51,11 @@ export default function AdminLoginPage() {
           priority
         />
         <div>
-          <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Acceso de operadores</h1>
+          <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Acceso exclusivo para operadores</h1>
           <p style={{ margin: "6px 0 0 0", color: "var(--color-text-muted)" }}>
-            Solo personal autorizado. Si sos visitante, consultá tu reserva con el código.
+            Sistema de Reservas - Administración de Parques Nacionales.
+            <br />
+            Visitantes: consulten su reserva con el código.
           </p>
         </div>
       </div>
@@ -104,14 +106,21 @@ export default function AdminLoginPage() {
             </div>
           ) : null}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-            <Link href="/consultar" style={{ textDecoration: "none" }}>
-              <Button variant="secondary" type="button">Consultar reserva</Button>
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            <Link href="/consultar" style={{ color: "var(--color-text-muted)", textDecoration: "underline" }}>
+              Consultar reserva (visitantes)
             </Link>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <Button variant="ghost" type="button">Volver al inicio</Button>
-            </Link>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Link href="/" style={{ textDecoration: "none" }}>
+                <Button variant="ghost" type="button">Volver al inicio</Button>
+              </Link>
+            </div>
           </div>
+
+          <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "var(--color-text-muted)" }}>
+            Acceso protegido. La actividad puede ser registrada con fines de auditoría.
+          </p>
         </form>
       </Card>
     </main>

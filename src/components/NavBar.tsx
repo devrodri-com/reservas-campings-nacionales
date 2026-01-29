@@ -61,6 +61,8 @@ export default function NavBar() {
     }
   };
 
+  if (pathname === "/admin/login") return null;
+
   return (
     <header
       style={{
