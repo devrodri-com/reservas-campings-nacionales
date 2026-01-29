@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="admin-login-page" style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px" }}>
+    <main className="admin-login-page">
       {/* Desktop: barra superior institucional mínima */}
       <header className="admin-login-header admin-login-header-desktop">
         <Image
@@ -60,8 +60,8 @@ export default function AdminLoginPage() {
         <Image
           src="/parques-nacionales-logo.png"
           alt="Administración de Parques Nacionales"
-          width={32}
-          height={32}
+          width={28}
+          height={28}
           className="admin-login-logo-mobile"
           style={{ height: "auto", objectFit: "contain" }}
           priority
@@ -69,17 +69,18 @@ export default function AdminLoginPage() {
       </div>
 
       <div className="admin-login-content">
-        <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Acceso exclusivo para operadores</h1>
-        <p style={{ margin: "6px 0 0 0", color: "var(--color-text-muted)", fontSize: 13, opacity: 0.85, maxWidth: 520 }}>
-          Sistema de Reservas — Administración de Parques Nacionales.
+        <h1 className="admin-login-title">Acceso exclusivo para operadores</h1>
+        <p className="admin-login-subtitle">
+          Sistema de Reservas - Administración de Parques Nacionales.
         </p>
       </div>
 
       <Card>
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+        <form onSubmit={onSubmit} className="admin-login-form">
           <label>
             Email
             <input
+              className="admin-login-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
@@ -92,6 +93,7 @@ export default function AdminLoginPage() {
           <label>
             Contraseña
             <input
+              className="admin-login-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"

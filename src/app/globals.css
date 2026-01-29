@@ -357,14 +357,39 @@ select, input, textarea, button {
   color: var(--color-text-muted);
 }
 
+
+/* Admin login: base layout (desktop/tablet) */
+.admin-login-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.admin-login-title {
+  margin: 0;
+  color: var(--color-accent);
+}
+
+.admin-login-subtitle {
+  margin: 6px 0 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  opacity: 0.85;
+  max-width: 520px;
+}
+
+.admin-login-form {
+  display: grid;
+  gap: 12px;
+}
 /* Admin login: logo institucional, no hero */
 .admin-login-header-desktop {
   display: none;
 }
 
 .admin-login-header-mobile {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  justify-items: center;
   margin-top: 8px;
   margin-bottom: 16px;
 }
@@ -408,4 +433,73 @@ select, input, textarea, button {
     color: var(--color-text-muted);
     opacity: 0.85;
   }
+}
+
+/* Admin login: center text on mobile only */
+@media (max-width: 767px) {
+  .admin-login-content {
+    text-align: center;
+  }
+
+  .admin-login-title {
+    text-align: center;
+  }
+
+  .admin-login-subtitle {
+    text-align: center;
+  }
+}
+
+/* Admin login: compact mobile (max 480px) */
+@media (max-width: 480px) {
+  .admin-login-page {
+    padding: 12px 14px;
+  }
+
+  .admin-login-header {
+    margin-bottom: 4px;
+  }
+
+  .admin-login-header-mobile {
+    margin-bottom: 4px;
+  }
+
+  .admin-login-content {
+    margin-bottom: 8px;
+  }
+
+  .admin-login-title {
+    font-size: 20px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .admin-login-subtitle {
+    font-size: 12px;
+    line-height: 1.3;
+    opacity: 0.65;
+    margin-top: 3px;
+  }
+
+  .admin-login-form {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-login-subtitle {
+    display: none;
+  }
+}
+
+/* Admin login: prevent browser autofill from forcing white backgrounds */
+.admin-login-input:-webkit-autofill,
+.admin-login-input:-webkit-autofill:hover,
+.admin-login-input:-webkit-autofill:focus,
+.admin-login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-text) !important;
+  caret-color: var(--color-text) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+  box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+  transition: background-color 9999s ease-out 0s;
 }
