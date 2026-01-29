@@ -46,7 +46,7 @@ export default function Home() {
         style={{
           position: "relative",
           width: "100%",
-          marginBottom: 48,
+          marginBottom: 64,
           overflow: "hidden",
         }}
         className="home-hero"
@@ -150,69 +150,44 @@ export default function Home() {
         </div>
       </section>
 
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
+      <main className="home-main">
         {/* Métricas */}
-        <section
-          style={{
-            marginBottom: 48,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <Card>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 900, color: "var(--color-accent)", lineHeight: 1 }}>
-                5M+
-              </div>
-              <div style={{ fontSize: 14, color: "var(--color-text-muted)", marginTop: 4 }}>
-                hectáreas protegidas
-              </div>
+        <section className="home-section">
+          <div className="home-stats">
+            <div className="home-stat-card">
+              <div className="home-stat-value">5M+</div>
+              <div className="home-stat-label">hectáreas protegidas</div>
             </div>
-          </Card>
-          <Card>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 900, color: "var(--color-accent)", lineHeight: 1 }}>55</div>
-              <div style={{ fontSize: 14, color: "var(--color-text-muted)", marginTop: 4 }}>
-                áreas protegidas
-              </div>
+            <div className="home-stat-card">
+              <div className="home-stat-value">55</div>
+              <div className="home-stat-label">áreas protegidas</div>
             </div>
-          </Card>
-          <Card>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 900, color: "var(--color-accent)", lineHeight: 1 }}>4</div>
-              <div style={{ fontSize: 14, color: "var(--color-text-muted)", marginTop: 4 }}>
-                Patrimonio Mundial
-              </div>
+            <div className="home-stat-card">
+              <div className="home-stat-value">4</div>
+              <div className="home-stat-label">Patrimonio Mundial</div>
             </div>
-          </Card>
-          <Card>
-            <div style={{ textAlign: "center" }}>
+            <div className="home-stat-card">
               {/* TODO: volver a dinámico cuando estén cargados los 17 campings en Firestore */}
-              <div style={{ fontSize: 32, fontWeight: 900, color: "var(--color-accent)", lineHeight: 1 }}>
-                17
-              </div>
-              <div style={{ fontSize: 14, color: "var(--color-text-muted)", marginTop: 4 }}>
-                campings habilitados
-              </div>
+              <div className="home-stat-value">17</div>
+              <div className="home-stat-label">campings habilitados</div>
             </div>
-          </Card>
+          </div>
         </section>
 
         {/* Bloque institucional */}
-        <section id="institucional" style={{ marginBottom: 48 }}>
-          <div style={{ display: "grid", gap: 16 }}>
+        <section id="institucional" className="home-section">
+          <div style={{ display: "grid", gap: 20 }}>
             <div>
-              <h2 style={{ margin: "0 0 12px 0", fontSize: "clamp(20px, 3vw, 28px)", color: "var(--color-accent)" }}>
+              <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(20px, 3vw, 26px)", color: "var(--color-accent)", fontWeight: 700 }}>
                 Administración de Parques Nacionales
               </h2>
               <p
                 style={{
                   margin: 0,
-                  fontSize: 16,
+                  fontSize: 15,
                   lineHeight: 1.6,
                   color: "var(--color-text)",
-                  maxWidth: 900,
+                  maxWidth: 720,
                 }}
               >
                 Organismo responsable de la gestión y conservación de las áreas protegidas de la República Argentina.
@@ -222,18 +197,19 @@ export default function Home() {
             </div>
             <div
               style={{
-                padding: 20,
-                borderRadius: 12,
+                padding: "12px 16px",
+                borderRadius: 8,
                 background: "var(--color-surface)",
                 border: "1px solid var(--color-border)",
+                maxWidth: 720,
               }}
             >
               <p
                 style={{
                   margin: 0,
-                  fontSize: 18,
+                  fontSize: 15,
                   lineHeight: 1.5,
-                  color: "var(--color-text)",
+                  color: "var(--color-text-muted)",
                   fontStyle: "italic",
                 }}
               >
@@ -245,127 +221,74 @@ export default function Home() {
         </section>
 
         {/* Cómo funciona */}
-        <section style={{ marginBottom: 48 }}>
-          <h2 style={{ margin: "0 0 20px 0", fontSize: "clamp(20px, 3vw, 24px)", color: "var(--color-accent)" }}>
+        <section className="home-section">
+          <h2 style={{ margin: "0 0 16px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
             Cómo funciona
           </h2>
           <div
+            className="home-como-funciona"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 20,
+              gap: 14,
             }}
           >
             {COMO_FUNCIONA.map((texto, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  padding: 16,
-                  borderRadius: 12,
-                  background: "var(--color-surface)",
-                  border: "1px solid var(--color-border)",
-                }}
-              >
-                <span
-                  style={{
-                    flexShrink: 0,
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    background: "var(--color-primary)",
-                    color: "var(--color-primary-contrast)",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <span style={{ fontSize: 15, lineHeight: 1.5, color: "var(--color-text)" }}>{texto}</span>
+              <div key={i} className="home-step">
+                <span className="home-step-num">{i + 1}</span>
+                <span className="home-step-text">{texto}</span>
               </div>
             ))}
           </div>
         </section>
 
         {/* Sección editorial */}
-        <section style={{ marginBottom: 48 }}>
-          <h2 style={{ margin: "0 0 20px 0", fontSize: "clamp(20px, 3vw, 24px)", color: "var(--color-accent)" }}>
+        <section className="home-section">
+          <h2 style={{ margin: "0 0 16px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
             Nuestros pilares
           </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: 20,
-            }}
-          >
-            <Card>
-              <div style={{ position: "relative", width: "100%", height: 160, marginBottom: 16 }}>
+          <div className="home-editorial">
+            <div className="home-editorial-item">
+              <div className="home-editorial-img">
                 <Image
                   src="/home/home-conservacion.jpg"
                   alt="Conservación"
                   fill
-                  style={{
-                    objectFit: "cover",
-                    borderRadius: 8,
-                  }}
+                  style={{ objectFit: "cover" }}
                 />
               </div>
-              <h3 style={{ margin: "0 0 8px 0", fontSize: 18, fontWeight: 700, color: "var(--color-accent)" }}>
-                Conservación
-              </h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--color-text-muted)" }}>
-                Protegemos biodiversidad y patrimonio natural y cultural.
-              </p>
-            </Card>
-            <Card>
-              <div style={{ position: "relative", width: "100%", height: 160, marginBottom: 16 }}>
+              <h3>Conservación</h3>
+              <p>Protegemos biodiversidad y patrimonio natural y cultural.</p>
+            </div>
+            <div className="home-editorial-item">
+              <div className="home-editorial-img">
                 <Image
                   src="/home/home-turismo-responsable.jpg"
                   alt="Turismo responsable"
                   fill
-                  style={{
-                    objectFit: "cover",
-                    borderRadius: 8,
-                  }}
+                  style={{ objectFit: "cover" }}
                 />
               </div>
-              <h3 style={{ margin: "0 0 8px 0", fontSize: 18, fontWeight: 700, color: "var(--color-accent)" }}>
-                Turismo responsable
-              </h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--color-text-muted)" }}>
-                Visitá, acampá y recorré minimizando impacto.
-              </p>
-            </Card>
-            <Card>
-              <div style={{ position: "relative", width: "100%", height: 160, marginBottom: 16 }}>
+              <h3>Turismo responsable</h3>
+              <p>Visitá, acampá y recorré minimizando impacto.</p>
+            </div>
+            <div className="home-editorial-item">
+              <div className="home-editorial-img">
                 <Image
                   src="/home/home-experiencias.jpg"
                   alt="Experiencias"
                   fill
-                  style={{
-                    objectFit: "cover",
-                    borderRadius: 8,
-                  }}
+                  style={{ objectFit: "cover" }}
                 />
               </div>
-              <h3 style={{ margin: "0 0 8px 0", fontSize: 18, fontWeight: 700, color: "var(--color-accent)" }}>
-                Experiencias
-              </h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--color-text-muted)" }}>
-                Explorá áreas protegidas con servicios oficiales y planificación.
-              </p>
-            </Card>
+              <h3>Experiencias</h3>
+              <p>Explorá áreas protegidas con servicios oficiales y planificación.</p>
+            </div>
           </div>
         </section>
 
         {/* Campings disponibles */}
-        <section style={{ marginBottom: 48 }}>
+        <section className="home-section">
           <h2 style={{ margin: "0 0 20px 0", fontSize: "clamp(20px, 3vw, 24px)", color: "var(--color-accent)" }}>
             Campings disponibles
           </h2>
