@@ -40,22 +40,39 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px" }}>
-      <div style={{ display: "grid", gap: 10, justifyItems: "start", marginBottom: 12 }}>
+    <main className="admin-login-page" style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px" }}>
+      {/* Desktop: barra superior institucional mínima */}
+      <header className="admin-login-header admin-login-header-desktop">
         <Image
           src="/parques-nacionales-logo.png"
           alt="Administración de Parques Nacionales"
-          width={72}
-          height={72}
+          width={36}
+          height={36}
+          className="admin-login-logo-desktop"
           style={{ height: "auto", objectFit: "contain" }}
           priority
         />
-        <div>
-          <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Acceso exclusivo para operadores</h1>
-          <p style={{ margin: "6px 0 0 0", color: "var(--color-text-muted)", fontSize: 13, opacity: 0.85, maxWidth: 520 }}>
-            Sistema de Reservas — Administración de Parques Nacionales.
-          </p>
-        </div>
+        <span className="admin-login-org-name">Administración de Parques Nacionales</span>
+      </header>
+
+      {/* Mobile: logo chico centrado, mínimo margen */}
+      <div className="admin-login-header admin-login-header-mobile">
+        <Image
+          src="/parques-nacionales-logo.png"
+          alt="Administración de Parques Nacionales"
+          width={32}
+          height={32}
+          className="admin-login-logo-mobile"
+          style={{ height: "auto", objectFit: "contain" }}
+          priority
+        />
+      </div>
+
+      <div className="admin-login-content">
+        <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Acceso exclusivo para operadores</h1>
+        <p style={{ margin: "6px 0 0 0", color: "var(--color-text-muted)", fontSize: 13, opacity: 0.85, maxWidth: 520 }}>
+          Sistema de Reservas — Administración de Parques Nacionales.
+        </p>
       </div>
 
       <Card>
