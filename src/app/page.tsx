@@ -174,32 +174,31 @@ export default function Home() {
 
         {/* Bloque institucional */}
         <section id="institucional" className="home-section">
-          <div style={{ display: "grid", gap: 20 }}>
-            <div>
-              <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(20px, 3vw, 26px)", color: "var(--color-accent)", fontWeight: 700 }}>
-                Administración de Parques Nacionales
-              </h2>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  color: "var(--color-text)",
-                  maxWidth: 720,
-                }}
-              >
-                Organismo responsable de la gestión y conservación de las áreas protegidas de la República Argentina.
-                Promovemos la preservación del patrimonio natural y cultural, el turismo sostenible, la educación
-                ambiental y el uso responsable de los espacios naturales.
-              </p>
-            </div>
+          <div className="apn-editorial-block">
+            <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(20px, 3vw, 26px)", color: "var(--color-accent)", fontWeight: 700 }}>
+              Administración de Parques Nacionales
+            </h2>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                lineHeight: 1.65,
+                color: "var(--color-text)",
+              }}
+            >
+              Organismo responsable de la gestión y conservación de las áreas protegidas de la República Argentina.
+              Promovemos la preservación del patrimonio natural y cultural, el turismo sostenible, la educación
+              ambiental y el uso responsable de los espacios naturales.
+            </p>
             <div
               style={{
                 padding: "12px 16px",
                 borderRadius: 8,
                 background: "var(--color-surface)",
                 border: "1px solid var(--color-border)",
-                maxWidth: 720,
+                marginLeft: "auto",
+                marginRight: "auto",
+                maxWidth: "100%",
               }}
             >
               <p

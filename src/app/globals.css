@@ -260,6 +260,17 @@ select, input, textarea, button {
   margin-bottom: 0;
 }
 
+/* Bloque editorial institucional APN (manifiesto) */
+.apn-editorial-block {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: left;
+  display: grid;
+  gap: 16px;
+  margin-top: 48px;
+  margin-bottom: 56px;
+}
+
 /* Métricas: cards compactas, sin competir */
 .home-stats {
   display: grid;
