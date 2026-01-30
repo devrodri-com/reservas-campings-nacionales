@@ -27,6 +27,7 @@ import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
+import Modal from "@/components/Modal";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
 
@@ -126,6 +127,8 @@ export default function AdminHomePage() {
   const [walkInEdad, setWalkInEdad] = useState<number>(30);
 
   const [fromDate, setFromDate] = useState<string>(todayYmd());
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailReserva, setDetailReserva] = useState<Reserva | null>(null);
 
   const loadReservasForCamping = async (campingId: string): Promise<Reserva[]> => {
     const resSnap = await getDocs(
@@ -354,6 +357,15 @@ export default function AdminHomePage() {
     if (origen === "public") return { text: "Web", tone: "gray" };
     return { text: origen || "-", tone: "gray" };
   }
+
+  const openDetail = (r: Reserva) => {
+    setDetailReserva(r);
+    setDetailOpen(true);
+  };
+  const closeDetail = () => {
+    setDetailOpen(false);
+    setDetailReserva(null);
+  };
 
   // KPIs
   const nowMs = Date.now();
@@ -1102,6 +1114,7 @@ export default function AdminHomePage() {
                   <Th>Personas</Th>
                   <Th>Total</Th>
                   <Th>Origen</Th>
+                  <Th>Detalle</Th>
                   <Th>Acciones</Th>
                 </tr>
               </thead>
@@ -1126,6 +1139,15 @@ export default function AdminHomePage() {
                       <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
                       <Td>
                         <Badge text={origenB.text} tone={origenB.tone} />
+                      </Td>
+                      <Td>
+                        <Button
+                          variant="ghost"
+                          onClick={() => openDetail(r)}
+                          style={{ padding: "6px 10px" }}
+                        >
+                          Ver
+                        </Button>
                       </Td>
                     <Td>
                       {!canCreateOrCancel ? (
@@ -1173,6 +1195,91 @@ export default function AdminHomePage() {
           )}
         </Card>
       </div>
+
+      <Modal
+        open={detailOpen && !!detailReserva}
+        title="Detalle de reserva"
+        onClose={closeDetail}
+      >
+        {detailReserva ? (
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontWeight: 800, color: "var(--color-accent)" }}>
+                {detailReserva.titularNombre}
+              </div>
+              <div style={{ color: "var(--color-text-muted)" }}>
+                {detailReserva.titularEmail}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <div><strong>Reserva ID:</strong> {detailReserva.id}</div>
+              <div><strong>Fechas:</strong> {formatYmdToDmy(detailReserva.checkInDate)} → {formatYmdToDmy(detailReserva.checkOutDate)}</div>
+              <div><strong>Noches:</strong> {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}</div>
+              <div><strong>Parcelas:</strong> {detailReserva.parcelas}</div>
+              <div><strong>Personas:</strong> {detailReserva.adultos} adultos / {detailReserva.menores} menores</div>
+              <div><strong>Total:</strong> ${detailReserva.montoTotalArs.toLocaleString("es-AR")}</div>
+
+              {/* PII: ocultar a viewer */}
+              {profile?.role === "viewer" ? (
+                <>
+                  <div><strong>Teléfono:</strong> —</div>
+                  <div><strong>Edad:</strong> —</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div><strong>Teléfono:</strong> {detailReserva.titularTelefono}</div>
+                    <Button
+                      variant="ghost"
+                      style={{ padding: "6px 10px" }}
+                      onClick={() => navigator.clipboard.writeText(detailReserva.titularTelefono)}
+                    >
+                      Copiar
+                    </Button>
+                    <a href={`tel:${detailReserva.titularTelefono}`} style={{ textDecoration: "none" }}>
+                      <Button variant="secondary" style={{ padding: "6px 10px" }}>
+                        Llamar
+                      </Button>
+                    </a>
+                  </div>
+                  <div><strong>Edad:</strong> {detailReserva.titularEdad}</div>
+                </>
+              )}
+
+              <div><strong>Estado:</strong> {estadoBadge(detailReserva.estado).text}</div>
+              <div><strong>Origen:</strong> {origenBadge(detailReserva.createdByMode ?? "").text}</div>
+              <div><strong>Creada:</strong> {new Date(detailReserva.createdAtMs).toLocaleString("es-AR")}</div>
+
+              {detailReserva.expiresAtMs ? (
+                <div><strong>Vence:</strong> {new Date(detailReserva.expiresAtMs).toLocaleString("es-AR")}</div>
+              ) : null}
+
+              {detailReserva.paidAtMs ? (
+                <div><strong>Pagada:</strong> {new Date(detailReserva.paidAtMs).toLocaleString("es-AR")}</div>
+              ) : null}
+
+              {detailReserva.cancelMotivo ? (
+                <div>
+                  <strong>Motivo cancelación:</strong> {detailReserva.cancelMotivo}
+                </div>
+              ) : null}
+
+              {detailReserva.mpPreferenceId ? (
+                <div><strong>MP Preference:</strong> {detailReserva.mpPreferenceId}</div>
+              ) : null}
+
+              {detailReserva.mpPaymentId ? (
+                <div><strong>MP Payment:</strong> {detailReserva.mpPaymentId}</div>
+              ) : null}
+
+              {detailReserva.paymentStatus ? (
+                <div><strong>Payment status:</strong> {detailReserva.paymentStatus}</div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </main>
   );
 }
