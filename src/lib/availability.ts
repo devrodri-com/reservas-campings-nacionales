@@ -1,4 +1,3 @@
-import type { Reserva } from "@/types/reserva";
 import { enumerateNights, parseYmd, toYmd } from "@/lib/dates";
 
 export type AvailabilityDay = {
@@ -7,11 +6,17 @@ export type AvailabilityDay = {
   disponibles: number;
 };
 
+type ReservaMinimal = {
+  checkInDate: string;
+  checkOutDate: string;
+  parcelas: number;
+};
+
 export function buildAvailabilityForRange(params: {
   fromDate: string; // YYYY-MM-DD
   days: number;
   capacidadParcelas: number;
-  reservas: Reserva[]; // pagadas + pendientes no expiradas (bloquean disponibilidad)
+  reservas: ReservaMinimal[]; // pagadas + pendientes no expiradas (bloquean disponibilidad)
 }): AvailabilityDay[] {
   const { fromDate, days, capacidadParcelas, reservas } = params;
 

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection } from "firebase/firestore";
+import { doc, setDoc, collection } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { Camping } from "@/types/camping";
 import type { Reserva } from "@/types/reserva";
 import type { ReservaCreateInput } from "@/types/reservaCreate";
 import { fetchCampings } from "@/lib/campingsRepo";
-import { fetchReservasByCamping } from "@/lib/reservasRepo";
+import { fetchReservasPublicByCamping, type ReservaPublic } from "@/lib/reservasRepo";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { enumerateNights, todayYmd, addDaysYmd } from "@/lib/dates";
 import { formatArs } from "@/lib/money";
@@ -140,6 +140,7 @@ export default function ReservarClient() {
       setError(null);
       try {
         const list = await fetchCampings();
+        console.log("OK fetchCampings");
         setCampings(list);
         const initialId =
           preselectedCampingId && list.some((c) => c.id === preselectedCampingId)
@@ -147,6 +148,7 @@ export default function ReservarClient() {
             : (list[0]?.id ?? "");
         setCampingId(initialId);
       } catch (e) {
+        console.log("FAIL fetchCampings", e);
         setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
         setLoadingCampings(false);
@@ -202,7 +204,14 @@ export default function ReservarClient() {
       const uid = await ensureSignedInGuest();
 
       // 2) Chequear disponibilidad (solo reservas pagadas bloquean)
-      const all = await fetchReservasByCamping(selectedCamping.id);
+      let all: ReservaPublic[];
+      try {
+        all = await fetchReservasPublicByCamping(selectedCamping.id);
+        console.log("OK fetchReservasPublicByCamping");
+      } catch (e) {
+        console.log("FAIL fetchReservasPublicByCamping", e);
+        throw e;
+      }
       const bloquean = all.filter(
         (r) =>
           r.estado === "pagada" ||
@@ -261,9 +270,31 @@ export default function ReservarClient() {
         expiresAtMs: Date.now() + 15 * 60 * 1000, // 15 min hold
       };
 
-      const created = await addDoc(collection(db, "reservas"), docReserva);
+      // Crear doc con mismo id en ambas colecciones
+      const docRef = doc(collection(db, "reservas"));
+      const docRefPub = doc(db, "reservas_public", docRef.id);
 
-      router.push(`/reserva/confirmada/${created.id}`);
+      const docReservaPublic: Omit<ReservaPublic, "id"> = {
+        campingId: docReserva.campingId,
+        checkInDate: docReserva.checkInDate,
+        checkOutDate: docReserva.checkOutDate,
+        parcelas: docReserva.parcelas,
+        estado: docReserva.estado,
+        expiresAtMs: docReserva.expiresAtMs,
+        createdAtMs: docReserva.createdAtMs,
+        createdByUid: docReserva.createdByUid,
+      };
+
+      try {
+        await setDoc(docRef, docReserva);
+        await setDoc(docRefPub, docReservaPublic);
+        console.log("OK setDoc reservas + reservas_public");
+      } catch (e) {
+        console.log("FAIL setDoc reservas/reservas_public", e);
+        throw e;
+      }
+
+      router.push(`/reserva/confirmada/${docRef.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {

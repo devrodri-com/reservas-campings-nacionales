@@ -142,7 +142,7 @@ export default function ConfirmadaClient() {
   }, [reserva, paid, load]);
 
   return (
-    <main style={{ padding: 24, maxWidth: 720 }}>
+    <main className="confirmada-main" style={{ padding: 24, maxWidth: 720 }}>
       <h1>Reserva confirmada</h1>
 
       {error ? <p style={{ color: "red" }}>{error}</p> : null}

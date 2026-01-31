@@ -71,3 +71,48 @@ export async function fetchReservasByCamping(campingId: string): Promise<Reserva
 
   return out;
 }
+
+// Tipo público (sin PII)
+export type ReservaPublic = {
+  id: string;
+  campingId: string;
+  checkInDate: string;
+  checkOutDate: string;
+  parcelas: number;
+  estado: ReservaEstado;
+  expiresAtMs?: number;
+  createdAtMs: number;
+  createdByUid?: string;
+};
+
+type ReservaPublicDoc = Omit<ReservaPublic, "id">;
+
+function isReservaPublicDoc(v: unknown): v is ReservaPublicDoc {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+
+  return (
+    typeof o.campingId === "string" &&
+    typeof o.checkInDate === "string" &&
+    typeof o.checkOutDate === "string" &&
+    typeof o.parcelas === "number" &&
+    isReservaEstado(o.estado) &&
+    typeof o.createdAtMs === "number" &&
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
+    (o.createdByUid === undefined || typeof o.createdByUid === "string")
+  );
+}
+
+export async function fetchReservasPublicByCamping(campingId: string): Promise<ReservaPublic[]> {
+  const snap = await getDocs(
+    query(collection(db, "reservas_public"), where("campingId", "==", campingId))
+  );
+
+  const out: ReservaPublic[] = [];
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    if (isReservaPublicDoc(data)) out.push({ id: d.id, ...data });
+  });
+
+  return out;
+}
