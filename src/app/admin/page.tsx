@@ -28,6 +28,7 @@ import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
 import Modal from "@/components/Modal";
+import { SunIcon, MoonIcon } from "@/components/icons";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
 
@@ -129,6 +130,7 @@ export default function AdminHomePage() {
   const [fromDate, setFromDate] = useState<string>(todayYmd());
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailReserva, setDetailReserva] = useState<Reserva | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const loadReservasForCamping = async (campingId: string): Promise<Reserva[]> => {
     const resSnap = await getDocs(
@@ -144,6 +146,20 @@ export default function AdminHomePage() {
     items.sort((a, b) => b.createdAtMs - a.createdAtMs);
     return items;
   };
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      setTheme(stored);
+      if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
+      return;
+    }
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+    if (prefersDark) {
+      setTheme("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -365,6 +381,18 @@ export default function AdminHomePage() {
   const closeDetail = () => {
     setDetailOpen(false);
     setDetailReserva(null);
+  };
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    if (next === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+      window.localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      window.localStorage.setItem("theme", "light");
+    }
   };
 
   // KPIs
@@ -840,6 +868,15 @@ export default function AdminHomePage() {
             Campings
           </Button>
         ) : null}
+        <Button
+          variant="ghost"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
+          style={{ width: 40, height: 40, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+        >
+          {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
+        </Button>
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", rowGap: 10 }}>
