@@ -15,7 +15,6 @@ const ITEMS: NavItem[] = [
   { href: "/", label: "Inicio" },
   { href: "/reservar", label: "Reservar" },
   { href: "/consultar", label: "Consultar" },
-  { href: "/admin/login", label: "Ingresar" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -61,7 +60,7 @@ export default function NavBar() {
     }
   };
 
-  if (pathname === "/admin/login") return null;
+  if (pathname.startsWith("/admin")) return null;
 
   return (
     <header

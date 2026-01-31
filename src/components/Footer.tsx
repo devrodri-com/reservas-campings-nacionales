@@ -59,6 +59,9 @@ export default function Footer() {
               <Link href="#" style={{ color: "var(--color-text-muted)", textDecoration: "none" }}>
                 (Pendiente) Contacto
               </Link>
+              <Link href="/admin/login" style={{ color: "var(--color-text-muted)", textDecoration: "none" }}>
+                Acceso operadores
+              </Link>
             </div>
           </div>
         </Card>
