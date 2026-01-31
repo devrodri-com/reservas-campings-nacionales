@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as unknown;
+    // parse robusto (por si el body viene vacío o no-json)
+    const raw = await req.text();
+    let reservaId: string | null = null;
 
-    if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Body inválido" }, { status: 400 });
+    try {
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+      if (parsed && typeof parsed === "object") {
+        const v = (parsed as Record<string, unknown>).reservaId;
+        if (typeof v === "string") reservaId = v;
+      }
+    } catch {
+      // ignore parse errors
     }
 
-    const reservaId = (body as Record<string, unknown>).reservaId;
-
-    if (typeof reservaId !== "string" || !reservaId.trim()) {
+    if (!reservaId || !reservaId.trim()) {
       return NextResponse.json({ error: "reservaId requerido" }, { status: 400 });
     }
 
