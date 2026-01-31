@@ -7,6 +7,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { Card, Button } from "@/components/ui";
+import { SunIcon, MoonIcon } from "@/components/icons";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -24,15 +25,36 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const prev = document.documentElement.getAttribute("data-theme");
-    document.documentElement.setAttribute("data-theme", "dark");
-    return () => {
-      if (prev) document.documentElement.setAttribute("data-theme", prev);
+    const stored = window.localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      setTheme(stored);
+      if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
       else document.documentElement.removeAttribute("data-theme");
-    };
+      return;
+    }
+
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+    if (prefersDark) {
+      setTheme("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
   }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+
+    if (next === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+      window.localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      window.localStorage.setItem("theme", "light");
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,29 +74,89 @@ export default function AdminLoginPage() {
     <main className="admin-login-page">
       {/* Desktop: barra superior institucional mínima */}
       <header className="admin-login-header admin-login-header-desktop">
-        <Image
-          src="/parques-nacionales-logo.png"
-          alt="Administración de Parques Nacionales"
-          width={36}
-          height={36}
-          className="admin-login-logo-desktop"
-          style={{ height: "auto", objectFit: "contain" }}
-          priority
-        />
-        <span className="admin-login-org-name">Administración de Parques Nacionales</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            width: "100%",
+          }}
+        >
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <Image
+              src="/parques-nacionales-logo.png"
+              alt="Administración de Parques Nacionales"
+              width={36}
+              height={36}
+              className="admin-login-logo-desktop"
+              style={{ height: "auto", objectFit: "contain" }}
+              priority
+            />
+            <span className="admin-login-org-name">Administración de Parques Nacionales</span>
+          </div>
+
+          <Button
+            variant="ghost"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
+            style={{
+              width: 40,
+              height: 40,
+              padding: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
+          </Button>
+        </div>
       </header>
 
       {/* Mobile: logo chico centrado, mínimo margen */}
       <div className="admin-login-header admin-login-header-mobile">
-        <Image
-          src="/parques-nacionales-logo.png"
-          alt="Administración de Parques Nacionales"
-          width={28}
-          height={28}
-          className="admin-login-logo-mobile"
-          style={{ height: "auto", objectFit: "contain" }}
-          priority
-        />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            width: "100%",
+          }}
+        >
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <Image
+              src="/parques-nacionales-logo.png"
+              alt="Administración de Parques Nacionales"
+              width={28}
+              height={28}
+              className="admin-login-logo-mobile"
+              style={{ height: "auto", objectFit: "contain" }}
+              priority
+            />
+          </div>
+
+          <Button
+            variant="ghost"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
+            style={{
+              width: 40,
+              height: 40,
+              padding: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
+          </Button>
+        </div>
       </div>
 
       <div className="admin-login-content">
