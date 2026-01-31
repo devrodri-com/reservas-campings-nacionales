@@ -1,41 +1,60 @@
 import { NextResponse } from "next/server";
-import { doc, updateDoc, deleteField } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { fetchReservaById } from "@/lib/reservasRepo";
-
-type ReqBody = {
-  reservaId: string;
-};
+import { adminDb } from "@/lib/firebaseAdmin";
+import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(req: Request) {
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    const body = (await req.json()) as unknown;
+
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Body inválido" }, { status: 400 });
+    }
+
+    const reservaId = (body as Record<string, unknown>).reservaId;
+
+    if (typeof reservaId !== "string" || !reservaId.trim()) {
+      return NextResponse.json({ error: "reservaId requerido" }, { status: 400 });
+    }
+
+    const db = adminDb();
+    const reservaRef = db.collection("reservas").doc(reservaId);
+    const reservaSnap = await reservaRef.get();
+
+    if (!reservaSnap.exists) {
+      return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+    }
+
+    const data = reservaSnap.data();
+    if (!data || data.estado !== "pendiente_pago") {
+      return NextResponse.json({ error: "Reserva no está pendiente de pago" }, { status: 409 });
+    }
+
+    const paidAtMs = Date.now();
+
+    // Actualizar reservas/{id}
+    await reservaRef.update({
+      estado: "pagada",
+      paymentProvider: "mercadopago",
+      paymentStatus: "approved",
+      paidAtMs,
+      expiresAtMs: FieldValue.delete(),
+    });
+
+    // Actualizar o crear reservas_public/{id} (merge)
+    const publicRef = db.collection("reservas_public").doc(reservaId);
+    await publicRef.set(
+      {
+        estado: "pagada",
+        paidAtMs,
+        expiresAtMs: FieldValue.delete(),
+      },
+      { merge: true }
+    );
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    console.error("mark-paid error:", e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-
-  const b = body as Partial<ReqBody>;
-  if (!b.reservaId || typeof b.reservaId !== "string") {
-    return NextResponse.json({ error: "Missing reservaId" }, { status: 400 });
-  }
-
-  const reserva = await fetchReservaById(b.reservaId);
-  if (!reserva) {
-    return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
-  }
-
-  if (reserva.estado !== "pendiente_pago") {
-    return NextResponse.json({ error: "Reserva no está pendiente de pago" }, { status: 409 });
-  }
-
-  await updateDoc(doc(db, "reservas", reserva.id), {
-    estado: "pagada",
-    paymentProvider: "mercadopago",
-    paymentStatus: "approved",
-    paidAtMs: Date.now(),
-    expiresAtMs: deleteField(),
-  });
-
-  return NextResponse.json({ ok: true }, { status: 200 });
 }

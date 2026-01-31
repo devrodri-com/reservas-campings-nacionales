@@ -75,6 +75,26 @@ npm run dev
 
 Abrir: http://localhost:3000
 
+### Variables de entorno
+
+Crear archivo `.env.local` con:
+
+```bash
+# Firebase client SDK (público)
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+
+# Firebase Admin SDK (servidor - requerido para mark-paid)
+# Pegar el JSON completo del service account como string
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}
+```
+
+> **Nota:** Para obtener el service account JSON, ir a Firebase Console → Project Settings → Service accounts → Generate new private key. Pegar el contenido completo en una sola línea.
+
 ---
 
 ## 👤 Acceso al panel admin

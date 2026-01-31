@@ -129,13 +129,24 @@ export default function ConfirmadaClient() {
 
     (async () => {
       try {
-        await fetch("/api/payments/mercadopago/mark-paid", {
+        const res = await fetch("/api/payments/mercadopago/mark-paid", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reservaId: reserva.id }),
         });
+
+        if (!res.ok) {
+          const text = await res.text();
+          // Permitir reintento si falla
+          markedPaidRef.current = false;
+          setError(`Error al confirmar pago: ${text || "Error desconocido"}`);
+          return;
+        }
+
         await load();
       } catch (e) {
+        // Permitir reintento si falla
+        markedPaidRef.current = false;
         setError(e instanceof Error ? e.message : "Error desconocido");
       }
     })();
@@ -194,17 +205,14 @@ export default function ConfirmadaClient() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ reservaId: reserva.id }),
                         });
-                        const json = (await res.json()) as { error?: string; checkoutUrl?: string; preferenceId?: string };
+
                         if (!res.ok) {
-                          setPayError(json.error ?? "Error al crear pago");
-                          return;
+                          const t = await res.text();
+                          throw new Error(t || "No se pudo iniciar el pago.");
                         }
-                        const { checkoutUrl } = json;
-                        if (!checkoutUrl) {
-                          setPayError("Respuesta inválida del servidor");
-                          return;
-                        }
-                        router.push(checkoutUrl);
+
+                        const data = (await res.json()) as { checkoutUrl: string; preferenceId: string };
+                        router.push(data.checkoutUrl);
                       } catch (e) {
                         setPayError(e instanceof Error ? e.message : "Error desconocido");
                       } finally {

@@ -10,8 +10,10 @@ import {
   doc,
   getDocs,
   query,
+  setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
@@ -147,6 +149,25 @@ export default function AdminHomePage() {
     return items;
   };
 
+  const expireStalePendings = async (reservas: Reserva[]): Promise<boolean> => {
+    const now = Date.now();
+    const vencidas = reservas.filter(
+      (r) =>
+        r.estado === "pendiente_pago" &&
+        typeof r.expiresAtMs === "number" &&
+        r.expiresAtMs < now
+    );
+    if (vencidas.length === 0) return false;
+
+    const batch = writeBatch(db);
+    for (const r of vencidas) {
+      batch.update(doc(db, "reservas", r.id), { estado: "fallida" });
+      batch.set(doc(db, "reservas_public", r.id), { estado: "fallida" }, { merge: true });
+    }
+    await batch.commit();
+    return true;
+  };
+
   useEffect(() => {
     const stored = window.localStorage.getItem("theme");
     if (stored === "dark" || stored === "light") {
@@ -230,9 +251,10 @@ export default function AdminHomePage() {
 
         setCamping(selected);
 
-        // C) Cargar reservas del camping seleccionado
+        // C) Cargar reservas del camping seleccionado y expirar pendientes vencidas
         const items = await loadReservasForCamping(selected.id);
-        setReservas(items);
+        const didExpire = await expireStalePendings(items);
+        setReservas(didExpire ? await loadReservasForCamping(selected.id) : items);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error desconocido");
       }
@@ -478,6 +500,7 @@ export default function AdminHomePage() {
         estado: "cancelada",
         cancelMotivo: motivo.trim(),
       });
+      await setDoc(doc(db, "reservas_public", reservaId), { estado: "cancelada" }, { merge: true });
 
       if (camping) {
         const items = await loadReservasForCamping(camping.id);
@@ -500,6 +523,11 @@ export default function AdminHomePage() {
         paidAtMs: Date.now(),
         expiresAtMs: deleteField(),
       });
+      await setDoc(
+        doc(db, "reservas_public", reservaId),
+        { estado: "pagada", paidAtMs: Date.now(), expiresAtMs: deleteField() },
+        { merge: true }
+      );
       if (camping) {
         const items = await loadReservasForCamping(camping.id);
         setReservas(items);
@@ -519,6 +547,7 @@ export default function AdminHomePage() {
         estado: "fallida",
         paymentStatus: "cancelled",
       });
+      await setDoc(doc(db, "reservas_public", reservaId), { estado: "fallida" }, { merge: true });
       if (camping) {
         const items = await loadReservasForCamping(camping.id);
         setReservas(items);
