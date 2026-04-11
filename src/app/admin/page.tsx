@@ -31,8 +31,43 @@ import type { SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
 import Modal from "@/components/Modal";
 import { SunIcon, MoonIcon } from "@/components/icons";
+import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
+import { fetchUnitsByCamping, updateUnit } from "@/lib/unitsRepo";
+import {
+  fetchUnitBlocksByCamping,
+  createUnitBlock,
+  deleteUnitBlock,
+} from "@/lib/unitBlocksRepo";
+import type { UnitType } from "@/types/unitType";
+import type { Unit } from "@/types/unit";
+import type { UnitBlock } from "@/types/unitBlock";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
+
+type UnitAvailabilityRow = {
+  unit: Unit;
+  isAvailable: boolean;
+  reason: string;
+};
+
+function rangeAvailabilityBadge(row: Pick<UnitAvailabilityRow, "reason" | "isAvailable">): {
+  text: string;
+  tone: "green" | "yellow" | "red" | "gray";
+} {
+  if (row.isAvailable) {
+    return { text: "Disponible en el rango", tone: "green" };
+  }
+  switch (row.reason) {
+    case "Reservada":
+      return { text: "Reservada en el rango", tone: "red" };
+    case "Bloqueo por rango":
+      return { text: "Bloqueada en el rango", tone: "yellow" };
+    case "Estado operativo":
+      return { text: "No disponible por estado", tone: "gray" };
+    default:
+      return { text: row.reason, tone: "gray" };
+  }
+}
 
 type CampingDoc = Omit<Camping, "id">;
 
@@ -49,7 +84,10 @@ function isCampingDoc(v: unknown): v is CampingDoc {
     typeof o.maxPersonasPorParcela === "number" &&
     typeof o.checkInHour === "number" &&
     typeof o.checkOutHour === "number" &&
-    typeof o.activo === "boolean"
+    typeof o.activo === "boolean" &&
+    (o.inventoryMode === undefined ||
+      o.inventoryMode === "capacity" ||
+      o.inventoryMode === "unit_based")
   );
 }
 
@@ -120,6 +158,7 @@ export default function AdminHomePage() {
   const [walkInCheckIn, setWalkInCheckIn] = useState<string>(addDaysYmd(todayYmd(), 1));
   const [walkInCheckOut, setWalkInCheckOut] = useState<string>(addDaysYmd(todayYmd(), 2));
   const [walkInParcelas, setWalkInParcelas] = useState<number>(1);
+  const [walkInUnitId, setWalkInUnitId] = useState<string>("");
   const [walkInAdultos, setWalkInAdultos] = useState<number>(2);
   const [walkInMenores, setWalkInMenores] = useState<number>(0);
   const [walkInNombre, setWalkInNombre] = useState("");
@@ -133,6 +172,12 @@ export default function AdminHomePage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailReserva, setDetailReserva] = useState<Reserva | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [unitBlocks, setUnitBlocks] = useState<UnitBlock[]>([]);
+  const [selectedUnitForBlock, setSelectedUnitForBlock] = useState<Unit | null>(null);
+  const [blockFromDate, setBlockFromDate] = useState<string>(todayYmd());
+  const [blockToDate, setBlockToDate] = useState<string>(addDaysYmd(todayYmd(), 1));
 
   const loadReservasForCamping = async (campingId: string): Promise<Reserva[]> => {
     const resSnap = await getDocs(
@@ -246,10 +291,28 @@ export default function AdminHomePage() {
           setError("No hay campings válidos cargados en Firestore.");
           setCamping(null);
           setReservas([]);
+          setUnitTypes([]);
+          setUnits([]);
+          setUnitBlocks([]);
           return;
         }
 
         setCamping(selected);
+
+        if (selected.inventoryMode === "unit_based") {
+          const [types, us, blocks] = await Promise.all([
+            fetchUnitTypesByCamping(selected.id),
+            fetchUnitsByCamping(selected.id),
+            fetchUnitBlocksByCamping(selected.id),
+          ]);
+          setUnitTypes(types);
+          setUnits(us);
+          setUnitBlocks(blocks);
+        } else {
+          setUnitTypes([]);
+          setUnits([]);
+          setUnitBlocks([]);
+        }
 
         // C) Cargar reservas del camping seleccionado y expirar pendientes vencidas
         const items = await loadReservasForCamping(selected.id);
@@ -274,6 +337,21 @@ export default function AdminHomePage() {
     [campings]
   );
 
+  const unitTypeById = useMemo(() => {
+    const map = new Map<string, UnitType>();
+    unitTypes.forEach((t) => map.set(t.id, t));
+    return map;
+  }, [unitTypes]);
+
+  const unitOptions: SelectOption[] = useMemo(() => {
+    return units
+      .filter((u) => u.active)
+      .map((u) => ({
+        value: u.id,
+        label: `${u.displayName} (${unitTypeById.get(u.unitTypeId)?.name ?? ""})`,
+      }));
+  }, [units, unitTypeById]);
+
   const reservasQueBloquean = useMemo(
     () =>
       reservas.filter(
@@ -287,6 +365,44 @@ export default function AdminHomePage() {
   );
 
   const rangeEndDate = useMemo(() => toDate || fromDate, [toDate, fromDate]);
+
+  const unitAvailability = useMemo((): UnitAvailabilityRow[] => {
+    if (!camping || camping.inventoryMode !== "unit_based") return [];
+    if (!fromDate || !rangeEndDate) return [];
+
+    const nowMs = Date.now();
+
+    return units.map((unit) => {
+      if (unit.operationalStatus !== "available") {
+        return { unit, isAvailable: false, reason: "Estado operativo" };
+      }
+
+      const blockedByRange = unitBlocks.some(
+        (b) =>
+          b.unitId === unit.id && b.fromDate < rangeEndDate && b.toDate > fromDate
+      );
+      if (blockedByRange) {
+        return { unit, isAvailable: false, reason: "Bloqueo por rango" };
+      }
+
+      const hasReserva = reservas.some(
+        (r) =>
+          r.campingId === camping.id &&
+          r.unitId === unit.id &&
+          (r.estado === "pagada" ||
+            (r.estado === "pendiente_pago" &&
+              typeof r.expiresAtMs === "number" &&
+              r.expiresAtMs > nowMs)) &&
+          r.checkInDate < rangeEndDate &&
+          r.checkOutDate > fromDate
+      );
+      if (hasReserva) {
+        return { unit, isAvailable: false, reason: "Reservada" };
+      }
+
+      return { unit, isAvailable: true, reason: "Disponible" };
+    });
+  }, [camping, units, unitBlocks, reservas, fromDate, rangeEndDate]);
 
   const days = useMemo(() => {
     const n = enumerateNights(fromDate, rangeEndDate).length;
@@ -390,6 +506,19 @@ export default function AdminHomePage() {
     }
   }
 
+  function unitStatusBadge(status: string): { text: string; tone: "green" | "yellow" | "red" | "gray" } {
+    switch (status) {
+      case "available":
+        return { text: "Disponible", tone: "green" };
+      case "blocked":
+        return { text: "Bloqueada", tone: "yellow" };
+      case "maintenance":
+        return { text: "Mantenimiento", tone: "red" };
+      default:
+        return { text: status, tone: "gray" };
+    }
+  }
+
   function origenBadge(origen: string): { text: string; tone: "blue" | "gray" } {
     if (origen === "admin") return { text: "Admin", tone: "blue" };
     if (origen === "public") return { text: "Web", tone: "gray" };
@@ -414,6 +543,69 @@ export default function AdminHomePage() {
     } else {
       document.documentElement.removeAttribute("data-theme");
       window.localStorage.setItem("theme", "light");
+    }
+  };
+
+  const setUnitOperationalStatus = async (
+    unitId: string,
+    status: "available" | "blocked" | "maintenance"
+  ) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateUnit(unitId, { operationalStatus: status });
+      if (camping?.inventoryMode === "unit_based") {
+        const refreshedUnits = await fetchUnitsByCamping(camping.id);
+        setUnits(refreshedUnits);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCreateBlock = async () => {
+    if (!camping || !selectedUnitForBlock) return;
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      await createUnitBlock({
+        campingId: camping.id,
+        unitId: selectedUnitForBlock.id,
+        fromDate: blockFromDate,
+        toDate: blockToDate,
+        blockType: "manual_block",
+        createdByUid: user?.uid ?? "admin",
+      });
+
+      const refreshed = await fetchUnitBlocksByCamping(camping.id);
+      setUnitBlocks(refreshed);
+
+      setSelectedUnitForBlock(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteBlock = async (blockId: string) => {
+    if (!camping) return;
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      await deleteUnitBlock(blockId);
+      const refreshed = await fetchUnitBlocksByCamping(camping.id);
+      setUnitBlocks(refreshed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -574,17 +766,46 @@ export default function AdminHomePage() {
         return;
       }
 
-      const totalPersonas = walkInAdultos + walkInMenores;
-      if (totalPersonas <= 0) {
-        setError("Debe haber al menos 1 persona.");
-        setBusy(false);
-        return;
-      }
+      const isUnitBased = camping.inventoryMode === "unit_based";
 
-      if (totalPersonas > walkInParcelas * camping.maxPersonasPorParcela) {
-        setError(`Excede el máximo: ${camping.maxPersonasPorParcela} personas por parcela.`);
-        setBusy(false);
-        return;
+      if (isUnitBased) {
+        if (!walkInUnitId) {
+          setError("Debés seleccionar una unidad.");
+          setBusy(false);
+          return;
+        }
+        const su = units.find((u) => u.id === walkInUnitId);
+        if (!su) {
+          setError("Unidad no válida.");
+          setBusy(false);
+          return;
+        }
+        const ut = unitTypeById.get(su.unitTypeId);
+        const maxPorUnidad = ut?.capacityMax ?? camping.maxPersonasPorParcela;
+        const totalPersonasUb = walkInAdultos + walkInMenores;
+        if (totalPersonasUb <= 0) {
+          setError("Debe haber al menos 1 persona.");
+          setBusy(false);
+          return;
+        }
+        if (totalPersonasUb > maxPorUnidad) {
+          setError(`Excede el máximo de la unidad: ${maxPorUnidad} persona(s).`);
+          setBusy(false);
+          return;
+        }
+      } else {
+        const totalPersonas = walkInAdultos + walkInMenores;
+        if (totalPersonas <= 0) {
+          setError("Debe haber al menos 1 persona.");
+          setBusy(false);
+          return;
+        }
+
+        if (totalPersonas > walkInParcelas * camping.maxPersonasPorParcela) {
+          setError(`Excede el máximo: ${camping.maxPersonasPorParcela} personas por parcela.`);
+          setBusy(false);
+          return;
+        }
       }
 
       if (!walkInNombre.trim() || !walkInEmail.trim() || !composePhone({ countryCode: walkInTelefonoPais, number: walkInTelefonoNumero, manualDialCode: walkInTelefonoDialManual }).trim()) {
@@ -599,7 +820,6 @@ export default function AdminHomePage() {
         return;
       }
 
-      // Validar disponibilidad (pagadas + pendientes no expiradas bloquean)
       const all = await loadReservasForCamping(camping.id);
       const bloquean = all.filter(
         (r) =>
@@ -609,28 +829,73 @@ export default function AdminHomePage() {
             r.expiresAtMs > Date.now())
       );
 
-      const availability = buildAvailabilityForRange({
-        fromDate: walkInCheckIn,
-        days: noches,
-        capacidadParcelas: camping.capacidadParcelas,
-        reservas: bloquean,
-      });
+      const parcelasNeeded = isUnitBased ? 1 : walkInParcelas;
 
-      const noDisponible = availability.find((d) => d.disponibles < walkInParcelas);
-      if (noDisponible) {
-        setError(`No hay disponibilidad suficiente para ${walkInParcelas} parcela(s) el día ${noDisponible.date}.`);
-        setBusy(false);
-        return;
+      if (isUnitBased) {
+        const suWalkIn = units.find((u) => u.id === walkInUnitId);
+        if (!suWalkIn) {
+          setError("Unidad no válida.");
+          setBusy(false);
+          return;
+        }
+        if (suWalkIn.operationalStatus !== "available") {
+          setError("La unidad seleccionada no está disponible por estado operativo.");
+          setBusy(false);
+          return;
+        }
+        if (
+          unitBlocks.some(
+            (b) =>
+              b.unitId === suWalkIn.id &&
+              b.fromDate < walkInCheckOut &&
+              b.toDate > walkInCheckIn
+          )
+        ) {
+          setError("La unidad seleccionada tiene un bloqueo en el rango elegido.");
+          setBusy(false);
+          return;
+        }
+        if (
+          bloquean.some(
+            (r) =>
+              r.unitId === suWalkIn.id &&
+              r.checkInDate < walkInCheckOut &&
+              r.checkOutDate > walkInCheckIn
+          )
+        ) {
+          setError("La unidad seleccionada ya está reservada en ese rango.");
+          setBusy(false);
+          return;
+        }
+      } else {
+        const availability = buildAvailabilityForRange({
+          fromDate: walkInCheckIn,
+          days: noches,
+          capacidadParcelas: camping.capacidadParcelas,
+          reservas: bloquean,
+        });
+        const noDisponible = availability.find((d) => d.disponibles < parcelasNeeded);
+        if (noDisponible) {
+          setError(
+            `No hay disponibilidad suficiente para ${walkInParcelas} parcela(s) el día ${noDisponible.date}.`
+          );
+          setBusy(false);
+          return;
+        }
       }
 
       // Crear reserva
-      const montoTotalArs = noches * walkInParcelas * camping.precioNocheArs;
+      const selectedWalkInUnit = isUnitBased ? units.find((u) => u.id === walkInUnitId) : undefined;
+      const walkInUnitType = selectedWalkInUnit ? unitTypeById.get(selectedWalkInUnit.unitTypeId) : undefined;
+      const pricePerNight =
+        isUnitBased && walkInUnitType ? walkInUnitType.basePriceArs : camping.precioNocheArs;
+      const montoTotalArs = noches * parcelasNeeded * pricePerNight;
 
       const docReserva: ReservaDoc = {
         campingId: camping.id,
         checkInDate: walkInCheckIn,
         checkOutDate: walkInCheckOut,
-        parcelas: walkInParcelas,
+        parcelas: isUnitBased ? 1 : walkInParcelas,
         adultos: walkInAdultos,
         menores: walkInMenores,
         titularNombre: walkInNombre.trim(),
@@ -649,6 +914,13 @@ export default function AdminHomePage() {
         paymentProvider: "mercadopago",
         paymentStatus: "approved",
         paidAtMs: Date.now(),
+        ...(isUnitBased && walkInUnitId
+          ? {
+              unitId: walkInUnitId,
+              unitTypeId: selectedWalkInUnit?.unitTypeId,
+              assignedBy: "operator" as const,
+            }
+          : {}),
       };
 
       await addDoc(collection(db, "reservas"), docReserva);
@@ -661,6 +933,7 @@ export default function AdminHomePage() {
       setWalkInCheckIn(addDaysYmd(todayYmd(), 1));
       setWalkInCheckOut(addDaysYmd(todayYmd(), 2));
       setWalkInParcelas(1);
+      setWalkInUnitId("");
       setWalkInAdultos(2);
       setWalkInMenores(0);
       setWalkInNombre("");
@@ -1028,27 +1301,39 @@ export default function AdminHomePage() {
                   />
                 </div>
 
-                <SelectDropdown
-                  label="Parcelas"
-                  value={String(walkInParcelas)}
-                  options={parcelasOptions}
-                  onChange={(v) => setWalkInParcelas(Number(v))}
-                  disabled={busy}
-                />
-                <SelectDropdown
-                  label="Adultos"
-                  value={String(walkInAdultos)}
-                  options={adultosOptions}
-                  onChange={(v) => setWalkInAdultos(Number(v))}
-                  disabled={busy}
-                />
-                <SelectDropdown
-                  label="Menores"
-                  value={String(walkInMenores)}
-                  options={menoresOptions}
-                  onChange={(v) => setWalkInMenores(Number(v))}
-                  disabled={busy}
-                />
+                {camping.inventoryMode === "unit_based" ? (
+                  <SelectDropdown
+                    label="Unidad"
+                    value={walkInUnitId}
+                    options={unitOptions}
+                    onChange={setWalkInUnitId}
+                    disabled={busy}
+                  />
+                ) : (
+                  <>
+                    <SelectDropdown
+                      label="Parcelas"
+                      value={String(walkInParcelas)}
+                      options={parcelasOptions}
+                      onChange={(v) => setWalkInParcelas(Number(v))}
+                      disabled={busy}
+                    />
+                    <SelectDropdown
+                      label="Adultos"
+                      value={String(walkInAdultos)}
+                      options={adultosOptions}
+                      onChange={(v) => setWalkInAdultos(Number(v))}
+                      disabled={busy}
+                    />
+                    <SelectDropdown
+                      label="Menores"
+                      value={String(walkInMenores)}
+                      options={menoresOptions}
+                      onChange={(v) => setWalkInMenores(Number(v))}
+                      disabled={busy}
+                    />
+                  </>
+                )}
               </div>
 
               <hr />
@@ -1127,15 +1412,204 @@ export default function AdminHomePage() {
       <div style={{ marginTop: 16 }}>
         <Card title="Camping">
           {camping ? (
-            <p>
-              <strong>{camping.nombre}</strong> - {camping.areaProtegida} - Capacidad:{" "}
-              {camping.capacidadParcelas} parcelas
-            </p>
+            <>
+              <p>
+                <strong>{camping.nombre}</strong> - {camping.areaProtegida} - Capacidad:{" "}
+                {camping.capacidadParcelas} parcelas
+              </p>
+              <p
+                style={{
+                  marginTop: 8,
+                  marginBottom: 0,
+                  fontSize: 13,
+                  color: "var(--color-text-muted)",
+                }}
+              >
+                {camping.inventoryMode === "unit_based" ? (
+                  <>
+                    Modo inventario: por unidad · Tipos: {unitTypes.length} · Unidades: {units.length}
+                  </>
+                ) : (
+                  <>Modo inventario: por capacidad</>
+                )}
+              </p>
+            </>
           ) : (
             <p>Cargando camping…</p>
           )}
         </Card>
       </div>
+
+      {camping?.inventoryMode === "unit_based" ? (
+        <>
+          <div style={{ marginTop: 16 }}>
+            <Card title="Inventario por unidad">
+              {units.length === 0 ? (
+                <p>No hay unidades cargadas para este camping.</p>
+              ) : (
+                <>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "var(--color-text-muted)",
+                      marginTop: 0,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Disponibles: {unitAvailability.filter((r) => r.isAvailable).length} · No disponibles:{" "}
+                    {unitAvailability.filter((r) => !r.isAvailable).length}
+                  </p>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 12,
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    }}
+                  >
+                    {units.map((unit) => {
+                      const ub = unitStatusBadge(unit.operationalStatus);
+                      const availRow = unitAvailability.find((r) => r.unit.id === unit.id);
+                      const rangeB = availRow
+                        ? rangeAvailabilityBadge(availRow)
+                        : { text: "—", tone: "gray" as const };
+                      return (
+                        <div
+                          key={unit.id}
+                          style={{
+                            border: "1px solid var(--color-border)",
+                            borderRadius: 12,
+                            padding: 12,
+                            background: "var(--color-surface)",
+                            display: "grid",
+                            gap: 8,
+                          }}
+                        >
+                          <div style={{ fontWeight: 700 }}>{unit.displayName}</div>
+                          <div style={{ fontSize: 14, color: "var(--color-text-muted)" }}>
+                            {unitTypeById.get(unit.unitTypeId)?.name ?? "Tipo desconocido"}
+                          </div>
+                          <div>
+                            <Badge text={ub.text} tone={ub.tone} />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 12, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>
+                              Rango ({formatYmdToDmy(fromDate)} → {formatYmdToDmy(rangeEndDate)})
+                            </span>
+                            <Badge text={rangeB.text} tone={rangeB.tone} />
+                          </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <Button
+                            variant="ghost"
+                            disabled={busy || unit.operationalStatus === "available"}
+                            onClick={() => setUnitOperationalStatus(unit.id, "available")}
+                            style={{ padding: "6px 10px" }}
+                          >
+                            Disponible
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={busy || unit.operationalStatus === "blocked"}
+                            onClick={() => setUnitOperationalStatus(unit.id, "blocked")}
+                            style={{ padding: "6px 10px" }}
+                          >
+                            Bloquear
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={busy || unit.operationalStatus === "maintenance"}
+                            onClick={() => setUnitOperationalStatus(unit.id, "maintenance")}
+                            style={{ padding: "6px 10px" }}
+                          >
+                            Mantenimiento
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            style={{ padding: "6px 10px" }}
+                            disabled={busy}
+                            onClick={() => setSelectedUnitForBlock(unit)}
+                          >
+                            Bloquear rango
+                          </Button>
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          {unitBlocks
+                            .filter((b) => b.unitId === unit.id)
+                            .map((b) => (
+                              <div key={b.id} style={{ fontSize: 12 }}>
+                                {b.fromDate} → {b.toDate}
+                                <Button
+                                  variant="ghost"
+                                  disabled={busy}
+                                  style={{ padding: "2px 6px", marginLeft: 6 }}
+                                  onClick={() => handleDeleteBlock(b.id)}
+                                >
+                                  ✕
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  </div>
+                </>
+              )}
+            </Card>
+          </div>
+
+          {selectedUnitForBlock ? (
+            <div style={{ marginTop: 16 }}>
+              <Card title={`Bloquear ${selectedUnitForBlock.displayName}`}>
+                <div style={{ display: "grid", gap: 12 }}>
+                  <label style={{ display: "grid", gap: 4 }}>
+                    Desde
+                    <input
+                      type="date"
+                      value={blockFromDate}
+                      onChange={(e) => setBlockFromDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: 10,
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 10,
+                        background: "var(--color-surface)",
+                        color: "var(--color-text)",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 4 }}>
+                    Hasta
+                    <input
+                      type="date"
+                      value={blockToDate}
+                      onChange={(e) => setBlockToDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: 10,
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 10,
+                        background: "var(--color-surface)",
+                        color: "var(--color-text)",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </label>
+
+                  <Button onClick={handleCreateBlock} disabled={busy}>
+                    Crear bloqueo
+                  </Button>
+
+                  <Button variant="ghost" onClick={() => setSelectedUnitForBlock(null)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          ) : null}
+        </>
+      ) : null}
 
       <div style={{ marginTop: 16 }}>
         <Card

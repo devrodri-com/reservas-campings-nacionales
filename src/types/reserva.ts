@@ -1,6 +1,10 @@
 export type ReservaEstado = "pendiente_pago" | "pagada" | "fallida" | "cancelada";
 export type CreatedByMode = "public" | "admin";
 
+export type BookingKind = "overnight" | "day_use";
+export type CheckInStatus = "pending" | "checked_in" | "checked_out";
+export type AssignedBy = "user" | "operator" | "system";
+
 export type Reserva = {
   id: string;
   campingId: string;
@@ -32,4 +36,12 @@ export type Reserva = {
   paidAtMs?: number;
   /** Hold: hasta cuándo bloquea cupo si pendiente_pago. */
   expiresAtMs?: number;
+
+  unitId?: string;
+  unitTypeId?: string;
+  bookingKind?: BookingKind;
+  checkInStatus?: CheckInStatus;
+  assignedBy?: AssignedBy;
+  reassignedFromUnitId?: string;
+  notes?: string;
 };

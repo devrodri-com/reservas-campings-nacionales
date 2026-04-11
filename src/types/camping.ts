@@ -1,3 +1,5 @@
+export type InventoryMode = "capacity" | "unit_based";
+
 export type Camping = {
   id: string;
   areaProtegida: string;
@@ -10,6 +12,7 @@ export type Camping = {
   checkInHour: number;
   checkOutHour: number;
   activo: boolean;
+  inventoryMode?: InventoryMode;
   /** Opcional. Descripción breve para página de detalle. */
   descripcionCorta?: string;
   /** Opcional. URL de Instagram. */
