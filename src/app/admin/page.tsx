@@ -139,6 +139,45 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
   );
 }
 
+function unitAvailableForReservaRange(
+  unit: Unit,
+  reservas: Reserva[],
+  unitBlocks: UnitBlock[],
+  checkInDate: string,
+  checkOutDate: string,
+  ignoreReservaId?: string
+): boolean {
+  if (!unit.active) return false;
+  if (unit.operationalStatus !== "available") return false;
+
+  const blockedInRange = unitBlocks.some(
+    (b) => b.unitId === unit.id && b.fromDate < checkOutDate && b.toDate > checkInDate
+  );
+  if (blockedInRange) return false;
+
+  const nowMs = Date.now();
+  const otherReservaBlocks = reservas.some(
+    (r) =>
+      r.id !== ignoreReservaId &&
+      r.unitId === unit.id &&
+      (r.estado === "pagada" ||
+        (r.estado === "pendiente_pago" &&
+          typeof r.expiresAtMs === "number" &&
+          r.expiresAtMs > nowMs)) &&
+      r.checkInDate < checkOutDate &&
+      r.checkOutDate > checkInDate
+  );
+  if (otherReservaBlocks) return false;
+
+  return true;
+}
+
+const OLD_UNIT_NEXT_STATUS_OPTIONS: SelectOption[] = [
+  { value: "available", label: "Disponible" },
+  { value: "blocked", label: "Bloqueada" },
+  { value: "maintenance", label: "Mantenimiento" },
+];
+
 export default function AdminHomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -171,6 +210,11 @@ export default function AdminHomePage() {
   const [fromDate, setFromDate] = useState<string>(todayYmd());
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailReserva, setDetailReserva] = useState<Reserva | null>(null);
+  const [reassigningReservaId, setReassigningReservaId] = useState<string | null>(null);
+  const [reassignTargetUnitId, setReassignTargetUnitId] = useState<string>("");
+  const [oldUnitNextStatus, setOldUnitNextStatus] = useState<"available" | "blocked" | "maintenance">(
+    "available"
+  );
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -372,6 +416,33 @@ export default function AdminHomePage() {
     );
   }, [detailReserva, units, unitTypeById]);
 
+  const reassignUnitOptions: SelectOption[] = useMemo(() => {
+    if (!detailReserva?.unitId || !camping || camping.inventoryMode !== "unit_based") return [];
+    const current = units.find((u) => u.id === detailReserva.unitId);
+    if (!current) return [];
+
+    const { checkInDate, checkOutDate } = detailReserva;
+    return units
+      .filter(
+        (u) =>
+          u.campingId === camping.id &&
+          u.unitTypeId === current.unitTypeId &&
+          u.id !== current.id &&
+          unitAvailableForReservaRange(
+            u,
+            reservas,
+            unitBlocks,
+            checkInDate,
+            checkOutDate,
+            detailReserva.id
+          )
+      )
+      .map((unit) => ({
+        value: unit.id,
+        label: `${unit.displayName} (${unitTypeById.get(unit.unitTypeId)?.name ?? "Tipo"})`,
+      }));
+  }, [detailReserva, camping, units, reservas, unitBlocks, unitTypeById]);
+
   const reservasQueBloquean = useMemo(
     () =>
       reservas.filter(
@@ -552,6 +623,9 @@ export default function AdminHomePage() {
   const closeDetail = () => {
     setDetailOpen(false);
     setDetailReserva(null);
+    setReassigningReservaId(null);
+    setReassignTargetUnitId("");
+    setOldUnitNextStatus("available");
   };
 
   const toggleTheme = () => {
@@ -766,6 +840,78 @@ export default function AdminHomePage() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReassignReserva = async () => {
+    if (profile?.role === "viewer") return;
+    if (!detailReserva || !camping) return;
+
+    setError(null);
+
+    if (!reassignTargetUnitId.trim()) {
+      setError("Debés seleccionar una unidad de destino.");
+      return;
+    }
+
+    const oldUnit = detailReserva.unitId
+      ? units.find((u) => u.id === detailReserva.unitId)
+      : undefined;
+    const newUnit = units.find((u) => u.id === reassignTargetUnitId);
+
+    if (!oldUnit || !newUnit) {
+      setError("No se pudo reasignar la reserva.");
+      return;
+    }
+    if (newUnit.unitTypeId !== oldUnit.unitTypeId) {
+      setError("No se pudo reasignar la reserva.");
+      return;
+    }
+
+    if (
+      !unitAvailableForReservaRange(
+        newUnit,
+        reservas,
+        unitBlocks,
+        detailReserva.checkInDate,
+        detailReserva.checkOutDate,
+        detailReserva.id
+      )
+    ) {
+      setError("La unidad de destino ya no está disponible en ese rango.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "reservas", detailReserva.id), {
+        unitId: newUnit.id,
+        unitTypeId: newUnit.unitTypeId,
+        reassignedFromUnitId: oldUnit.id,
+      });
+      batch.update(doc(db, "units", oldUnit.id), {
+        operationalStatus: oldUnitNextStatus,
+      });
+      await batch.commit();
+
+      const [items, refreshedUnits] = await Promise.all([
+        loadReservasForCamping(camping.id),
+        fetchUnitsByCamping(camping.id),
+      ]);
+      setReservas(items);
+      setUnits(refreshedUnits);
+
+      const updated = items.find((r) => r.id === detailReserva.id);
+      if (updated) setDetailReserva(updated);
+
+      setReassigningReservaId(null);
+      setReassignTargetUnitId("");
+      setOldUnitNextStatus("available");
+    } catch {
+      setError("No se pudo reasignar la reserva.");
     } finally {
       setBusy(false);
     }
@@ -1792,6 +1938,23 @@ export default function AdminHomePage() {
               <div><strong>Noches:</strong> {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}</div>
               <div><strong>Parcelas:</strong> {detailReserva.parcelas}</div>
               {detailReservaUnitRows}
+              {canCreateOrCancel &&
+              camping?.inventoryMode === "unit_based" &&
+              detailReserva.unitId ? (
+                <div style={{ marginTop: 4 }}>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      setReassigningReservaId(detailReserva.id);
+                      setReassignTargetUnitId("");
+                      setOldUnitNextStatus("available");
+                    }}
+                  >
+                    Reasignar unidad
+                  </Button>
+                </div>
+              ) : null}
               <div><strong>Personas:</strong> {detailReserva.adultos} adultos / {detailReserva.menores} menores</div>
               <div><strong>Total:</strong> ${detailReserva.montoTotalArs.toLocaleString("es-AR")}</div>
 
@@ -1852,6 +2015,52 @@ export default function AdminHomePage() {
                 <div><strong>Payment status:</strong> {detailReserva.paymentStatus}</div>
               ) : null}
             </div>
+
+            {reassigningReservaId === detailReserva.id ? (
+              <div style={{ marginTop: 14 }}>
+                <Card title="Reasignación de unidad">
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <SelectDropdown
+                      label="Nueva unidad"
+                      value={reassignTargetUnitId}
+                      options={reassignUnitOptions}
+                      onChange={setReassignTargetUnitId}
+                      placeholder={
+                        reassignUnitOptions.length ? "Seleccionar…" : "No hay unidades libres en ese rango"
+                      }
+                      disabled={busy}
+                    />
+                    <SelectDropdown
+                      label="Estado de la unidad anterior"
+                      value={oldUnitNextStatus}
+                      options={OLD_UNIT_NEXT_STATUS_OPTIONS}
+                      onChange={(v) => {
+                        if (v === "available" || v === "blocked" || v === "maintenance") {
+                          setOldUnitNextStatus(v);
+                        }
+                      }}
+                      disabled={busy}
+                    />
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <Button variant="secondary" disabled={busy} onClick={() => void handleReassignReserva()}>
+                        Confirmar reasignación
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => {
+                          setReassigningReservaId(null);
+                          setReassignTargetUnitId("");
+                          setOldUnitNextStatus("available");
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Modal>
