@@ -352,6 +352,26 @@ export default function AdminHomePage() {
       }));
   }, [units, unitTypeById]);
 
+  const detailReservaUnitRows = useMemo(() => {
+    if (!detailReserva || (!detailReserva.unitId && !detailReserva.unitTypeId)) return null;
+    const reservaUnit = detailReserva.unitId
+      ? units.find((u) => u.id === detailReserva.unitId)
+      : undefined;
+    const reservaUnitType =
+      (detailReserva.unitTypeId ? unitTypeById.get(detailReserva.unitTypeId) : undefined) ??
+      (reservaUnit ? unitTypeById.get(reservaUnit.unitTypeId) : undefined);
+    return (
+      <>
+        <div>
+          <strong>Unidad:</strong> {reservaUnit?.displayName ?? detailReserva.unitId ?? "—"}
+        </div>
+        <div>
+          <strong>Tipo de unidad:</strong> {reservaUnitType?.name ?? "—"}
+        </div>
+      </>
+    );
+  }, [detailReserva, units, unitTypeById]);
+
   const reservasQueBloquean = useMemo(
     () =>
       reservas.filter(
@@ -1662,6 +1682,7 @@ export default function AdminHomePage() {
                 {reservasEnRango.map((r) => {
                   const estadoB = estadoBadge(r.estado);
                   const origenB = origenBadge(r.createdByMode ?? "");
+                  const rowReservaUnit = r.unitId ? units.find((u) => u.id === r.unitId) : undefined;
                   return (
                     <tr key={r.id}>
                       <Td>
@@ -1671,7 +1692,20 @@ export default function AdminHomePage() {
                         {formatYmdToDmy(r.checkInDate)} → {formatYmdToDmy(r.checkOutDate)}
                       </Td>
                       <Td>
-                        {r.titularNombre} ({r.titularEmail})
+                        <div>
+                          {r.titularNombre} ({r.titularEmail})
+                        </div>
+                        {rowReservaUnit?.displayName ? (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "var(--color-text-muted)",
+                              marginTop: 2,
+                            }}
+                          >
+                            {rowReservaUnit.displayName}
+                          </div>
+                        ) : null}
                       </Td>
                       <Td>
                         {r.adultos}A / {r.menores}M
@@ -1757,6 +1791,7 @@ export default function AdminHomePage() {
               <div><strong>Fechas:</strong> {formatYmdToDmy(detailReserva.checkInDate)} → {formatYmdToDmy(detailReserva.checkOutDate)}</div>
               <div><strong>Noches:</strong> {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}</div>
               <div><strong>Parcelas:</strong> {detailReserva.parcelas}</div>
+              {detailReservaUnitRows}
               <div><strong>Personas:</strong> {detailReserva.adultos} adultos / {detailReserva.menores} menores</div>
               <div><strong>Total:</strong> ${detailReserva.montoTotalArs.toLocaleString("es-AR")}</div>
 
