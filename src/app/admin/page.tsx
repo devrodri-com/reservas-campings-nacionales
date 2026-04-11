@@ -29,7 +29,7 @@ import PhoneFieldSimple, { composePhone } from "@/components/PhoneFieldSimple";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
-import Modal from "@/components/Modal";
+import ReservaDetailModal from "@/components/admin/ReservaDetailModal";
 import { SunIcon, MoonIcon } from "@/components/icons";
 import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
 import { fetchUnitsByCamping, updateUnit } from "@/lib/unitsRepo";
@@ -1916,154 +1916,38 @@ export default function AdminHomePage() {
         </Card>
       </div>
 
-      <Modal
+      <ReservaDetailModal
         open={detailOpen && !!detailReserva}
-        title="Detalle de reserva"
+        detailReserva={detailReserva}
+        canCreateOrCancel={canCreateOrCancel}
+        campingInventoryMode={camping?.inventoryMode}
+        profileRole={profile.role}
+        busy={busy}
+        units={units}
+        unitTypeById={unitTypeById}
+        detailReservaUnitRows={detailReservaUnitRows}
+        reassigningReservaId={reassigningReservaId}
+        reassignTargetUnitId={reassignTargetUnitId}
+        oldUnitNextStatus={oldUnitNextStatus}
+        reassignUnitOptions={reassignUnitOptions}
+        oldUnitNextStatusOptions={OLD_UNIT_NEXT_STATUS_OPTIONS}
+        formatEstadoLabel={(estado) => estadoBadge(estado).text}
+        formatOrigenLabel={(origen) => origenBadge(origen).text}
         onClose={closeDetail}
-      >
-        {detailReserva ? (
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800, color: "var(--color-accent)" }}>
-                {detailReserva.titularNombre}
-              </div>
-              <div style={{ color: "var(--color-text-muted)" }}>
-                {detailReserva.titularEmail}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: 8 }}>
-              <div><strong>Reserva ID:</strong> {detailReserva.id}</div>
-              <div><strong>Fechas:</strong> {formatYmdToDmy(detailReserva.checkInDate)} → {formatYmdToDmy(detailReserva.checkOutDate)}</div>
-              <div><strong>Noches:</strong> {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}</div>
-              <div><strong>Parcelas:</strong> {detailReserva.parcelas}</div>
-              {detailReservaUnitRows}
-              {canCreateOrCancel &&
-              camping?.inventoryMode === "unit_based" &&
-              detailReserva.unitId ? (
-                <div style={{ marginTop: 4 }}>
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      setReassigningReservaId(detailReserva.id);
-                      setReassignTargetUnitId("");
-                      setOldUnitNextStatus("available");
-                    }}
-                  >
-                    Reasignar unidad
-                  </Button>
-                </div>
-              ) : null}
-              <div><strong>Personas:</strong> {detailReserva.adultos} adultos / {detailReserva.menores} menores</div>
-              <div><strong>Total:</strong> ${detailReserva.montoTotalArs.toLocaleString("es-AR")}</div>
-
-              {/* PII: ocultar a viewer */}
-              {profile?.role === "viewer" ? (
-                <>
-                  <div><strong>Teléfono:</strong> —</div>
-                  <div><strong>Edad:</strong> —</div>
-                </>
-              ) : (
-                <>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <div><strong>Teléfono:</strong> {detailReserva.titularTelefono}</div>
-                    <Button
-                      variant="ghost"
-                      style={{ padding: "6px 10px" }}
-                      onClick={() => navigator.clipboard.writeText(detailReserva.titularTelefono)}
-                    >
-                      Copiar
-                    </Button>
-                    <a href={`tel:${detailReserva.titularTelefono}`} style={{ textDecoration: "none" }}>
-                      <Button variant="secondary" style={{ padding: "6px 10px" }}>
-                        Llamar
-                      </Button>
-                    </a>
-                  </div>
-                  <div><strong>Edad:</strong> {detailReserva.titularEdad}</div>
-                </>
-              )}
-
-              <div><strong>Estado:</strong> {estadoBadge(detailReserva.estado).text}</div>
-              <div><strong>Origen:</strong> {origenBadge(detailReserva.createdByMode ?? "").text}</div>
-              <div><strong>Creada:</strong> {new Date(detailReserva.createdAtMs).toLocaleString("es-AR")}</div>
-
-              {detailReserva.expiresAtMs ? (
-                <div><strong>Vence:</strong> {new Date(detailReserva.expiresAtMs).toLocaleString("es-AR")}</div>
-              ) : null}
-
-              {detailReserva.paidAtMs ? (
-                <div><strong>Pagada:</strong> {new Date(detailReserva.paidAtMs).toLocaleString("es-AR")}</div>
-              ) : null}
-
-              {detailReserva.cancelMotivo ? (
-                <div>
-                  <strong>Motivo cancelación:</strong> {detailReserva.cancelMotivo}
-                </div>
-              ) : null}
-
-              {detailReserva.mpPreferenceId ? (
-                <div><strong>MP Preference:</strong> {detailReserva.mpPreferenceId}</div>
-              ) : null}
-
-              {detailReserva.mpPaymentId ? (
-                <div><strong>MP Payment:</strong> {detailReserva.mpPaymentId}</div>
-              ) : null}
-
-              {detailReserva.paymentStatus ? (
-                <div><strong>Payment status:</strong> {detailReserva.paymentStatus}</div>
-              ) : null}
-            </div>
-
-            {reassigningReservaId === detailReserva.id ? (
-              <div style={{ marginTop: 14 }}>
-                <Card title="Reasignación de unidad">
-                  <div style={{ display: "grid", gap: 12 }}>
-                    <SelectDropdown
-                      label="Nueva unidad"
-                      value={reassignTargetUnitId}
-                      options={reassignUnitOptions}
-                      onChange={setReassignTargetUnitId}
-                      placeholder={
-                        reassignUnitOptions.length ? "Seleccionar…" : "No hay unidades libres en ese rango"
-                      }
-                      disabled={busy}
-                    />
-                    <SelectDropdown
-                      label="Estado de la unidad anterior"
-                      value={oldUnitNextStatus}
-                      options={OLD_UNIT_NEXT_STATUS_OPTIONS}
-                      onChange={(v) => {
-                        if (v === "available" || v === "blocked" || v === "maintenance") {
-                          setOldUnitNextStatus(v);
-                        }
-                      }}
-                      disabled={busy}
-                    />
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <Button variant="secondary" disabled={busy} onClick={() => void handleReassignReserva()}>
-                        Confirmar reasignación
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => {
-                          setReassigningReservaId(null);
-                          setReassignTargetUnitId("");
-                          setOldUnitNextStatus("available");
-                        }}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </Modal>
+        onStartReassign={(reservaId) => {
+          setReassigningReservaId(reservaId);
+          setReassignTargetUnitId("");
+          setOldUnitNextStatus("available");
+        }}
+        onCancelReassign={() => {
+          setReassigningReservaId(null);
+          setReassignTargetUnitId("");
+          setOldUnitNextStatus("available");
+        }}
+        onConfirmReassign={() => void handleReassignReserva()}
+        onChangeReassignTargetUnitId={setReassignTargetUnitId}
+        onChangeOldUnitNextStatus={setOldUnitNextStatus}
+      />
     </main>
   );
 }
