@@ -49,6 +49,8 @@ export type UnitInventoryCardProps = {
     text: string;
     tone: "green" | "yellow" | "red" | "gray" | "blue";
   }) => ReactNode;
+
+  todayYmdValue: string;
 };
 
 export default function UnitInventoryCard({
@@ -71,6 +73,7 @@ export default function UnitInventoryCard({
   getUnitStatusBadge,
   getRangeAvailabilityBadge,
   BadgeComponent: Badge,
+  todayYmdValue,
 }: UnitInventoryCardProps) {
   return (
     <>
@@ -204,6 +207,7 @@ export default function UnitInventoryCard({
                 Desde
                 <input
                   type="date"
+                  min={todayYmdValue}
                   value={blockFromDate}
                   onChange={(e) => onChangeBlockFromDate(e.target.value)}
                   style={{
@@ -222,6 +226,7 @@ export default function UnitInventoryCard({
                 Hasta
                 <input
                   type="date"
+                  min={todayYmdValue}
                   value={blockToDate}
                   onChange={(e) => onChangeBlockToDate(e.target.value)}
                   style={{

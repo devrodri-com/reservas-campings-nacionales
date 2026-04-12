@@ -662,6 +662,18 @@ export default function AdminHomePage() {
     setError(null);
 
     try {
+      const today = todayYmd();
+      if (blockFromDate < today) {
+        setError("La fecha inicial del bloqueo no puede ser anterior a hoy.");
+        setBusy(false);
+        return;
+      }
+      if (blockToDate <= blockFromDate) {
+        setError("La fecha final del bloqueo debe ser posterior a la fecha inicial.");
+        setBusy(false);
+        return;
+      }
+
       await createUnitBlock({
         campingId: camping.id,
         unitId: selectedUnitForBlock.id,
@@ -920,6 +932,18 @@ export default function AdminHomePage() {
     setError(null);
 
     try {
+      const today = todayYmd();
+      if (walkInCheckIn < today) {
+        setError("La fecha de ingreso no puede ser anterior a hoy.");
+        setBusy(false);
+        return;
+      }
+      if (walkInCheckOut <= walkInCheckIn) {
+        setError("La fecha de salida debe ser posterior a la fecha de ingreso.");
+        setBusy(false);
+        return;
+      }
+
       // Validaciones
       const noches = enumerateNights(walkInCheckIn, walkInCheckOut).length;
       if (noches < 1) {
@@ -1625,6 +1649,7 @@ export default function AdminHomePage() {
           getUnitStatusBadge={unitStatusBadge}
           getRangeAvailabilityBadge={rangeAvailabilityBadge}
           BadgeComponent={Badge}
+          todayYmdValue={todayYmd()}
         />
       ) : null}
 

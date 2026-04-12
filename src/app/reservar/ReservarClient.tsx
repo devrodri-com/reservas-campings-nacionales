@@ -405,6 +405,18 @@ export default function ReservarClient() {
     setError(null);
     setFieldError(null);
 
+    const today = todayYmd();
+    if (checkInDate < today) {
+      setError("La fecha de ingreso no puede ser anterior a hoy.");
+      setSubmitting(false);
+      return;
+    }
+    if (checkOutDate <= checkInDate) {
+      setError("La fecha de salida debe ser posterior a la fecha de ingreso.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const uid = await ensureSignedInGuest();
       const isUnitBased = selectedCamping.inventoryMode === "unit_based";
