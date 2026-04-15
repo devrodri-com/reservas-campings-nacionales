@@ -8,7 +8,20 @@ import { useAuth } from "@/lib/useAuth";
 import type { Camping } from "@/types/camping";
 import type { UserProfile } from "@/types/user";
 import { fetchCampings } from "@/lib/campingsRepo";
+import {
+  fetchUnitTypesByCamping,
+  createUnitType,
+  updateUnitType,
+} from "@/lib/unitTypesRepo";
+import { fetchUnitsByCamping, createUnit, updateUnit } from "@/lib/unitsRepo";
 import { fetchUserProfile } from "@/lib/userProfile";
+import type { Unit } from "@/types/unit";
+import type {
+  UnitType,
+  UnitTypeBookingMode,
+  UnitTypePricingModel,
+} from "@/types/unitType";
+import UnitTypeForm from "@/components/admin/UnitTypeForm";
 import { Button, Card } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
@@ -34,6 +47,25 @@ function extractIframeSrc(input: string): string {
   const match = v.match(/src\s*=\s*"([^"]+)"/i);
   if (match && match[1]) return match[1];
   return v;
+}
+
+function operationalStatusLabel(status: Unit["operationalStatus"]): string {
+  switch (status) {
+    case "available":
+      return "Disponible";
+    case "blocked":
+      return "Bloqueado";
+    case "maintenance":
+      return "Mantenimiento";
+    default:
+      return status;
+  }
+}
+
+function campingInventoryModeLabel(mode: Camping["inventoryMode"]): string {
+  if (mode === "unit_based") return "Modo: Por unidad";
+  if (mode === "capacity") return "Modo: Por capacidad";
+  return "Modo: no indicado";
 }
 
 export default function AdminCampingsPage() {
@@ -64,8 +96,49 @@ export default function AdminCampingsPage() {
   const [newNombre, setNewNombre] = useState("");
   const [newArea, setNewArea] = useState("");
   const [newUbicacion, setNewUbicacion] = useState("");
-  const [newCapacidad, setNewCapacidad] = useState<number>(20);
-  const [newPrecio, setNewPrecio] = useState<number>(10000);
+
+  const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
+  const [unitTypeName, setUnitTypeName] = useState("");
+  const [unitTypeCode, setUnitTypeCode] = useState("");
+  const [unitTypeCapacity, setUnitTypeCapacity] = useState(1);
+  const [unitTypePricingModel, setUnitTypePricingModel] =
+    useState<UnitTypePricingModel>("per_person");
+  const [unitTypeAdultPrice, setUnitTypeAdultPrice] = useState(0);
+  const [unitTypeChildPrice, setUnitTypeChildPrice] = useState(0);
+  const [unitTypePricePerUnit, setUnitTypePricePerUnit] = useState(0);
+  const [unitTypeBookingMode, setUnitTypeBookingMode] =
+    useState<UnitTypeBookingMode>("overnight_only");
+
+  const [editingUnitTypeId, setEditingUnitTypeId] = useState("");
+  const [editUnitTypeName, setEditUnitTypeName] = useState("");
+  const [editUnitTypeCapacity, setEditUnitTypeCapacity] = useState(1);
+  const [editUnitTypePricingModel, setEditUnitTypePricingModel] =
+    useState<UnitTypePricingModel>("per_person");
+  const [editUnitTypeAdultPrice, setEditUnitTypeAdultPrice] = useState(0);
+  const [editUnitTypeChildPrice, setEditUnitTypeChildPrice] = useState(0);
+  const [editUnitTypePricePerUnit, setEditUnitTypePricePerUnit] = useState(0);
+  const [editUnitTypeBookingMode, setEditUnitTypeBookingMode] =
+    useState<UnitTypeBookingMode>("overnight_only");
+
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [unitDisplayName, setUnitDisplayName] = useState("");
+  const [unitNumber, setUnitNumber] = useState("");
+  const [unitTypeIdToCreate, setUnitTypeIdToCreate] = useState("");
+  const [unitSector, setUnitSector] = useState("");
+  const [unitPriceOverride, setUnitPriceOverride] = useState("");
+
+  const [bulkUnitTypeId, setBulkUnitTypeId] = useState("");
+  const [bulkPrefix, setBulkPrefix] = useState("");
+  const [bulkFromNumber, setBulkFromNumber] = useState(1);
+  const [bulkToNumber, setBulkToNumber] = useState(1);
+  const [bulkSector, setBulkSector] = useState("");
+  const [bulkPriceOverride, setBulkPriceOverride] = useState("");
+
+  const [editingUnitId, setEditingUnitId] = useState("");
+  const [editUnitDisplayName, setEditUnitDisplayName] = useState("");
+  const [editUnitNumber, setEditUnitNumber] = useState("");
+  const [editUnitSector, setEditUnitSector] = useState("");
+  const [editUnitPriceOverride, setEditUnitPriceOverride] = useState("");
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -122,6 +195,111 @@ export default function AdminCampingsPage() {
       })),
     [campings]
   );
+
+  const unitTypeBookingModeOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "overnight_only", label: "Solo pernocte" },
+      { value: "day_use_only", label: "Solo día" },
+      { value: "both", label: "Ambos" },
+    ],
+    []
+  );
+  const unitTypePricingModelOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "per_person", label: "Por persona" },
+      { value: "per_unit", label: "Por unidad" },
+    ],
+    []
+  );
+
+  const unitTypeSelectOptions: SelectOption[] = useMemo(
+    () =>
+      unitTypes.map((ut) => ({
+        value: ut.id,
+        label: ut.name,
+        description: ut.code,
+      })),
+    [unitTypes]
+  );
+
+  const unitTypeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    unitTypes.forEach((ut) => m.set(ut.id, ut.name));
+    return m;
+  }, [unitTypes]);
+
+  useEffect(() => {
+    setUnitTypeName("");
+    setUnitTypeCode("");
+    setUnitTypeCapacity(1);
+    setUnitTypePricingModel("per_person");
+    setUnitTypeAdultPrice(0);
+    setUnitTypeChildPrice(0);
+    setUnitTypePricePerUnit(0);
+    setUnitTypeBookingMode("overnight_only");
+
+    setUnitDisplayName("");
+    setUnitNumber("");
+    setUnitTypeIdToCreate("");
+    setUnitSector("");
+    setUnitPriceOverride("");
+
+    setBulkUnitTypeId("");
+    setBulkPrefix("");
+    setBulkFromNumber(1);
+    setBulkToNumber(1);
+    setBulkSector("");
+    setBulkPriceOverride("");
+
+    setEditingUnitTypeId("");
+    setEditUnitTypeName("");
+    setEditUnitTypeCapacity(1);
+    setEditUnitTypePricingModel("per_person");
+    setEditUnitTypeAdultPrice(0);
+    setEditUnitTypeChildPrice(0);
+    setEditUnitTypePricePerUnit(0);
+    setEditUnitTypeBookingMode("overnight_only");
+
+    setEditingUnitId("");
+    setEditUnitDisplayName("");
+    setEditUnitNumber("");
+    setEditUnitSector("");
+    setEditUnitPriceOverride("");
+
+    if (!selectedCamping) {
+      setUnitTypes([]);
+      setUnits([]);
+      return;
+    }
+    if (selectedCamping.inventoryMode !== "unit_based") {
+      setUnitTypes([]);
+      setUnits([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const [typesList, unitsList] = await Promise.all([
+          fetchUnitTypesByCamping(selectedCamping.id),
+          fetchUnitsByCamping(selectedCamping.id),
+        ]);
+        if (!cancelled) {
+          setUnitTypes(typesList);
+          setUnits(unitsList);
+        }
+      } catch {
+        if (!cancelled) {
+          setUnitTypes([]);
+          setUnits([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCamping]);
 
   useEffect(() => {
     if (!selectedCamping) return;
@@ -186,12 +364,13 @@ export default function AdminCampingsPage() {
         nombre: newNombre.trim(),
         ubicacionTexto: newUbicacion.trim(),
         titular: "-",
-        capacidadParcelas: Number(newCapacidad),
-        precioNocheArs: Number(newPrecio),
+        capacidadParcelas: 0,
+        precioNocheArs: 0,
         maxPersonasPorParcela: 6,
         checkInHour: 15,
         checkOutHour: 11,
         activo: true,
+        inventoryMode: "unit_based",
         descripcionCorta: "",
         igUrl: "",
         webUrl: "",
@@ -209,11 +388,435 @@ export default function AdminCampingsPage() {
       setNewNombre("");
       setNewArea("");
       setNewUbicacion("");
-      setNewCapacidad(20);
-      setNewPrecio(10000);
       setShowNewCamping(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateUnitType = async () => {
+    if (!selectedCamping) {
+      setError("Seleccioná un camping.");
+      return;
+    }
+    if (selectedCamping.inventoryMode !== "unit_based") {
+      setError("Este camping no usa inventario por unidades.");
+      return;
+    }
+    const name = unitTypeName.trim();
+    const code = unitTypeCode.trim();
+    if (!name) {
+      setError("El nombre del tipo de unidad es obligatorio.");
+      return;
+    }
+    if (!code) {
+      setError("El código del tipo de unidad es obligatorio.");
+      return;
+    }
+    if (unitTypeCapacity <= 0) {
+      setError("La capacidad máxima debe ser mayor a 0.");
+      return;
+    }
+    if (unitTypePricingModel === "per_person") {
+      if (!Number.isFinite(unitTypeAdultPrice) || unitTypeAdultPrice < 0) {
+        setError("La tarifa de adulto debe ser numérica y mayor o igual a 0.");
+        return;
+      }
+      if (!Number.isFinite(unitTypeChildPrice) || unitTypeChildPrice < 0) {
+        setError("La tarifa de menor debe ser numérica y mayor o igual a 0.");
+        return;
+      }
+    } else {
+      if (!Number.isFinite(unitTypePricePerUnit) || unitTypePricePerUnit < 0) {
+        setError("El precio por unidad debe ser numérico y mayor o igual a 0.");
+        return;
+      }
+    }
+
+    const codeNorm = code.toLowerCase();
+    if (unitTypes.some((ut) => ut.code.trim().toLowerCase() === codeNorm)) {
+      setError("Ya existe un tipo de unidad con ese código en este camping.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await createUnitType({
+        campingId: selectedCamping.id,
+        code,
+        name,
+        pricingModel: unitTypePricingModel,
+        bookingMode: unitTypeBookingMode,
+        capacityMax: unitTypeCapacity,
+        ...(unitTypePricingModel === "per_person"
+          ? {
+              adultPriceArs: Number(unitTypeAdultPrice),
+              childPriceArs: Number(unitTypeChildPrice),
+              // Compat temporal legacy
+              basePriceArs: Number(unitTypeAdultPrice),
+            }
+          : {
+              unitPriceArs: Number(unitTypePricePerUnit),
+              // Compat temporal legacy
+              basePriceArs: Number(unitTypePricePerUnit),
+            }),
+        active: true,
+      });
+      const list = await fetchUnitTypesByCamping(selectedCamping.id);
+      setUnitTypes(list);
+      setUnitTypeName("");
+      setUnitTypeCode("");
+      setUnitTypeCapacity(1);
+      setUnitTypePricingModel("per_person");
+      setUnitTypeAdultPrice(0);
+      setUnitTypeChildPrice(0);
+      setUnitTypePricePerUnit(0);
+      setUnitTypeBookingMode("overnight_only");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al crear el tipo de unidad.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartEditUnitType = (ut: UnitType) => {
+    setEditingUnitTypeId(ut.id);
+    setEditUnitTypeName(ut.name);
+    setEditUnitTypeCapacity(ut.capacityMax);
+    setEditUnitTypePricingModel(ut.pricingModel);
+    setEditUnitTypeAdultPrice(ut.adultPriceArs ?? 0);
+    setEditUnitTypeChildPrice(ut.childPriceArs ?? 0);
+    setEditUnitTypePricePerUnit(ut.unitPriceArs ?? ut.basePriceArs ?? 0);
+    setEditUnitTypeBookingMode(ut.bookingMode);
+    setError(null);
+  };
+
+  const handleCancelEditUnitType = () => {
+    setEditingUnitTypeId("");
+    setEditUnitTypeName("");
+    setEditUnitTypeCapacity(1);
+    setEditUnitTypePricingModel("per_person");
+    setEditUnitTypeAdultPrice(0);
+    setEditUnitTypeChildPrice(0);
+    setEditUnitTypePricePerUnit(0);
+    setEditUnitTypeBookingMode("overnight_only");
+  };
+
+  const handleSaveEditUnitType = async () => {
+    if (!editingUnitTypeId) {
+      setError("No hay un tipo en edición.");
+      return;
+    }
+    if (!selectedCamping) {
+      setError("Seleccioná un camping.");
+      return;
+    }
+    if (selectedCamping.inventoryMode !== "unit_based") {
+      setError("Este camping no usa inventario por unidades.");
+      return;
+    }
+    const name = editUnitTypeName.trim();
+    if (!name) {
+      setError("El nombre del tipo de unidad es obligatorio.");
+      return;
+    }
+    if (editUnitTypeCapacity <= 0) {
+      setError("La capacidad máxima debe ser mayor a 0.");
+      return;
+    }
+    if (editUnitTypePricingModel === "per_person") {
+      if (!Number.isFinite(editUnitTypeAdultPrice) || editUnitTypeAdultPrice < 0) {
+        setError("La tarifa de adulto debe ser numérica y mayor o igual a 0.");
+        return;
+      }
+      if (!Number.isFinite(editUnitTypeChildPrice) || editUnitTypeChildPrice < 0) {
+        setError("La tarifa de menor debe ser numérica y mayor o igual a 0.");
+        return;
+      }
+    } else {
+      if (!Number.isFinite(editUnitTypePricePerUnit) || editUnitTypePricePerUnit < 0) {
+        setError("El precio por unidad debe ser numérico y mayor o igual a 0.");
+        return;
+      }
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await updateUnitType(editingUnitTypeId, {
+        name,
+        capacityMax: editUnitTypeCapacity,
+        pricingModel: editUnitTypePricingModel,
+        ...(editUnitTypePricingModel === "per_person"
+          ? {
+              adultPriceArs: Number(editUnitTypeAdultPrice),
+              childPriceArs: Number(editUnitTypeChildPrice),
+              // Compat temporal legacy
+              basePriceArs: Number(editUnitTypeAdultPrice),
+            }
+          : {
+              unitPriceArs: Number(editUnitTypePricePerUnit),
+              // Compat temporal legacy
+              basePriceArs: Number(editUnitTypePricePerUnit),
+            }),
+        bookingMode: editUnitTypeBookingMode,
+      });
+      const list = await fetchUnitTypesByCamping(selectedCamping.id);
+      setUnitTypes(list);
+      handleCancelEditUnitType();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar el tipo de unidad.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateUnit = async () => {
+    if (!selectedCamping) {
+      setError("Seleccioná un camping.");
+      return;
+    }
+    if (selectedCamping.inventoryMode !== "unit_based") {
+      setError("Este camping no usa inventario por unidades.");
+      return;
+    }
+    if (!unitTypeIdToCreate.trim()) {
+      setError("Elegí un tipo de unidad.");
+      return;
+    }
+    const displayName = unitDisplayName.trim();
+    const number = unitNumber.trim();
+    if (!displayName) {
+      setError("El nombre visible es obligatorio.");
+      return;
+    }
+    if (!number) {
+      setError("El número o código es obligatorio.");
+      return;
+    }
+
+    const numberNorm = number.toLowerCase();
+    if (units.some((u) => u.number.trim().toLowerCase() === numberNorm)) {
+      setError("Ya existe una unidad con ese número o identificador en este camping.");
+      return;
+    }
+
+    const sectorTrimmed = unitSector.trim();
+    const priceTrimmed = unitPriceOverride.trim();
+    let priceOverrideArs: number | undefined;
+    if (priceTrimmed !== "") {
+      const n = Number(priceTrimmed.replace(",", "."));
+      if (!Number.isFinite(n)) {
+        setError("El precio propio debe ser un número válido.");
+        return;
+      }
+      priceOverrideArs = n;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await createUnit({
+        campingId: selectedCamping.id,
+        unitTypeId: unitTypeIdToCreate.trim(),
+        number,
+        displayName,
+        active: true,
+        operationalStatus: "available",
+        ...(sectorTrimmed !== "" ? { sector: sectorTrimmed } : {}),
+        ...(priceOverrideArs !== undefined ? { priceOverrideArs } : {}),
+      });
+      const list = await fetchUnitsByCamping(selectedCamping.id);
+      setUnits(list);
+      setUnitDisplayName("");
+      setUnitNumber("");
+      setUnitTypeIdToCreate("");
+      setUnitSector("");
+      setUnitPriceOverride("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al crear la unidad.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateUnitsBulk = async () => {
+    if (!selectedCamping) {
+      setError("Seleccioná un camping.");
+      return;
+    }
+    if (selectedCamping.inventoryMode !== "unit_based") {
+      setError("Este camping no usa inventario por unidades.");
+      return;
+    }
+    const typeId = bulkUnitTypeId.trim();
+    if (!typeId) {
+      setError("Elegí un tipo de unidad para el lote.");
+      return;
+    }
+    const prefix = bulkPrefix.trim();
+    if (!prefix) {
+      setError("El prefijo visible es obligatorio.");
+      return;
+    }
+    if (bulkFromNumber <= 0 || bulkToNumber <= 0) {
+      setError("Los números desde y hasta deben ser mayores a 0.");
+      return;
+    }
+    if (bulkToNumber < bulkFromNumber) {
+      setError("“Hasta” debe ser mayor o igual que “Desde”.");
+      return;
+    }
+
+    const sectorTrimmed = bulkSector.trim();
+    const priceTrimmed = bulkPriceOverride.trim();
+    let priceOverrideArs: number | undefined;
+    if (priceTrimmed !== "") {
+      const parsed = Number(priceTrimmed.replace(",", "."));
+      if (!Number.isFinite(parsed)) {
+        setError("El precio propio del lote debe ser un número válido.");
+        return;
+      }
+      priceOverrideArs = parsed;
+    }
+
+    const existingNumberNorm = new Set(units.map((u) => u.number.trim().toLowerCase()));
+    const conflictingNumbers: string[] = [];
+    for (let n = bulkFromNumber; n <= bulkToNumber; n++) {
+      const key = String(n).toLowerCase();
+      if (existingNumberNorm.has(key)) {
+        conflictingNumbers.push(String(n));
+      }
+    }
+    if (conflictingNumbers.length > 0) {
+      const sample = conflictingNumbers.slice(0, 5).join(", ");
+      const more = conflictingNumbers.length > 5 ? "…" : "";
+      setError(
+        `El lote incluye números que ya existen en este camping. Revisá el rango antes de crear. Ejemplos: ${sample}${more}`
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const optionalSector = sectorTrimmed !== "" ? { sector: sectorTrimmed } : {};
+      const optionalPrice =
+        priceOverrideArs !== undefined ? { priceOverrideArs } : {};
+
+      for (let n = bulkFromNumber; n <= bulkToNumber; n++) {
+        await createUnit({
+          campingId: selectedCamping.id,
+          unitTypeId: typeId,
+          number: String(n),
+          displayName: `${prefix} ${n}`,
+          active: true,
+          operationalStatus: "available",
+          ...optionalSector,
+          ...optionalPrice,
+        });
+      }
+
+      const list = await fetchUnitsByCamping(selectedCamping.id);
+      setUnits(list);
+      setBulkUnitTypeId("");
+      setBulkPrefix("");
+      setBulkFromNumber(1);
+      setBulkToNumber(1);
+      setBulkSector("");
+      setBulkPriceOverride("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al crear unidades en lote.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartEditUnit = (u: Unit) => {
+    setEditingUnitId(u.id);
+    setEditUnitDisplayName(u.displayName);
+    setEditUnitNumber(u.number);
+    setEditUnitSector(u.sector ?? "");
+    setEditUnitPriceOverride(
+      u.priceOverrideArs !== undefined ? String(u.priceOverrideArs) : ""
+    );
+    setError(null);
+  };
+
+  const handleCancelEditUnit = () => {
+    setEditingUnitId("");
+    setEditUnitDisplayName("");
+    setEditUnitNumber("");
+    setEditUnitSector("");
+    setEditUnitPriceOverride("");
+  };
+
+  const handleSaveEditUnit = async () => {
+    if (!editingUnitId) {
+      setError("No hay una unidad en edición.");
+      return;
+    }
+    if (!selectedCamping) {
+      setError("Seleccioná un camping.");
+      return;
+    }
+    if (selectedCamping.inventoryMode !== "unit_based") {
+      setError("Este camping no usa inventario por unidades.");
+      return;
+    }
+    const displayName = editUnitDisplayName.trim();
+    const number = editUnitNumber.trim();
+    if (!displayName) {
+      setError("El nombre visible es obligatorio.");
+      return;
+    }
+    if (!number) {
+      setError("El número o código es obligatorio.");
+      return;
+    }
+
+    const numberNorm = number.toLowerCase();
+    if (
+      units.some(
+        (u) =>
+          u.id !== editingUnitId && u.number.trim().toLowerCase() === numberNorm
+      )
+    ) {
+      setError("Ya existe una unidad con ese número o identificador en este camping.");
+      return;
+    }
+
+    const sectorTrimmed = editUnitSector.trim();
+    const priceTrimmed = editUnitPriceOverride.trim();
+    let priceOverrideArs: number | null;
+    if (priceTrimmed !== "") {
+      const parsed = Number(priceTrimmed.replace(",", "."));
+      if (!Number.isFinite(parsed)) {
+        setError("El precio propio debe ser un número válido.");
+        return;
+      }
+      priceOverrideArs = parsed;
+    } else {
+      priceOverrideArs = null;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await updateUnit(editingUnitId, {
+        displayName,
+        number,
+        sector: sectorTrimmed !== "" ? sectorTrimmed : null,
+        priceOverrideArs,
+      });
+      const list = await fetchUnitsByCamping(selectedCamping.id);
+      setUnits(list);
+      handleCancelEditUnit();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar la unidad.");
     } finally {
       setSaving(false);
     }
@@ -238,6 +841,59 @@ export default function AdminCampingsPage() {
     lineHeight: 1.4,
     maxWidth: "100%",
     display: "block",
+  };
+
+  const flowMajorDivider: CSSProperties = {
+    border: "none",
+    borderTop: "2px solid var(--color-border)",
+    margin: "28px 0 0 0",
+  };
+
+  const flowStepTitle: CSSProperties = {
+    margin: "20px 0 0 0",
+    fontSize: 18,
+    fontWeight: 800,
+    color: "var(--color-accent)",
+    letterSpacing: "-0.02em",
+  };
+
+  const flowGuideText: CSSProperties = {
+    margin: "8px 0 0 0",
+    color: "var(--color-text-muted)",
+    fontSize: 14,
+    lineHeight: 1.45,
+  };
+
+  const flowStepPanel: CSSProperties = {
+    display: "grid",
+    gap: 14,
+    marginTop: 14,
+    padding: "18px 16px",
+    borderRadius: 12,
+    border: "1px solid var(--color-border)",
+    background: "var(--color-surface)",
+    boxShadow: "0 1px 0 rgba(0, 0, 0, 0.04)",
+  };
+
+  const flowSubPanelSolo: CSSProperties = {
+    display: "grid",
+    gap: 10,
+    marginTop: 4,
+    padding: "16px 14px",
+    borderRadius: 10,
+    border: "1px solid var(--color-border)",
+    borderLeft: "4px solid var(--color-accent)",
+    background: "var(--color-surface)",
+  };
+
+  const flowSubPanelBulk: CSSProperties = {
+    display: "grid",
+    gap: 10,
+    marginTop: 16,
+    padding: "16px 14px",
+    borderRadius: 10,
+    border: "2px dashed var(--color-border)",
+    background: "var(--color-surface)",
   };
 
   if (loading || profileLoading) {
@@ -348,26 +1004,6 @@ export default function AdminCampingsPage() {
                   style={inputStyle}
                 />
               </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Capacidad (parcelas)</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={newCapacidad}
-                  onChange={(e) => setNewCapacidad(Number(e.target.value) || 0)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Precio/noche (ARS)</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={newPrecio}
-                  onChange={(e) => setNewPrecio(Number(e.target.value) || 0)}
-                  style={inputStyle}
-                />
-              </label>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <Button variant="primary" onClick={createCamping} disabled={saving}>
                   {saving ? "Creando…" : "Crear"}
@@ -396,10 +1032,30 @@ export default function AdminCampingsPage() {
                     searchable
                   />
                   {selectedCamping ? (
-                    <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
-                      <strong>{selectedCamping.capacidadParcelas}</strong> parcelas · $
-                      {selectedCamping.precioNocheArs}/noche
-                    </p>
+                    <div
+                      style={{
+                        margin: 0,
+                        paddingTop: 4,
+                        display: "grid",
+                        gap: 4,
+                        fontSize: 14,
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 15,
+                          color: "var(--color-text)",
+                        }}
+                      >
+                        {selectedCamping.nombre}
+                      </div>
+                      <div>
+                        {selectedCamping.areaProtegida} · {selectedCamping.ubicacionTexto}
+                      </div>
+                      <div>{campingInventoryModeLabel(selectedCamping.inventoryMode)}</div>
+                    </div>
                   ) : null}
                 </>
               )}
@@ -418,7 +1074,24 @@ export default function AdminCampingsPage() {
             <p>Seleccioná un camping.</p>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
-              <div>
+              <section aria-labelledby="camping-info-general-heading">
+                <h3
+                  id="camping-info-general-heading"
+                  style={{
+                    margin: 0,
+                    fontSize: 17,
+                    fontWeight: 800,
+                    color: "var(--color-accent)",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Información general
+                </h3>
+                <p style={flowGuideText}>
+                  Completá la ficha pública del camping: texto, redes y mapas.
+                </p>
+                <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+                <div>
                 <div style={{ fontWeight: 800, color: "var(--color-accent)", fontSize: 16 }}>
                   {selectedCamping.nombre}
                 </div>
@@ -538,6 +1211,426 @@ export default function AdminCampingsPage() {
               <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
                 Si dejás “Imagen de portada” vacío, se usa <code>/campings/placeholder.jpg</code>.
               </p>
+                </div>
+              </section>
+
+              {selectedCamping.inventoryMode === "unit_based" ? (
+                <>
+                  <hr style={flowMajorDivider} />
+
+                  <section aria-labelledby="paso-1-unit-types-heading">
+                    <h3 id="paso-1-unit-types-heading" style={flowStepTitle}>
+                      Paso 1 — Tipos de unidad
+                    </h3>
+                    <p style={flowGuideText}>
+                      Primero definí las categorías base, por ejemplo: Parcela, Cabaña, Cabina.
+                    </p>
+                    <p style={{ ...flowGuideText, marginTop: 6 }}>
+                      Un tipo de unidad es una categoría base, por ejemplo Parcela o Cabaña.
+                    </p>
+
+                    <div style={flowStepPanel}>
+                  {unitTypes.length === 0 ? (
+                    <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
+                      Todavía no hay tipos cargados.
+                    </p>
+                  ) : (
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: 0,
+                        listStyle: "none",
+                        color: "var(--color-text)",
+                        display: "grid",
+                        gap: 12,
+                      }}
+                    >
+                      {unitTypes.map((ut) => (
+                        <li
+                          key={ut.id}
+                          style={{
+                            paddingBottom: 12,
+                            borderBottom: "1px solid var(--color-border)",
+                          }}
+                        >
+                          {editingUnitTypeId === ut.id ? (
+                            <UnitTypeForm
+                              name={editUnitTypeName}
+                              onNameChange={setEditUnitTypeName}
+                              code={ut.code}
+                              capacityMax={editUnitTypeCapacity}
+                              onCapacityMaxChange={setEditUnitTypeCapacity}
+                              pricingModel={editUnitTypePricingModel}
+                              onPricingModelChange={setEditUnitTypePricingModel}
+                              pricingModelOptions={unitTypePricingModelOptions}
+                              adultPriceArs={editUnitTypeAdultPrice}
+                              onAdultPriceArsChange={setEditUnitTypeAdultPrice}
+                              childPriceArs={editUnitTypeChildPrice}
+                              onChildPriceArsChange={setEditUnitTypeChildPrice}
+                              unitPriceArs={editUnitTypePricePerUnit}
+                              onUnitPriceArsChange={setEditUnitTypePricePerUnit}
+                              bookingMode={editUnitTypeBookingMode}
+                              onBookingModeChange={setEditUnitTypeBookingMode}
+                              bookingModeOptions={unitTypeBookingModeOptions}
+                              saving={saving}
+                              submitLabel="Guardar"
+                              onSubmit={handleSaveEditUnitType}
+                              onCancel={handleCancelEditUnitType}
+                              inputStyle={inputStyle}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                alignItems: "flex-start",
+                                justifyContent: "space-between",
+                                gap: 10,
+                              }}
+                            >
+                              <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                                <strong>{ut.name}</strong> · código <code>{ut.code}</code> ·
+                                capacidad {ut.capacityMax} ·{" "}
+                                {ut.pricingModel === "per_unit"
+                                  ? `Por unidad · $${(ut.unitPriceArs ?? ut.basePriceArs ?? 0).toLocaleString("es-AR")} ARS`
+                                  : `Por persona · adulto $${(ut.adultPriceArs ?? ut.basePriceArs ?? 0).toLocaleString("es-AR")} ARS · menor $${(ut.childPriceArs ?? ut.basePriceArs ?? 0).toLocaleString("es-AR")} ARS`}
+                              </div>
+                              <Button
+                                variant="secondary"
+                                type="button"
+                                onClick={() => handleStartEditUnitType(ut)}
+                                disabled={saving || editingUnitTypeId !== ""}
+                              >
+                                Editar
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 10,
+                      paddingTop: 12,
+                      borderTop: "1px dashed var(--color-border)",
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>Nuevo tipo</span>
+                    <UnitTypeForm
+                      name={unitTypeName}
+                      onNameChange={setUnitTypeName}
+                      code={unitTypeCode}
+                      onCodeChange={setUnitTypeCode}
+                      codePlaceholder="ej: cabaña-4p"
+                      capacityMax={unitTypeCapacity}
+                      onCapacityMaxChange={setUnitTypeCapacity}
+                      pricingModel={unitTypePricingModel}
+                      onPricingModelChange={setUnitTypePricingModel}
+                      pricingModelOptions={unitTypePricingModelOptions}
+                      adultPriceArs={unitTypeAdultPrice}
+                      onAdultPriceArsChange={setUnitTypeAdultPrice}
+                      childPriceArs={unitTypeChildPrice}
+                      onChildPriceArsChange={setUnitTypeChildPrice}
+                      unitPriceArs={unitTypePricePerUnit}
+                      onUnitPriceArsChange={setUnitTypePricePerUnit}
+                      bookingMode={unitTypeBookingMode}
+                      onBookingModeChange={setUnitTypeBookingMode}
+                      bookingModeOptions={unitTypeBookingModeOptions}
+                      saving={saving}
+                      submitLabel="Crear tipo"
+                      onSubmit={handleCreateUnitType}
+                      inputStyle={inputStyle}
+                    />
+                  </div>
+                    </div>
+                  </section>
+
+                  <hr style={flowMajorDivider} />
+
+                  <section aria-labelledby="paso-2-unidades-heading">
+                    <h3 id="paso-2-unidades-heading" style={flowStepTitle}>
+                      Paso 2 — Unidades
+                    </h3>
+                    <p style={flowGuideText}>
+                      Después cargá las unidades reales de este camping. Podés crear una sola o varias
+                      en lote.
+                    </p>
+
+                    <div style={flowStepPanel}>
+                  {units.length === 0 ? (
+                    <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
+                      Todavía no hay unidades cargadas.
+                    </p>
+                  ) : (
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: 0,
+                        listStyle: "none",
+                        color: "var(--color-text)",
+                        display: "grid",
+                        gap: 12,
+                      }}
+                    >
+                      {units.map((u) => (
+                        <li
+                          key={u.id}
+                          style={{
+                            paddingBottom: 12,
+                            borderBottom: "1px solid var(--color-border)",
+                          }}
+                        >
+                          {editingUnitId === u.id ? (
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
+                                Tipo (no editable):{" "}
+                                <strong>
+                                  {unitTypeNameById.get(u.unitTypeId) ?? u.unitTypeId}
+                                </strong>
+                                {" · "}
+                                Estado operativo:{" "}
+                                <strong>{operationalStatusLabel(u.operationalStatus)}</strong>
+                              </div>
+                              <label style={{ display: "grid", gap: 6 }}>
+                                <span style={{ fontWeight: 700 }}>Nombre visible</span>
+                                <input
+                                  value={editUnitDisplayName}
+                                  onChange={(e) => setEditUnitDisplayName(e.target.value)}
+                                  style={inputStyle}
+                                  disabled={saving}
+                                />
+                              </label>
+                              <label style={{ display: "grid", gap: 6 }}>
+                                <span style={{ fontWeight: 700 }}>Número / código</span>
+                                <input
+                                  value={editUnitNumber}
+                                  onChange={(e) => setEditUnitNumber(e.target.value)}
+                                  style={inputStyle}
+                                  disabled={saving}
+                                />
+                              </label>
+                              <label style={{ display: "grid", gap: 6 }}>
+                                <span style={{ fontWeight: 700 }}>Sector</span>
+                                <input
+                                  value={editUnitSector}
+                                  onChange={(e) => setEditUnitSector(e.target.value)}
+                                  style={inputStyle}
+                                  disabled={saving}
+                                  placeholder="Opcional"
+                                />
+                              </label>
+                              <label style={{ display: "grid", gap: 6 }}>
+                                <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
+                                <input
+                                  value={editUnitPriceOverride}
+                                  onChange={(e) => setEditUnitPriceOverride(e.target.value)}
+                                  style={inputStyle}
+                                  disabled={saving}
+                                  placeholder="Vacío = usa precio del tipo"
+                                  inputMode="decimal"
+                                />
+                              </label>
+                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                                <Button
+                                  variant="primary"
+                                  onClick={handleSaveEditUnit}
+                                  disabled={saving}
+                                >
+                                  {saving ? "Guardando…" : "Guardar"}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  onClick={handleCancelEditUnit}
+                                  disabled={saving}
+                                >
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                alignItems: "flex-start",
+                                justifyContent: "space-between",
+                                gap: 10,
+                              }}
+                            >
+                              <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                                <strong>{u.displayName}</strong> · n.º {u.number} · tipo:{" "}
+                                {unitTypeNameById.get(u.unitTypeId) ?? u.unitTypeId}
+                                {u.sector ? ` · sector: ${u.sector}` : ""}
+                                {u.priceOverrideArs !== undefined
+                                  ? ` · precio propio: $${u.priceOverrideArs.toLocaleString("es-AR")} ARS`
+                                  : ""}
+                                · estado: {operationalStatusLabel(u.operationalStatus)}
+                              </div>
+                              <Button
+                                variant="secondary"
+                                type="button"
+                                onClick={() => handleStartEditUnit(u)}
+                                disabled={saving || editingUnitId !== ""}
+                              >
+                                Editar
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div style={flowSubPanelSolo}>
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>Crear una unidad</span>
+                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.45 }}>
+                      Usá este formulario si querés crear una unidad puntual.
+                    </p>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Nombre visible</span>
+                      <input
+                        value={unitDisplayName}
+                        onChange={(e) => setUnitDisplayName(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Número / código</span>
+                      <input
+                        value={unitNumber}
+                        onChange={(e) => setUnitNumber(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                        placeholder="ej: A-12"
+                      />
+                    </label>
+                    <SelectDropdown
+                      label="Tipo de unidad"
+                      value={unitTypeIdToCreate}
+                      options={unitTypeSelectOptions}
+                      onChange={setUnitTypeIdToCreate}
+                      placeholder="Seleccionar tipo…"
+                      disabled={saving || unitTypes.length === 0}
+                    />
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
+                      <input
+                        value={unitSector}
+                        onChange={(e) => setUnitSector(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
+                      <input
+                        value={unitPriceOverride}
+                        onChange={(e) => setUnitPriceOverride(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                        placeholder="Vacío = usa precio del tipo"
+                        inputMode="decimal"
+                      />
+                    </label>
+                    <div>
+                      <Button
+                        variant="secondary"
+                        onClick={handleCreateUnit}
+                        disabled={saving || unitTypes.length === 0}
+                      >
+                        {saving ? "Guardando…" : "Crear unidad"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div style={flowSubPanelBulk}>
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>Crear unidades en lote</span>
+                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.45 }}>
+                      Usá este bloque si querés crear muchas unidades parecidas de una sola vez.
+                    </p>
+                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
+                      Ejemplo: prefijo <strong>Parcela</strong>, desde <strong>1</strong>, hasta{" "}
+                      <strong>55</strong> → se crean “Parcela 1” … “Parcela 55” con número{" "}
+                      <code>1</code> … <code>55</code>.
+                    </p>
+                    <SelectDropdown
+                      label="Tipo de unidad"
+                      value={bulkUnitTypeId}
+                      options={unitTypeSelectOptions}
+                      onChange={setBulkUnitTypeId}
+                      placeholder="Seleccionar tipo…"
+                      disabled={saving || unitTypes.length === 0}
+                    />
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Prefijo visible</span>
+                      <input
+                        value={bulkPrefix}
+                        onChange={(e) => setBulkPrefix(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                        placeholder="ej: Parcela"
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Desde número</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={bulkFromNumber}
+                        onChange={(e) => setBulkFromNumber(Number(e.target.value) || 0)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Hasta número</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={bulkToNumber}
+                        onChange={(e) => setBulkToNumber(Number(e.target.value) || 0)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                        placeholder="ej: 55"
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
+                      <input
+                        value={bulkSector}
+                        onChange={(e) => setBulkSector(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
+                      <input
+                        value={bulkPriceOverride}
+                        onChange={(e) => setBulkPriceOverride(e.target.value)}
+                        style={inputStyle}
+                        disabled={saving || unitTypes.length === 0}
+                        placeholder="Vacío = usa precio del tipo"
+                        inputMode="decimal"
+                      />
+                    </label>
+                    <div>
+                      <Button
+                        variant="secondary"
+                        onClick={handleCreateUnitsBulk}
+                        disabled={saving || unitTypes.length === 0}
+                      >
+                        {saving ? "Guardando…" : "Crear en lote"}
+                      </Button>
+                    </div>
+                  </div>
+                    </div>
+                  </section>
+                </>
+              ) : null}
             </div>
           )}
           </Card>

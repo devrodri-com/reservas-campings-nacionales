@@ -82,9 +82,9 @@ export type ReservaPublic = {
   estado: ReservaEstado;
   expiresAtMs?: number;
   createdAtMs: number;
-  createdByUid?: string;
   /** Presente en reservas por unidad (inventario unit_based). */
   unitId?: string;
+  unitTypeId?: string;
 };
 
 type ReservaPublicDoc = Omit<ReservaPublic, "id">;
@@ -101,8 +101,8 @@ function isReservaPublicDoc(v: unknown): v is ReservaPublicDoc {
     isReservaEstado(o.estado) &&
     typeof o.createdAtMs === "number" &&
     (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
-    (o.createdByUid === undefined || typeof o.createdByUid === "string") &&
-    (o.unitId === undefined || typeof o.unitId === "string")
+    (o.unitId === undefined || typeof o.unitId === "string") &&
+    (o.unitTypeId === undefined || typeof o.unitTypeId === "string")
   );
 }
 

@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDocs,
   orderBy,
@@ -36,12 +37,29 @@ function isUnitDoc(v: unknown): v is UnitDoc {
   );
 }
 
-function updatePayload(
-  patch: Partial<Omit<Unit, "id" | "campingId" | "createdAtMs">>
-): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(patch).filter(([, v]) => v !== undefined)
-  ) as Record<string, unknown>;
+type UnitWithoutKeys = Omit<Unit, "id" | "campingId" | "createdAtMs">;
+
+/** Incluye `null` en sector y priceOverrideArs para borrar el campo en Firestore. */
+export type UnitUpdatePatch = Partial<
+  Omit<UnitWithoutKeys, "sector" | "priceOverrideArs">
+> & {
+  sector?: string | null;
+  priceOverrideArs?: number | null;
+};
+
+const OPTIONAL_FIELDS_CLEARABLE_WITH_NULL = new Set<string>(["sector", "priceOverrideArs"]);
+
+function updatePayload(patch: UnitUpdatePatch): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    if (v === null && OPTIONAL_FIELDS_CLEARABLE_WITH_NULL.has(key)) {
+      out[key] = deleteField();
+      continue;
+    }
+    out[key] = v;
+  }
+  return out;
 }
 
 export async function fetchUnitsByCamping(campingId: string): Promise<Unit[]> {
@@ -69,10 +87,7 @@ export async function createUnit(input: Omit<Unit, "id" | "createdAtMs">): Promi
   return { id: ref.id, ...docData };
 }
 
-export async function updateUnit(
-  id: string,
-  patch: Partial<Omit<Unit, "id" | "campingId" | "createdAtMs">>
-): Promise<void> {
+export async function updateUnit(id: string, patch: UnitUpdatePatch): Promise<void> {
   const data = updatePayload(patch);
   if (Object.keys(data).length === 0) return;
   await updateDoc(doc(db, "units", id), data);

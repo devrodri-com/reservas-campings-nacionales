@@ -28,10 +28,51 @@ import DateRangePicker from "@/components/DateRangePicker";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
+/** Fila para UI de selección de unidad (misma info que construye `unitOptions`). */
+type UnitReservationOptionRow = {
+  id: string;
+  displayName: string;
+  typeName: string;
+  capacityMax: number;
+  pricingKind: "per_unit" | "per_person" | "unknown";
+  pricingKindLabel: string;
+  priceLinePrimary: string;
+  priceLineSecondary: string | null;
+  label: string;
+};
+
+type UnitReservationGroup = {
+  typeName: string;
+  rows: UnitReservationOptionRow[];
+};
+
 const MAX_PARCELAS = 5;
 
 function nightsCount(checkIn: string, checkOut: string): number {
   return enumerateNights(checkIn, checkOut).length;
+}
+
+function unitBasedPricePerNight(
+  unitType: UnitType | undefined,
+  adultos: number,
+  menores: number,
+  campingFallbackPriceArs: number
+): number {
+  if (!unitType) return campingFallbackPriceArs;
+
+  if (unitType.pricingModel === "per_unit") {
+    if (typeof unitType.unitPriceArs === "number") return unitType.unitPriceArs;
+    // Compat temporal para tipos legacy todavía no migrados
+    if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
+    return campingFallbackPriceArs;
+  }
+
+  if (typeof unitType.adultPriceArs === "number" && typeof unitType.childPriceArs === "number") {
+    return adultos * unitType.adultPriceArs + menores * unitType.childPriceArs;
+  }
+  // Compat temporal para tipos legacy todavía no migrados
+  if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
+  return campingFallbackPriceArs;
 }
 
 function filterReservasBloqueantes(all: ReservaPublic[], nowMs: number): ReservaPublic[] {
@@ -155,22 +196,33 @@ export default function ReservarClient() {
     return Math.max(0, parcelas * base);
   }, [selectedCamping, parcelas, units, unitTypes, selectedUnitId]);
 
+  const isUnitBased = selectedCamping?.inventoryMode === "unit_based";
+
   const adultosOptions: SelectOption[] = useMemo(
-    () =>
-      Array.from({ length: maxPersonas + 1 }, (_, i) => ({
-        value: String(i),
-        label: String(i),
-      })),
-    [maxPersonas]
+    () => {
+      const minAdultos = isUnitBased ? 1 : 0;
+      const maxAdultos = Math.max(minAdultos, maxPersonas);
+      return Array.from({ length: maxAdultos - minAdultos + 1 }, (_, idx) => ({
+        value: String(minAdultos + idx),
+        label: String(minAdultos + idx),
+      }));
+    },
+    [isUnitBased, maxPersonas]
   );
+
+  const maxMenores = useMemo(() => {
+    if (!isUnitBased) return maxPersonas;
+    const adultosValidos = Math.min(Math.max(adultos, 1), Math.max(1, maxPersonas));
+    return Math.max(0, maxPersonas - adultosValidos);
+  }, [isUnitBased, maxPersonas, adultos]);
 
   const menoresOptions: SelectOption[] = useMemo(
     () =>
-      Array.from({ length: maxPersonas + 1 }, (_, i) => ({
+      Array.from({ length: maxMenores + 1 }, (_, i) => ({
         value: String(i),
         label: String(i),
       })),
-    [maxPersonas]
+    [maxMenores]
   );
 
   const edadOptions: SelectOption[] = useMemo(
@@ -191,11 +243,16 @@ export default function ReservarClient() {
     if (selectedCamping.inventoryMode === "unit_based") {
       const u = units.find((x) => x.id === selectedUnitId);
       const ut = u ? unitTypes.find((t) => t.id === u.unitTypeId) : undefined;
-      const precioNoche = ut?.basePriceArs ?? selectedCamping.precioNocheArs;
+      const precioNoche = unitBasedPricePerNight(
+        ut,
+        adultos,
+        menores,
+        selectedCamping.precioNocheArs
+      );
       return noches * precioNoche;
     }
     return noches * parcelas * selectedCamping.precioNocheArs;
-  }, [selectedCamping, noches, parcelas, units, unitTypes, selectedUnitId]);
+  }, [selectedCamping, noches, parcelas, units, unitTypes, selectedUnitId, adultos, menores]);
 
   const unitTypesById = useMemo(() => {
     const m = new Map<string, UnitType>();
@@ -233,14 +290,110 @@ export default function ReservarClient() {
     checkOutDate,
   ]);
 
-  const unitOptions: SelectOption[] = useMemo(() => {
-    const opts = availableUnits.map((unit) => ({
-      value: unit.id,
-      label: `${unit.displayName} (${unitTypesById.get(unit.unitTypeId)?.name ?? "Tipo"})`,
-    }));
-    console.log("UNIT_BASED unitOptions", opts);
-    return opts;
+  const unitReservationRows: UnitReservationOptionRow[] = useMemo(() => {
+    const rows = availableUnits.map((unit) => {
+      const unitType = unitTypesById.get(unit.unitTypeId);
+      const typeName = unitType?.name ?? "Tipo";
+      const capacity = unitType?.capacityMax ?? 0;
+
+      let pricingKind: UnitReservationOptionRow["pricingKind"] = "unknown";
+      let pricingKindLabel = "";
+      let priceLinePrimary = "";
+      let priceLineSecondary: string | null = null;
+
+      const pricingText = (() => {
+        if (!unitType) {
+          pricingKindLabel = "";
+          priceLinePrimary = "Precio no disponible";
+          return "Precio no disponible";
+        }
+
+        if (unitType.pricingModel === "per_unit") {
+          pricingKind = "per_unit";
+          pricingKindLabel = "Por unidad";
+          const price = unitType.unitPriceArs ?? unitType.basePriceArs;
+          const safe =
+            typeof price === "number" ? price : typeof unitType.basePriceArs === "number" ? unitType.basePriceArs : null;
+          if (safe === null) {
+            priceLinePrimary = "Precio no disponible";
+            return "Precio no disponible";
+          }
+          priceLinePrimary = `$${formatArs(safe)}/noche`;
+          return `Por unidad · $${safe.toLocaleString("es-AR")}/noche`;
+        }
+
+        pricingKind = "per_person";
+        pricingKindLabel = "Por persona";
+        const adultPrice = unitType.adultPriceArs ?? unitType.basePriceArs;
+        const childPrice = unitType.childPriceArs ?? unitType.basePriceArs;
+        const adultSafe =
+          typeof adultPrice === "number"
+            ? adultPrice
+            : typeof unitType.basePriceArs === "number"
+              ? unitType.basePriceArs
+              : null;
+        const childSafe =
+          typeof childPrice === "number"
+            ? childPrice
+            : typeof unitType.basePriceArs === "number"
+              ? unitType.basePriceArs
+              : null;
+        if (adultSafe === null || childSafe === null) {
+          priceLinePrimary = "Precio no disponible";
+          return "Precio no disponible";
+        }
+        priceLinePrimary = `Adulto $${formatArs(adultSafe)}/noche`;
+        priceLineSecondary = `Menor $${formatArs(childSafe)}/noche`;
+        return `Por persona · Adulto $${adultSafe.toLocaleString("es-AR")} / Menor $${childSafe.toLocaleString("es-AR")}`;
+      })();
+
+      const label = `${unit.displayName} (${typeName}) · ${capacity} personas · ${pricingText}`;
+
+      return {
+        id: unit.id,
+        displayName: unit.displayName,
+        typeName,
+        capacityMax: capacity,
+        pricingKind,
+        pricingKindLabel,
+        priceLinePrimary,
+        priceLineSecondary,
+        label,
+      };
+    });
+    console.log("UNIT_BASED unitOptions", rows.map((r) => ({ value: r.id, label: r.label })));
+    return rows;
   }, [availableUnits, unitTypesById]);
+
+  const unitReservationGroups: UnitReservationGroup[] = useMemo(() => {
+    const groupsMap = new Map<string, UnitReservationOptionRow[]>();
+    for (const row of unitReservationRows) {
+      const existing = groupsMap.get(row.typeName);
+      if (existing) {
+        existing.push(row);
+      } else {
+        groupsMap.set(row.typeName, [row]);
+      }
+    }
+    return Array.from(groupsMap.entries()).map(([typeName, rows]) => ({ typeName, rows }));
+  }, [unitReservationRows]);
+
+  const [expandedUnitGroups, setExpandedUnitGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setExpandedUnitGroups((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const group of unitReservationGroups) {
+        next[group.typeName] = prev[group.typeName] ?? false;
+      }
+      return next;
+    });
+  }, [unitReservationGroups]);
+
+  const unitOptions: SelectOption[] = useMemo(
+    () => unitReservationRows.map((r) => ({ value: r.id, label: r.label })),
+    [unitReservationRows]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -346,6 +499,23 @@ export default function ReservarClient() {
     }
   }, [availableUnits, selectedUnitId, selectedCamping]);
 
+  useEffect(() => {
+    if (!isUnitBased) return;
+
+    const maxAdultos = Math.max(1, maxPersonas);
+    const adultosNormalizados = Math.min(Math.max(adultos, 1), maxAdultos);
+    if (adultos !== adultosNormalizados) {
+      setAdultos(adultosNormalizados);
+      return;
+    }
+
+    const maxMenoresPermitidos = Math.max(0, maxPersonas - adultosNormalizados);
+    const menoresNormalizados = Math.min(Math.max(menores, 0), maxMenoresPermitidos);
+    if (menores !== menoresNormalizados) {
+      setMenores(menoresNormalizados);
+    }
+  }, [isUnitBased, maxPersonas, adultos, menores]);
+
   const validate = (): string | null => {
     if (!selectedCamping) {
       setFieldError("camping");
@@ -367,7 +537,7 @@ export default function ReservarClient() {
       const ut = unitTypes.find((t) => t.id === u.unitTypeId);
       const capUnidad = ut?.capacityMax ?? selectedCamping.maxPersonasPorParcela;
       if (adultos < 0 || menores < 0) return "Adultos/menores inválido.";
-      if (totalPersonas <= 0) return "Debe haber al menos 1 persona.";
+      if (adultos < 1) return "Debe haber al menos 1 adulto.";
       if (totalPersonas > capUnidad) {
         return `Excede el máximo: ${capUnidad} personas para esta unidad.`;
       }
@@ -456,7 +626,13 @@ export default function ReservarClient() {
           return;
         }
         const freshUt = freshTypes.find((t) => t.id === selectedUnit.unitTypeId);
-        const montoTotalArs = noches * (freshUt?.basePriceArs ?? selectedCamping.precioNocheArs);
+        const precioNoche = unitBasedPricePerNight(
+          freshUt,
+          adultos,
+          menores,
+          selectedCamping.precioNocheArs
+        );
+        const montoTotalArs = noches * precioNoche;
 
         input = {
           campingId: selectedCamping.id,
@@ -507,8 +683,8 @@ export default function ReservarClient() {
           estado: docReserva.estado,
           expiresAtMs: docReserva.expiresAtMs,
           createdAtMs: docReserva.createdAtMs,
-          createdByUid: docReserva.createdByUid,
           unitId: selectedUnit.id,
+          unitTypeId: selectedUnit.unitTypeId,
         };
       } else {
         let all: ReservaPublic[];
@@ -588,7 +764,6 @@ export default function ReservarClient() {
           estado: docReserva.estado,
           expiresAtMs: docReserva.expiresAtMs,
           createdAtMs: docReserva.createdAtMs,
-          createdByUid: docReserva.createdByUid,
         };
       }
 
@@ -665,17 +840,7 @@ export default function ReservarClient() {
             />
           </div>
 
-          {selectedCamping?.inventoryMode === "unit_based" ? (
-            <SelectDropdown
-              label="Unidad"
-              value={selectedUnitId}
-              options={unitOptions}
-              onChange={setSelectedUnitId}
-              placeholder="Seleccionar unidad…"
-              disabled={submitting || unitOptions.length === 0}
-              searchable={false}
-            />
-          ) : (
+          {selectedCamping?.inventoryMode !== "unit_based" ? (
             <SelectDropdown
               label="Parcelas"
               value={String(parcelas)}
@@ -684,7 +849,7 @@ export default function ReservarClient() {
               disabled={submitting}
               searchable={false}
             />
-          )}
+          ) : null}
 
           <SelectDropdown
             label="Adultos"
@@ -704,6 +869,192 @@ export default function ReservarClient() {
             searchable={false}
           />
         </div>
+        <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: -2 }}>
+          Menores: 3 a 10 años · Mayores: 11 años o más
+        </div>
+
+        {selectedCamping?.inventoryMode === "unit_based" ? (
+          <div style={{ width: "100%", minWidth: 0, display: "grid", gap: 12 }}>
+            <div style={{ width: "100%" }}>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 6,
+                  color: "var(--color-text-muted)",
+                }}
+              >
+                Unidad
+              </span>
+              <div style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
+                Elegí una unidad. Podés ver capacidad y precio base antes de seleccionar.
+              </div>
+            </div>
+
+            <div
+              role="group"
+              aria-label="Unidades disponibles"
+              style={{
+                display: "grid",
+                gap: 10,
+                width: "100%",
+              }}
+            >
+              {unitReservationRows.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 14, color: "var(--color-text-muted)" }}>
+                  No hay unidades disponibles para estas fechas.
+                </p>
+              ) : (
+                unitReservationGroups.map((group) => {
+                  const expanded = expandedUnitGroups[group.typeName] ?? false;
+                  return (
+                    <div
+                      key={group.typeName}
+                      style={{
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 12,
+                        background: "var(--color-surface, #fff)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() =>
+                          setExpandedUnitGroups((prev) => ({
+                            ...prev,
+                            [group.typeName]: !(prev[group.typeName] ?? false),
+                          }))
+                        }
+                        aria-expanded={expanded}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: "transparent",
+                          textAlign: "left",
+                          font: "inherit",
+                          cursor: submitting ? "default" : "pointer",
+                          padding: "10px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          color: "var(--color-text)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        <span style={{ width: 16, textAlign: "center", color: "var(--color-text-muted)" }}>
+                          {expanded ? "▼" : "▶"}
+                        </span>
+                        <span>
+                          {group.typeName} ({group.rows.length})
+                        </span>
+                      </button>
+
+                      {expanded ? (
+                        <div style={{ borderTop: "1px solid var(--color-border)" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                            <thead>
+                              <tr style={{ background: "var(--color-bg)" }}>
+                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Unidad</th>
+                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Capacidad</th>
+                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Cobro</th>
+                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Precio</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.rows.map((row) => {
+                                const selected = row.id === selectedUnitId;
+                                const cobro =
+                                  row.pricingKind === "per_unit"
+                                    ? "Por unidad"
+                                    : row.pricingKind === "per_person"
+                                      ? "Por persona"
+                                      : "No definido";
+                                const precio =
+                                  row.pricingKind === "per_person" &&
+                                  row.priceLinePrimary &&
+                                  row.priceLineSecondary
+                                    ? `${row.priceLinePrimary} / ${row.priceLineSecondary}`
+                                    : row.priceLinePrimary || "Precio no disponible";
+
+                                return (
+                                  <tr
+                                    key={row.id}
+                                    onClick={() => setSelectedUnitId(row.id)}
+                                    style={{
+                                      cursor: submitting ? "default" : "pointer",
+                                      background: selected
+                                        ? "rgba(37, 99, 235, 0.12)"
+                                        : "var(--color-surface, #fff)",
+                                      boxShadow: selected
+                                        ? "inset 3px 0 0 var(--color-accent, #2563eb)"
+                                        : "none",
+                                    }}
+                                  >
+                                    <td
+                                      style={{
+                                        padding: "10px 12px",
+                                        borderTop: "1px solid var(--color-border)",
+                                        fontWeight: 600,
+                                        color: "var(--color-text)",
+                                      }}
+                                    >
+                                      {row.displayName}
+                                      {selected ? (
+                                        <span
+                                          style={{
+                                            marginLeft: 8,
+                                            fontSize: 12,
+                                            color: "var(--color-accent, #2563eb)",
+                                            fontWeight: 700,
+                                          }}
+                                        >
+                                          Seleccionada
+                                        </span>
+                                      ) : null}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "10px 12px",
+                                        borderTop: "1px solid var(--color-border)",
+                                        color: "var(--color-text-muted)",
+                                      }}
+                                    >
+                                      hasta {row.capacityMax} personas
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "10px 12px",
+                                        borderTop: "1px solid var(--color-border)",
+                                        color: "var(--color-text-muted)",
+                                      }}
+                                    >
+                                      {cobro}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding: "10px 12px",
+                                        borderTop: "1px solid var(--color-border)",
+                                        color: "var(--color-text)",
+                                      }}
+                                    >
+                                      {precio}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        ) : null}
 
         <hr />
 
