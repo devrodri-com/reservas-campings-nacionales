@@ -55,16 +55,15 @@ function nightsCount(checkIn: string, checkOut: string): number {
 function unitBasedPricePerNight(
   unitType: UnitType | undefined,
   adultos: number,
-  menores: number,
-  campingFallbackPriceArs: number
-): number {
-  if (!unitType) return campingFallbackPriceArs;
+  menores: number
+): number | null {
+  if (!unitType) return null;
 
   if (unitType.pricingModel === "per_unit") {
     if (typeof unitType.unitPriceArs === "number") return unitType.unitPriceArs;
     // Compat temporal para tipos legacy todavía no migrados
     if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
-    return campingFallbackPriceArs;
+    return null;
   }
 
   if (typeof unitType.adultPriceArs === "number" && typeof unitType.childPriceArs === "number") {
@@ -72,7 +71,7 @@ function unitBasedPricePerNight(
   }
   // Compat temporal para tipos legacy todavía no migrados
   if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
-  return campingFallbackPriceArs;
+  return null;
 }
 
 function filterReservasBloqueantes(all: ReservaPublic[], nowMs: number): ReservaPublic[] {
@@ -238,17 +237,13 @@ export default function ReservarClient() {
 
   const totalPersonas = adultos + menores;
 
-  const totalArs = useMemo(() => {
-    if (!selectedCamping) return 0;
+  const totalArs = useMemo<number | null>(() => {
+    if (!selectedCamping) return null;
     if (selectedCamping.inventoryMode === "unit_based") {
       const u = units.find((x) => x.id === selectedUnitId);
       const ut = u ? unitTypes.find((t) => t.id === u.unitTypeId) : undefined;
-      const precioNoche = unitBasedPricePerNight(
-        ut,
-        adultos,
-        menores,
-        selectedCamping.precioNocheArs
-      );
+      const precioNoche = unitBasedPricePerNight(ut, adultos, menores);
+      if (precioNoche === null) return null;
       return noches * precioNoche;
     }
     return noches * parcelas * selectedCamping.precioNocheArs;
@@ -311,40 +306,26 @@ export default function ReservarClient() {
         if (unitType.pricingModel === "per_unit") {
           pricingKind = "per_unit";
           pricingKindLabel = "Por unidad";
-          const price = unitType.unitPriceArs ?? unitType.basePriceArs;
-          const safe =
-            typeof price === "number" ? price : typeof unitType.basePriceArs === "number" ? unitType.basePriceArs : null;
-          if (safe === null) {
+          if (typeof unitType.unitPriceArs !== "number") {
             priceLinePrimary = "Precio no disponible";
             return "Precio no disponible";
           }
-          priceLinePrimary = `$${formatArs(safe)}/noche`;
-          return `Por unidad · $${safe.toLocaleString("es-AR")}/noche`;
+          priceLinePrimary = `$${formatArs(unitType.unitPriceArs)}/noche`;
+          return `Por unidad · $${unitType.unitPriceArs.toLocaleString("es-AR")}/noche`;
         }
 
         pricingKind = "per_person";
         pricingKindLabel = "Por persona";
-        const adultPrice = unitType.adultPriceArs ?? unitType.basePriceArs;
-        const childPrice = unitType.childPriceArs ?? unitType.basePriceArs;
-        const adultSafe =
-          typeof adultPrice === "number"
-            ? adultPrice
-            : typeof unitType.basePriceArs === "number"
-              ? unitType.basePriceArs
-              : null;
-        const childSafe =
-          typeof childPrice === "number"
-            ? childPrice
-            : typeof unitType.basePriceArs === "number"
-              ? unitType.basePriceArs
-              : null;
-        if (adultSafe === null || childSafe === null) {
+        if (
+          typeof unitType.adultPriceArs !== "number" ||
+          typeof unitType.childPriceArs !== "number"
+        ) {
           priceLinePrimary = "Precio no disponible";
           return "Precio no disponible";
         }
-        priceLinePrimary = `Adulto $${formatArs(adultSafe)}/noche`;
-        priceLineSecondary = `Menor $${formatArs(childSafe)}/noche`;
-        return `Por persona · Adulto $${adultSafe.toLocaleString("es-AR")} / Menor $${childSafe.toLocaleString("es-AR")}`;
+        priceLinePrimary = `Adulto $${formatArs(unitType.adultPriceArs)}/noche`;
+        priceLineSecondary = `Menor $${formatArs(unitType.childPriceArs)}/noche`;
+        return `Por persona · Adulto $${unitType.adultPriceArs.toLocaleString("es-AR")} / Menor $${unitType.childPriceArs.toLocaleString("es-AR")}`;
       })();
 
       const label = `${unit.displayName} (${typeName}) · ${capacity} personas · ${pricingText}`;
@@ -393,6 +374,10 @@ export default function ReservarClient() {
   const unitOptions: SelectOption[] = useMemo(
     () => unitReservationRows.map((r) => ({ value: r.id, label: r.label })),
     [unitReservationRows]
+  );
+  const selectedUnitReservationRow = useMemo(
+    () => unitReservationRows.find((row) => row.id === selectedUnitId) ?? null,
+    [unitReservationRows, selectedUnitId]
   );
 
   useEffect(() => {
@@ -626,12 +611,12 @@ export default function ReservarClient() {
           return;
         }
         const freshUt = freshTypes.find((t) => t.id === selectedUnit.unitTypeId);
-        const precioNoche = unitBasedPricePerNight(
-          freshUt,
-          adultos,
-          menores,
-          selectedCamping.precioNocheArs
-        );
+        const precioNoche = unitBasedPricePerNight(freshUt, adultos, menores);
+        if (precioNoche === null) {
+          setError("No se pudo calcular el precio de la unidad seleccionada.");
+          setSubmitting(false);
+          return;
+        }
         const montoTotalArs = noches * precioNoche;
 
         input = {
@@ -747,7 +732,7 @@ export default function ReservarClient() {
           titularTelefono: input.titularTelefono,
           titularEdad: input.titularEdad,
           estado: "pendiente_pago",
-          montoTotalArs: totalArs,
+          montoTotalArs: noches * parcelas * selectedCamping.precioNocheArs,
           createdAtMs: Date.now(),
           createdByUid: uid,
           createdByMode: "public",
@@ -1056,6 +1041,59 @@ export default function ReservarClient() {
           </div>
         ) : null}
 
+        {selectedCamping?.inventoryMode === "unit_based" && selectedUnitReservationRow ? (
+          <div
+            style={{
+              border: "1px solid rgba(37, 99, 235, 0.35)",
+              borderRadius: 12,
+              background: "rgba(37, 99, 235, 0.08)",
+              padding: "12px 14px",
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "var(--color-accent, #2563eb)",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Unidad seleccionada
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-text)" }}>
+                {selectedUnitReservationRow.displayName}
+              </div>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--color-accent, #2563eb)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Confirmada
+              </span>
+            </div>
+
+            <div style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
+              {selectedUnitReservationRow.typeName} · hasta {selectedUnitReservationRow.capacityMax} personas
+            </div>
+            <div style={{ fontSize: 13, color: "var(--color-text)", lineHeight: 1.45 }}>
+              {selectedUnitReservationRow.pricingKind === "per_unit" && selectedUnitReservationRow.priceLinePrimary
+                ? `Por unidad · ${selectedUnitReservationRow.priceLinePrimary}`
+                : selectedUnitReservationRow.pricingKind === "per_person" &&
+                    selectedUnitReservationRow.priceLinePrimary &&
+                    selectedUnitReservationRow.priceLineSecondary
+                  ? `Por persona · ${selectedUnitReservationRow.priceLinePrimary} · ${selectedUnitReservationRow.priceLineSecondary}`
+                  : selectedUnitReservationRow.priceLinePrimary || "Precio no disponible"}
+            </div>
+          </div>
+        ) : null}
+
         <hr />
 
         <h2>Datos de contacto</h2>
@@ -1147,7 +1185,10 @@ export default function ReservarClient() {
                 </div>
               )}
               <div><strong>Personas:</strong> {adultos} adultos / {menores} menores</div>
-              <div><strong>Total:</strong> ${formatArs(totalArs)}</div>
+              <div>
+                <strong>Total:</strong>{" "}
+                {totalArs === null ? "Precio no disponible" : `$${formatArs(totalArs)}`}
+              </div>
               <div style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 4 }}>
                 Tenés 15 minutos para completar el pago. Si no se completa, la disponibilidad se libera automáticamente.
               </div>

@@ -22,9 +22,12 @@ import type {
   UnitTypePricingModel,
 } from "@/types/unitType";
 import UnitTypeForm from "@/components/admin/UnitTypeForm";
+import AdminCollapsibleSection from "@/components/admin/AdminCollapsibleSection";
 import { Button, Card } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
+
+type OpenSection = "camping" | "unitTypes" | "units" | null;
 
 type EditableFields = Pick<
   Camping,
@@ -139,6 +142,7 @@ export default function AdminCampingsPage() {
   const [editUnitNumber, setEditUnitNumber] = useState("");
   const [editUnitSector, setEditUnitSector] = useState("");
   const [editUnitPriceOverride, setEditUnitPriceOverride] = useState("");
+  const [openSection, setOpenSection] = useState<OpenSection>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -185,6 +189,10 @@ export default function AdminCampingsPage() {
     () => campings.find((c) => c.id === selectedId) ?? null,
     [campings, selectedId]
   );
+
+  useEffect(() => {
+    setOpenSection(selectedCamping ? "camping" : null);
+  }, [selectedCamping?.id]);
 
   const campingOptions: SelectOption[] = useMemo(
     () =>
@@ -444,7 +452,7 @@ export default function AdminCampingsPage() {
     setSaving(true);
     setError(null);
     try {
-      await createUnitType({
+      const createPayload = {
         campingId: selectedCamping.id,
         code,
         name,
@@ -455,16 +463,13 @@ export default function AdminCampingsPage() {
           ? {
               adultPriceArs: Number(unitTypeAdultPrice),
               childPriceArs: Number(unitTypeChildPrice),
-              // Compat temporal legacy
-              basePriceArs: Number(unitTypeAdultPrice),
             }
           : {
               unitPriceArs: Number(unitTypePricePerUnit),
-              // Compat temporal legacy
-              basePriceArs: Number(unitTypePricePerUnit),
             }),
         active: true,
-      });
+      } as Parameters<typeof createUnitType>[0];
+      await createUnitType(createPayload);
       const list = await fetchUnitTypesByCamping(selectedCamping.id);
       setUnitTypes(list);
       setUnitTypeName("");
@@ -554,13 +559,9 @@ export default function AdminCampingsPage() {
           ? {
               adultPriceArs: Number(editUnitTypeAdultPrice),
               childPriceArs: Number(editUnitTypeChildPrice),
-              // Compat temporal legacy
-              basePriceArs: Number(editUnitTypeAdultPrice),
             }
           : {
               unitPriceArs: Number(editUnitTypePricePerUnit),
-              // Compat temporal legacy
-              basePriceArs: Number(editUnitTypePricePerUnit),
             }),
         bookingMode: editUnitTypeBookingMode,
       });
@@ -843,27 +844,6 @@ export default function AdminCampingsPage() {
     display: "block",
   };
 
-  const flowMajorDivider: CSSProperties = {
-    border: "none",
-    borderTop: "2px solid var(--color-border)",
-    margin: "28px 0 0 0",
-  };
-
-  const flowStepTitle: CSSProperties = {
-    margin: "20px 0 0 0",
-    fontSize: 18,
-    fontWeight: 800,
-    color: "var(--color-accent)",
-    letterSpacing: "-0.02em",
-  };
-
-  const flowGuideText: CSSProperties = {
-    margin: "8px 0 0 0",
-    color: "var(--color-text-muted)",
-    fontSize: 14,
-    lineHeight: 1.45,
-  };
-
   const flowStepPanel: CSSProperties = {
     display: "grid",
     gap: 14,
@@ -1074,23 +1054,13 @@ export default function AdminCampingsPage() {
             <p>Seleccioná un camping.</p>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
-              <section aria-labelledby="camping-info-general-heading">
-                <h3
-                  id="camping-info-general-heading"
-                  style={{
-                    margin: 0,
-                    fontSize: 17,
-                    fontWeight: 800,
-                    color: "var(--color-accent)",
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  Información general
-                </h3>
-                <p style={flowGuideText}>
-                  Completá la ficha pública del camping: texto, redes y mapas.
-                </p>
-                <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+              <AdminCollapsibleSection
+                title="Datos del camping"
+                subtitle="Completá la ficha pública del camping: texto, redes y mapas."
+                isOpen={openSection === "camping"}
+                onToggle={(nextOpen) => setOpenSection(nextOpen ? "camping" : null)}
+              >
+                <div style={{ display: "grid", gap: 12 }}>
                 <div>
                 <div style={{ fontWeight: 800, color: "var(--color-accent)", fontSize: 16 }}>
                   {selectedCamping.nombre}
@@ -1212,23 +1182,16 @@ export default function AdminCampingsPage() {
                 Si dejás “Imagen de portada” vacío, se usa <code>/campings/placeholder.jpg</code>.
               </p>
                 </div>
-              </section>
+              </AdminCollapsibleSection>
 
               {selectedCamping.inventoryMode === "unit_based" ? (
                 <>
-                  <hr style={flowMajorDivider} />
-
-                  <section aria-labelledby="paso-1-unit-types-heading">
-                    <h3 id="paso-1-unit-types-heading" style={flowStepTitle}>
-                      Paso 1 — Tipos de unidad
-                    </h3>
-                    <p style={flowGuideText}>
-                      Primero definí las categorías base, por ejemplo: Parcela, Cabaña, Cabina.
-                    </p>
-                    <p style={{ ...flowGuideText, marginTop: 6 }}>
-                      Un tipo de unidad es una categoría base, por ejemplo Parcela o Cabaña.
-                    </p>
-
+                  <AdminCollapsibleSection
+                    title="Paso 1 - Tipos de unidad"
+                    subtitle="Primero definí las categorías base, por ejemplo: Parcela, Cabaña, Cabina."
+                    isOpen={openSection === "unitTypes"}
+                    onToggle={(nextOpen) => setOpenSection(nextOpen ? "unitTypes" : null)}
+                  >
                     <div style={flowStepPanel}>
                   {unitTypes.length === 0 ? (
                     <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
@@ -1292,8 +1255,13 @@ export default function AdminCampingsPage() {
                                 <strong>{ut.name}</strong> · código <code>{ut.code}</code> ·
                                 capacidad {ut.capacityMax} ·{" "}
                                 {ut.pricingModel === "per_unit"
-                                  ? `Por unidad · $${(ut.unitPriceArs ?? ut.basePriceArs ?? 0).toLocaleString("es-AR")} ARS`
-                                  : `Por persona · adulto $${(ut.adultPriceArs ?? ut.basePriceArs ?? 0).toLocaleString("es-AR")} ARS · menor $${(ut.childPriceArs ?? ut.basePriceArs ?? 0).toLocaleString("es-AR")} ARS`}
+                                  ? typeof ut.unitPriceArs === "number"
+                                    ? `Por unidad · $${ut.unitPriceArs.toLocaleString("es-AR")} ARS`
+                                    : "Precio no disponible"
+                                  : typeof ut.adultPriceArs === "number" &&
+                                      typeof ut.childPriceArs === "number"
+                                    ? `Por persona · adulto $${ut.adultPriceArs.toLocaleString("es-AR")} ARS · menor $${ut.childPriceArs.toLocaleString("es-AR")} ARS`
+                                    : "Precio no disponible"}
                               </div>
                               <Button
                                 variant="secondary"
@@ -1345,19 +1313,14 @@ export default function AdminCampingsPage() {
                     />
                   </div>
                     </div>
-                  </section>
+                  </AdminCollapsibleSection>
 
-                  <hr style={flowMajorDivider} />
-
-                  <section aria-labelledby="paso-2-unidades-heading">
-                    <h3 id="paso-2-unidades-heading" style={flowStepTitle}>
-                      Paso 2 — Unidades
-                    </h3>
-                    <p style={flowGuideText}>
-                      Después cargá las unidades reales de este camping. Podés crear una sola o varias
-                      en lote.
-                    </p>
-
+                  <AdminCollapsibleSection
+                    title="Paso 2 - Unidades"
+                    subtitle="Después cargá las unidades reales de este camping. Podés crear una sola o varias en lote."
+                    isOpen={openSection === "units"}
+                    onToggle={(nextOpen) => setOpenSection(nextOpen ? "units" : null)}
+                  >
                     <div style={flowStepPanel}>
                   {units.length === 0 ? (
                     <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
@@ -1628,7 +1591,7 @@ export default function AdminCampingsPage() {
                     </div>
                   </div>
                     </div>
-                  </section>
+                  </AdminCollapsibleSection>
                 </>
               ) : null}
             </div>

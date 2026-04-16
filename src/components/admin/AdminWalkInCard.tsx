@@ -2,7 +2,9 @@
 
 import type { Camping } from "@/types/camping";
 import type { Unit } from "@/types/unit";
+import type { UnitType } from "@/types/unitType";
 import { Button, Card } from "@/components/ui";
+import AdminUnitSelector from "@/components/admin/AdminUnitSelector";
 import PhoneFieldSimple from "@/components/PhoneFieldSimple";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
@@ -35,7 +37,7 @@ export type AdminWalkInCardProps = {
   onWalkInTelefonoDialManualChange: (v: string) => void;
   walkInEdad: number;
   onWalkInEdadChange: (n: number) => void;
-  unitOptions: SelectOption[];
+  unitTypes: UnitType[];
   parcelasOptions: SelectOption[];
   adultosOptions: SelectOption[];
   menoresOptions: SelectOption[];
@@ -70,13 +72,15 @@ export default function AdminWalkInCard(props: AdminWalkInCardProps) {
 
             {camping.inventoryMode === "unit_based" ? (
               <>
-                <SelectDropdown
-                  label="Unidad"
-                  value={props.walkInUnitId}
-                  options={props.unitOptions}
-                  onChange={props.onWalkInUnitIdChange}
-                  disabled={props.busy}
-                />
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <AdminUnitSelector
+                    units={props.units}
+                    unitTypes={props.unitTypes}
+                    selectedUnitId={props.walkInUnitId}
+                    onSelectUnit={props.onWalkInUnitIdChange}
+                    disabled={props.busy}
+                  />
+                </div>
                 <SelectDropdown
                   label="Adultos"
                   value={String(props.walkInAdultos)}

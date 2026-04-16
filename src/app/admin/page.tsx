@@ -31,14 +31,14 @@ import type { SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
 import ReservaDetailModal from "@/components/admin/ReservaDetailModal";
 import { SunIcon, MoonIcon } from "@/components/icons";
-import { fetchUnitTypesByCamping, createUnitType } from "@/lib/unitTypesRepo";
+import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
 import { fetchUnitsByCamping, updateUnit, createUnit } from "@/lib/unitsRepo";
 import {
   fetchUnitBlocksByCamping,
   createUnitBlock,
   deleteUnitBlock,
 } from "@/lib/unitBlocksRepo";
-import type { UnitType, UnitTypeBookingMode } from "@/types/unitType";
+import type { UnitType } from "@/types/unitType";
 import type { Unit } from "@/types/unit";
 import type { UnitBlock } from "@/types/unitBlock";
 import type { UnitAvailabilityRow } from "@/types/unitAvailability";
@@ -173,14 +173,13 @@ function unitAvailableForReservaRange(
 function walkInUnitBasedPricePerNight(
   unitType: UnitType,
   adultos: number,
-  menores: number,
-  campingFallbackPriceArs: number
-): number {
+  menores: number
+): number | null {
   if (unitType.pricingModel === "per_unit") {
     if (typeof unitType.unitPriceArs === "number") return unitType.unitPriceArs;
     // Compat temporal: tipos legacy sin unitPriceArs
     if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
-    return campingFallbackPriceArs;
+    return null;
   }
 
   if (
@@ -191,7 +190,7 @@ function walkInUnitBasedPricePerNight(
   }
   // Compat temporal: tipos legacy sin tarifas por persona
   if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
-  return campingFallbackPriceArs;
+  return null;
 }
 
 function formatWalkInUnitOptionLabel(unit: Unit, unitType: UnitType | undefined): string {
@@ -200,12 +199,16 @@ function formatWalkInUnitOptionLabel(unit: Unit, unitType: UnitType | undefined)
   const pricingText = (() => {
     if (!unitType) return "Precio no disponible";
     if (unitType.pricingModel === "per_unit") {
-      const price = unitType.unitPriceArs ?? unitType.basePriceArs;
-      return `Por unidad · $${price.toLocaleString("es-AR")}/noche`;
+      if (typeof unitType.unitPriceArs !== "number") return "Precio no disponible";
+      return `Por unidad · $${unitType.unitPriceArs.toLocaleString("es-AR")}/noche`;
     }
-    const adultPrice = unitType.adultPriceArs ?? unitType.basePriceArs;
-    const childPrice = unitType.childPriceArs ?? unitType.basePriceArs;
-    return `Por persona · Adulto $${adultPrice.toLocaleString("es-AR")} / Menor $${childPrice.toLocaleString("es-AR")}`;
+    if (
+      typeof unitType.adultPriceArs !== "number" ||
+      typeof unitType.childPriceArs !== "number"
+    ) {
+      return "Precio no disponible";
+    }
+    return `Por persona · Adulto $${unitType.adultPriceArs.toLocaleString("es-AR")} / Menor $${unitType.childPriceArs.toLocaleString("es-AR")}`;
   })();
   return `${unit.displayName} (${typeName}) · ${capacity} personas · ${pricingText}`;
 }
@@ -221,7 +224,7 @@ function computeWalkInMontoTotalArs(
   walkInParcelas: number,
   walkInCheckIn: string,
   walkInCheckOut: string
-): number {
+): number | null {
   const noches = enumerateNights(walkInCheckIn, walkInCheckOut).length;
   if (noches < 1) return 0;
   const parcelasNeeded = isUnitBased ? 1 : walkInParcelas;
@@ -229,14 +232,10 @@ function computeWalkInMontoTotalArs(
   const walkInUnitType = selectedUnit ? unitTypeById.get(selectedUnit.unitTypeId) : undefined;
   const pricePerNight = isUnitBased
     ? walkInUnitType
-      ? walkInUnitBasedPricePerNight(
-          walkInUnitType,
-          walkInAdultos,
-          walkInMenores,
-          camping.precioNocheArs
-        )
-      : camping.precioNocheArs
+      ? walkInUnitBasedPricePerNight(walkInUnitType, walkInAdultos, walkInMenores)
+      : null
     : camping.precioNocheArs;
+  if (pricePerNight === null) return null;
   return noches * parcelasNeeded * pricePerNight;
 }
 
@@ -290,13 +289,6 @@ export default function AdminHomePage() {
   const [selectedUnitForBlock, setSelectedUnitForBlock] = useState<Unit | null>(null);
   const [blockFromDate, setBlockFromDate] = useState<string>(todayYmd());
   const [blockToDate, setBlockToDate] = useState<string>(addDaysYmd(todayYmd(), 1));
-
-  const [unitTypeName, setUnitTypeName] = useState("");
-  const [unitTypeCode, setUnitTypeCode] = useState("");
-  const [unitTypeCapacity, setUnitTypeCapacity] = useState(1);
-  const [unitTypePrice, setUnitTypePrice] = useState(0);
-  const [unitTypeBookingMode, setUnitTypeBookingMode] =
-    useState<UnitTypeBookingMode>("overnight_only");
 
   const [unitName, setUnitName] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
@@ -661,8 +653,8 @@ export default function AdminHomePage() {
     [walkInCheckIn, walkInCheckOut]
   );
 
-  const walkInEstimatedMontoArs = useMemo(() => {
-    if (!camping) return 0;
+  const walkInEstimatedMontoArs = useMemo<number | null>(() => {
+    if (!camping) return null;
     const isUb = camping.inventoryMode === "unit_based";
     return computeWalkInMontoTotalArs(
       camping,
@@ -687,6 +679,11 @@ export default function AdminHomePage() {
     walkInCheckIn,
     walkInCheckOut,
   ]);
+  const walkInEstimatedPriceUnavailable =
+    Boolean(camping) &&
+    camping?.inventoryMode === "unit_based" &&
+    walkInUnitId.trim().length > 0 &&
+    walkInEstimatedMontoArs === null;
 
   useEffect(() => {
     if (!camping || camping.inventoryMode !== "unit_based") return;
@@ -709,15 +706,6 @@ export default function AdminHomePage() {
         const age = 18 + i;
         return { value: String(age), label: String(age) };
       }),
-    []
-  );
-
-  const unitTypeBookingModeOptions: SelectOption[] = useMemo(
-    () => [
-      { value: "overnight_only", label: "Solo pernocte" },
-      { value: "day_use_only", label: "Solo día" },
-      { value: "both", label: "Ambos" },
-    ],
     []
   );
 
@@ -886,52 +874,6 @@ export default function AdminHomePage() {
       setUnitBlocks(refreshed);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleCreateUnitType = async () => {
-    if (!camping) {
-      setError("No hay camping seleccionado.");
-      return;
-    }
-    const name = unitTypeName.trim();
-    const code = unitTypeCode.trim();
-    if (!name) {
-      setError("El nombre del tipo de unidad es obligatorio.");
-      return;
-    }
-    if (!code) {
-      setError("El código del tipo de unidad es obligatorio.");
-      return;
-    }
-    if (unitTypeCapacity <= 0) {
-      setError("La capacidad máxima debe ser mayor a 0.");
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    try {
-      await createUnitType({
-        campingId: camping.id,
-        code,
-        name,
-        bookingMode: unitTypeBookingMode,
-        basePriceArs: unitTypePrice,
-        capacityMax: unitTypeCapacity,
-        active: true,
-      });
-      const refreshed = await fetchUnitTypesByCamping(camping.id);
-      setUnitTypes(refreshed);
-      setUnitTypeName("");
-      setUnitTypeCode("");
-      setUnitTypeCapacity(1);
-      setUnitTypePrice(0);
-      setUnitTypeBookingMode("overnight_only");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo crear el tipo de unidad.");
     } finally {
       setBusy(false);
     }
@@ -1373,6 +1315,11 @@ export default function AdminHomePage() {
         walkInCheckIn,
         walkInCheckOut
       );
+      if (montoTotalArs === null) {
+        setError("No se pudo calcular el precio de la unidad seleccionada.");
+        setBusy(false);
+        return;
+      }
 
       const docReserva: ReservaDoc = {
         campingId: camping.id,
@@ -1818,7 +1765,7 @@ export default function AdminHomePage() {
           onWalkInTelefonoDialManualChange={setWalkInTelefonoDialManual}
           walkInEdad={walkInEdad}
           onWalkInEdadChange={setWalkInEdad}
-          unitOptions={unitOptions}
+          unitTypes={unitTypes}
           parcelasOptions={parcelasOptions}
           adultosOptions={adultosOptions}
           menoresOptions={menoresOptions}
@@ -1826,10 +1773,13 @@ export default function AdminHomePage() {
           walkInUnitMenoresOptions={walkInUnitMenoresOptions}
           edadOptions={edadOptions}
           walkInNochesCount={walkInNochesCount}
-          walkInEstimatedMontoArs={walkInEstimatedMontoArs}
+          walkInEstimatedMontoArs={walkInEstimatedMontoArs ?? 0}
           units={units}
           onSubmitWalkIn={createWalkInReserva}
         />
+      ) : null}
+      {walkInEstimatedPriceUnavailable ? (
+        <p style={{ marginTop: 8, color: "var(--color-text-muted)" }}>Precio no disponible.</p>
       ) : null}
 
       <div style={{ marginTop: 16 }}>
@@ -1865,99 +1815,6 @@ export default function AdminHomePage() {
 
       {camping?.inventoryMode === "unit_based" && canCreateOrCancel ? (
         <>
-          <div style={{ marginTop: 16 }}>
-            <Card title="Crear tipo de unidad">
-              <div style={{ display: "grid", gap: 12, maxWidth: 480 }}>
-                <label style={{ display: "grid", gap: 4 }}>
-                  Nombre
-                  <input
-                    value={unitTypeName}
-                    onChange={(e) => setUnitTypeName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <label style={{ display: "grid", gap: 4 }}>
-                  Código (ej: parcela, dormi)
-                  <input
-                    value={unitTypeCode}
-                    onChange={(e) => setUnitTypeCode(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <label style={{ display: "grid", gap: 4 }}>
-                  Capacidad máxima
-                  <input
-                    type="number"
-                    min={1}
-                    value={unitTypeCapacity}
-                    onChange={(e) => setUnitTypeCapacity(Number(e.target.value) || 0)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <label style={{ display: "grid", gap: 4 }}>
-                  Precio base (ARS / noche)
-                  <input
-                    type="number"
-                    min={0}
-                    value={unitTypePrice}
-                    onChange={(e) => setUnitTypePrice(Number(e.target.value) || 0)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <SelectDropdown
-                  label="Booking mode"
-                  value={unitTypeBookingMode}
-                  options={unitTypeBookingModeOptions}
-                  onChange={(v) => {
-                    if (v === "overnight_only" || v === "day_use_only" || v === "both") {
-                      setUnitTypeBookingMode(v);
-                    }
-                  }}
-                  disabled={busy}
-                />
-                <Button
-                  variant="primary"
-                  disabled={busy || !camping}
-                  onClick={() => void handleCreateUnitType()}
-                >
-                  Crear tipo
-                </Button>
-              </div>
-            </Card>
-          </div>
-
           <div style={{ marginTop: 16 }}>
             <Card title="Crear unidad">
               <div style={{ display: "grid", gap: 12, maxWidth: 480 }}>
