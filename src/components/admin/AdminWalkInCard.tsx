@@ -67,6 +67,7 @@ export default function AdminWalkInCard(props: AdminWalkInCardProps) {
                   props.onWalkInDatesChange(checkInDate, checkOutDate);
                 }}
                 disabled={props.busy}
+                disablePast
               />
             </div>
 

@@ -42,7 +42,7 @@ import type { UnitType } from "@/types/unitType";
 import type { Unit } from "@/types/unit";
 import type { UnitBlock } from "@/types/unitBlock";
 import type { UnitAvailabilityRow } from "@/types/unitAvailability";
-import UnitInventoryCard from "@/components/admin/UnitInventoryCard";
+import AdminUnitInventoryTable from "@/components/admin/AdminUnitInventoryTable";
 import AdminWalkInCard from "@/components/admin/AdminWalkInCard";
 
 const DEFAULT_CAMPING_ID = "talampaya-campamento-agreste";
@@ -177,8 +177,6 @@ function walkInUnitBasedPricePerNight(
 ): number | null {
   if (unitType.pricingModel === "per_unit") {
     if (typeof unitType.unitPriceArs === "number") return unitType.unitPriceArs;
-    // Compat temporal: tipos legacy sin unitPriceArs
-    if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
     return null;
   }
 
@@ -188,8 +186,6 @@ function walkInUnitBasedPricePerNight(
   ) {
     return adultos * unitType.adultPriceArs + menores * unitType.childPriceArs;
   }
-  // Compat temporal: tipos legacy sin tarifas por persona
-  if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
   return null;
 }
 
@@ -578,16 +574,6 @@ export default function AdminHomePage() {
     return reservas.filter((r) => r.checkInDate < rangeEndDate && r.checkOutDate > fromDate);
   }, [reservas, fromDate, rangeEndDate]);
 
-  const availability = useMemo(() => {
-    if (!camping) return [];
-    return buildAvailabilityForRange({
-      fromDate,
-      days,
-      capacidadParcelas: camping.capacidadParcelas,
-      reservas: reservasQueBloquean,
-    });
-  }, [camping, reservasQueBloquean, fromDate, days]);
-
   // Walk-in options
   const walkInMaxPersonas = useMemo(() => {
     const maxPer = camping?.maxPersonasPorParcela ?? 6;
@@ -944,14 +930,8 @@ export default function AdminHomePage() {
     ).length;
     const canceladas = reservasEnRango.filter((r) => r.estado === "cancelada").length;
     const fallidas = reservasEnRango.filter((r) => r.estado === "fallida").length;
-
-    // "Hoy" dentro del rango visible: usar fromDate (primer día mostrado)
-    const firstDay = availability[0];
-    const ocupadasHoy = firstDay ? firstDay.ocupadas : 0;
-    const disponiblesHoy = firstDay ? firstDay.disponibles : 0;
-
-    return { total, pagadas, pendientes, canceladas, fallidas, ocupadasHoy, disponiblesHoy };
-  }, [reservasEnRango, availability, nowMs]);
+    return { total, pagadas, pendientes, canceladas, fallidas };
+  }, [reservasEnRango, nowMs]);
 
   const createDemoReserva = async () => {
     if (!camping) return;
@@ -1708,12 +1688,6 @@ export default function AdminHomePage() {
         <Card title="Canceladas / Fallidas">
           <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.canceladas + kpis.fallidas}</div>
         </Card>
-        <Card title="Ocupación (primer día)">
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
-            <span style={{ fontSize: 24, fontWeight: 900 }}>{kpis.ocupadasHoy}</span>
-            <span style={{ color: "var(--color-text-muted)" }}>/ {kpis.ocupadasHoy + kpis.disponiblesHoy}</span>
-          </div>
-        </Card>
       </div>
 
       <hr style={{ margin: "24px 0" }} />
@@ -1888,12 +1862,10 @@ export default function AdminHomePage() {
       ) : null}
 
       {camping?.inventoryMode === "unit_based" ? (
-        <UnitInventoryCard
-          campingInventoryMode={camping?.inventoryMode}
+        <AdminUnitInventoryTable
           busy={busy}
           units={units}
           unitTypes={unitTypes}
-          unitTypeById={unitTypeById}
           unitBlocks={unitBlocks}
           unitAvailability={unitAvailability}
           fromDate={fromDate}
@@ -1913,35 +1885,6 @@ export default function AdminHomePage() {
           todayYmdValue={todayYmd()}
         />
       ) : null}
-
-      <div style={{ marginTop: 16 }}>
-        <Card
-          title={`Disponibilidad (${formatYmdToDmy(fromDate || "...")} → ${formatYmdToDmy(rangeEndDate || "...")})`}
-        >
-          {!camping ? (
-            <p>Cargando…</p>
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Fecha</Th>
-                  <Th>Ocupadas</Th>
-                  <Th>Disponibles</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {availability.map((d) => (
-                  <tr key={d.date}>
-                    <Td>{formatYmdToDmy(d.date)}</Td>
-                    <Td>{d.ocupadas}</Td>
-                    <Td>{d.disponibles}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card>
-      </div>
 
       <div style={{ marginTop: 16 }}>
         <Card title="Reservas (en rango)">

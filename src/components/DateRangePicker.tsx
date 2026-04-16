@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { parseYmd, toYmd, isYmd } from "@/lib/dates";
+import { parseYmd, toYmd, isYmd, todayYmd } from "@/lib/dates";
 
 type Props = {
   label?: string;
@@ -10,6 +10,7 @@ type Props = {
   onChange: (next: { checkInDate: string; checkOutDate: string }) => void;
   disabled?: boolean;
   hasError?: boolean;
+  disablePast?: boolean;
 };
 
 function startOfMonth(d: Date): Date {
@@ -93,6 +94,9 @@ export default function DateRangePicker(props: Props) {
 
   const selectDay = (day: Date) => {
     if (props.disabled) return;
+    const today = todayYmd();
+    const ymd = toYmd(day);
+    if (props.disablePast && ymd && ymd < today) return;
 
     // si no hay start o ya hay rango completo, reiniciar start
     if (!isYmd(tempStart) || (isYmd(tempStart) && isYmd(tempEnd))) {
@@ -284,6 +288,8 @@ export default function DateRangePicker(props: Props) {
 
                 const day = c.date;
                 const ymd = toYmd(day);
+                const today = todayYmd();
+                const isPast = Boolean(props.disablePast && ymd && ymd < today);
 
                 const startOk = isYmd(tempStart);
                 const endOk = isYmd(tempEnd);
@@ -305,6 +311,7 @@ export default function DateRangePicker(props: Props) {
                     key={ymd}
                     type="button"
                     onClick={() => selectDay(day)}
+                    disabled={props.disabled || isPast}
                     style={{
                       width: "100%",
                       padding: "10px 0",
@@ -312,7 +319,8 @@ export default function DateRangePicker(props: Props) {
                       border: "1px solid var(--color-border)",
                       background: bg,
                       color,
-                      cursor: "pointer",
+                      cursor: props.disabled || isPast ? "not-allowed" : "pointer",
+                      opacity: isPast ? 0.35 : 1,
                     }}
                   >
                     {day.getDate()}

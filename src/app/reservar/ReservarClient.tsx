@@ -61,16 +61,12 @@ function unitBasedPricePerNight(
 
   if (unitType.pricingModel === "per_unit") {
     if (typeof unitType.unitPriceArs === "number") return unitType.unitPriceArs;
-    // Compat temporal para tipos legacy todavía no migrados
-    if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
     return null;
   }
 
   if (typeof unitType.adultPriceArs === "number" && typeof unitType.childPriceArs === "number") {
     return adultos * unitType.adultPriceArs + menores * unitType.childPriceArs;
   }
-  // Compat temporal para tipos legacy todavía no migrados
-  if (typeof unitType.basePriceArs === "number") return unitType.basePriceArs;
   return null;
 }
 
@@ -822,6 +818,7 @@ export default function ReservarClient() {
               }}
               disabled={submitting}
               hasError={fieldError === "fechas"}
+              disablePast
             />
           </div>
 
