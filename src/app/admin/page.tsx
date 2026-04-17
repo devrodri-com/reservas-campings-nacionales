@@ -407,10 +407,10 @@ export default function AdminHomePage() {
     return (
       <>
         <div>
-          <strong>Unidad:</strong> {reservaUnit?.displayName ?? detailReserva.unitId ?? "—"}
+          <strong>Unidad:</strong> {reservaUnit?.displayName ?? detailReserva.unitId ?? "-"}
         </div>
         <div>
-          <strong>Tipo de unidad:</strong> {reservaUnitType?.name ?? "—"}
+          <strong>Tipo de unidad:</strong> {reservaUnitType?.name ?? "-"}
         </div>
       </>
     );
@@ -446,7 +446,7 @@ export default function AdminHomePage() {
   }, [detailReserva, camping, units, reservas, unitBlocks, unitTypeById]);
 
   const currentUnitChangeSummary = useMemo(() => {
-    if (!detailReserva?.unitId) return "—";
+    if (!detailReserva?.unitId) return "-";
     const u = units.find((x) => x.id === detailReserva.unitId);
     const t =
       (u ? unitTypeById.get(u.unitTypeId) : undefined) ??
@@ -1021,7 +1021,7 @@ export default function AdminHomePage() {
   };
 
   const handleReassignReserva = async () => {
-    if (profile?.role === "viewer") return;
+    if (profile?.role === "viewer" || profile?.role === "viewer_global") return;
     if (!detailReserva || !camping) return;
 
     setError(null);
@@ -1536,9 +1536,12 @@ export default function AdminHomePage() {
     );
   }
 
-  const canCreateOrCancel = profile.role !== "viewer";
+  const canCreateOrCancel = profile.role !== "viewer" && profile.role !== "viewer_global";
   const showCampingSelector = profile.role !== "admin_camping";
-  const canExportGlobal = profile.role === "viewer" || profile.role === "admin_global";
+  const canExportGlobal =
+    profile.role === "viewer" ||
+    profile.role === "viewer_global" ||
+    profile.role === "admin_global";
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
@@ -1589,6 +1592,11 @@ export default function AdminHomePage() {
         <Button variant="secondary" onClick={() => router.push("/admin/reservas")}>
           Reservas
         </Button>
+        {profile.role === "admin_global" ? (
+          <Button variant="secondary" onClick={() => router.push("/admin/usuarios")}>
+            Usuarios
+          </Button>
+        ) : null}
         {profile.role === "admin_global" ? (
           <Button variant="secondary" onClick={() => router.push("/admin/campings")}>
             Campings

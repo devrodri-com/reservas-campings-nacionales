@@ -169,7 +169,7 @@ export default function ReservaDetailModal({
             ) : null}
 
             {/* PII: ocultar a viewer */}
-            {profileRole === "viewer" ? (
+            {profileRole === "viewer" || profileRole === "viewer_global" ? (
               <>
                 <div>
                   <strong>Teléfono:</strong> —

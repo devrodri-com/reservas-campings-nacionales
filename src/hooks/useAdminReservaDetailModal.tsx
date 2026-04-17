@@ -154,7 +154,7 @@ export function useAdminReservaDetailModal({
   }, []);
 
   const handleReassignReserva = async () => {
-    if (profile?.role === "viewer") return;
+    if (profile?.role === "viewer" || profile?.role === "viewer_global") return;
     if (!detailReserva || !detailCamping) return;
 
     setError(null);
