@@ -249,8 +249,16 @@ export default function ReservaDetailModal({
               <div>
                 <strong>Devolución:</strong>{" "}
                 {detailReserva.refundStatus === "pending_refund"
-                  ? `Pendiente: $${(detailReserva.refundDeltaArs ?? 0).toLocaleString("es-AR")}`
-                  : "Sin devolución pendiente"}
+                  ? `Pendiente: $${(detailReserva.refundDeltaArs ?? 0).toLocaleString("es-AR")}${
+                      typeof detailReserva.refundPercentApplied === "number"
+                        ? ` (${detailReserva.refundPercentApplied}%)`
+                        : ""
+                    }`
+                  : `Sin devolución pendiente${
+                      typeof detailReserva.refundPercentApplied === "number"
+                        ? ` (${detailReserva.refundPercentApplied}%)`
+                        : ""
+                    }`}
               </div>
             ) : null}
 

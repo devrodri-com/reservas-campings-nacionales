@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
 import { fetchUserProfile } from "@/lib/userProfile";
 import type { UserProfile } from "@/types/user";
@@ -100,9 +99,6 @@ export default function AdminUsuariosPage() {
           <p style={{ marginTop: 0, color: "var(--color-text-muted)" }}>
             No tenés permisos para acceder a esta sección.
           </p>
-          <Button variant="secondary" onClick={() => router.push("/admin")}>
-            Volver al admin
-          </Button>
         </Card>
       </main>
     );
@@ -115,9 +111,6 @@ export default function AdminUsuariosPage() {
           <p style={{ marginTop: 0, color: "var(--color-text-muted)" }}>
             Solo el rol <strong>admin_global</strong> puede acceder a esta pantalla.
           </p>
-          <Button variant="secondary" onClick={() => router.push("/admin")}>
-            Volver al admin
-          </Button>
         </Card>
       </main>
     );
@@ -127,21 +120,6 @@ export default function AdminUsuariosPage() {
     <main style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 16px", display: "grid", gap: 16 }}>
       <h1 style={{ margin: 0, color: "var(--color-accent)" }}>Usuarios administrativos</h1>
       <p style={{ margin: 0, color: "var(--color-text-muted)" }}>Sesión: {user.email}</p>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Button variant="ghost" onClick={() => router.push("/admin")}>
-          Volver al admin
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={async () => {
-            await signOut(auth);
-            router.replace("/admin/login");
-          }}
-        >
-          Cerrar sesión
-        </Button>
-      </div>
 
       {error ? (
         <div

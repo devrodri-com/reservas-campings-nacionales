@@ -20,7 +20,14 @@ import { useAuth } from "@/lib/useAuth";
 import { fetchUserProfile } from "@/lib/userProfile";
 import type { Camping } from "@/types/camping";
 import type { UserProfile } from "@/types/user";
-import type { Reserva, ReservaEstado, CreatedByMode, UnitChangeAdjustmentStatus } from "@/types/reserva";
+import type {
+  Reserva,
+  ReservaEstado,
+  CreatedByMode,
+  UnitChangeAdjustmentStatus,
+  RefundStatus,
+} from "@/types/reserva";
+import { computeCancellationRefund } from "@/lib/cancellationPolicy";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
 import { toCsv, downloadCsv } from "@/lib/csv";
@@ -91,7 +98,14 @@ function isCampingDoc(v: unknown): v is CampingDoc {
     typeof o.activo === "boolean" &&
     (o.inventoryMode === undefined ||
       o.inventoryMode === "capacity" ||
-      o.inventoryMode === "unit_based")
+      o.inventoryMode === "unit_based") &&
+    (o.cancellationPolicyEnabled === undefined || typeof o.cancellationPolicyEnabled === "boolean") &&
+    (o.cancellationRefundDaysThreshold === undefined ||
+      typeof o.cancellationRefundDaysThreshold === "number") &&
+    (o.cancellationRefundPercentBeforeThreshold === undefined ||
+      typeof o.cancellationRefundPercentBeforeThreshold === "number") &&
+    (o.cancellationRefundPercentAfterThreshold === undefined ||
+      typeof o.cancellationRefundPercentAfterThreshold === "number")
   );
 }
 
@@ -108,6 +122,10 @@ function isReservaEstado(v: unknown): v is ReservaEstado {
 
 function isCreatedByMode(v: unknown): v is CreatedByMode {
   return v === "public" || v === "admin";
+}
+
+function isRefundStatus(v: unknown): v is RefundStatus {
+  return v === "none" || v === "pending_refund" || v === "resolved";
 }
 
 function isReservaDoc(v: unknown): v is ReservaDoc {
@@ -139,7 +157,13 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
     (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
-    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
+    (o.originalCheckInDate === undefined || typeof o.originalCheckInDate === "string") &&
+    (o.refundPercentApplied === undefined || typeof o.refundPercentApplied === "number") &&
+    (o.refundDeltaArs === undefined || typeof o.refundDeltaArs === "number") &&
+    (o.refundStatus === undefined || isRefundStatus(o.refundStatus)) &&
+    (o.cancelledAtMs === undefined || typeof o.cancelledAtMs === "number") &&
+    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string")
   );
 }
 
@@ -921,6 +945,7 @@ export default function AdminHomePage() {
         campingId: camping.id,
         checkInDate,
         checkOutDate,
+        originalCheckInDate: checkInDate,
         parcelas,
         adultos,
         menores,
@@ -957,11 +982,20 @@ export default function AdminHomePage() {
     }
 
     const wasPaid = reserva.estado === "pagada";
+    const campingForPolicy = campings.find((c) => c.id === reserva.campingId) ?? camping ?? null;
+    const refundPreview = computeCancellationRefund({
+      camping: campingForPolicy ?? undefined,
+      wasPaid,
+      montoTotalArs: reserva.montoTotalArs,
+      originalCheckInDate: reserva.originalCheckInDate,
+      fallbackCheckInDate: reserva.checkInDate,
+      todayYmdValue: todayYmd(),
+    });
     const confirmMsg = [
       "Confirmar cancelación de la reserva.",
       `Total: $${reserva.montoTotalArs.toLocaleString("es-AR")}`,
       wasPaid
-        ? "Se marcará devolución pendiente por el total pagado."
+        ? `Devolución estimada: $${refundPreview.refundDeltaArs.toLocaleString("es-AR")} (${refundPreview.refundPercentApplied}%).`
         : "No se generará devolución pendiente.",
     ].join("\n");
     const accepted = window.confirm(confirmMsg);
@@ -975,8 +1009,9 @@ export default function AdminHomePage() {
         estado: "cancelada",
         cancelledAtMs: Date.now(),
         ...(user?.uid ? { cancelledByUid: user.uid } : {}),
-        refundDeltaArs: wasPaid ? reserva.montoTotalArs : 0,
-        refundStatus: wasPaid ? "pending_refund" : "none",
+        refundPercentApplied: refundPreview.refundPercentApplied,
+        refundDeltaArs: refundPreview.refundDeltaArs,
+        refundStatus: refundPreview.refundStatus,
       });
       await setDoc(doc(db, "reservas_public", reserva.id), { estado: "cancelada" }, { merge: true });
 
@@ -1314,6 +1349,7 @@ export default function AdminHomePage() {
         campingId: camping.id,
         checkInDate: walkInCheckIn,
         checkOutDate: walkInCheckOut,
+        originalCheckInDate: walkInCheckIn,
         parcelas: isUnitBased ? 1 : walkInParcelas,
         adultos: walkInAdultos,
         menores: walkInMenores,
@@ -1568,16 +1604,6 @@ export default function AdminHomePage() {
       <p>Sesión: {user.email}</p>
 
       <div className="admin-actions">
-        <Button
-          variant="ghost"
-          onClick={async () => {
-            await signOut(auth);
-            router.replace("/admin/login");
-          }}
-        >
-          Cerrar sesión
-        </Button>
-
         {canCreateOrCancel ? (
           <>
             <Button
@@ -1606,19 +1632,6 @@ export default function AdminHomePage() {
             disabled={busy || campings.length === 0}
           >
             CSV global
-          </Button>
-        ) : null}
-        <Button variant="secondary" onClick={() => router.push("/admin/reservas")}>
-          Reservas
-        </Button>
-        {profile.role === "admin_global" ? (
-          <Button variant="secondary" onClick={() => router.push("/admin/usuarios")}>
-            Usuarios
-          </Button>
-        ) : null}
-        {profile.role === "admin_global" ? (
-          <Button variant="secondary" onClick={() => router.push("/admin/campings")}>
-            Campings
           </Button>
         ) : null}
         <Button

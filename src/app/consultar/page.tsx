@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Reserva, ReservaEstado } from "@/types/reserva";
+import type { Reserva, ReservaEstado, RefundStatus } from "@/types/reserva";
 import { Card, Button } from "@/components/ui";
 import { formatArs } from "@/lib/money";
 import { formatYmdToDmy } from "@/lib/dates";
@@ -18,6 +18,10 @@ function isReservaEstado(v: unknown): v is ReservaEstado {
     v === "fallida" ||
     v === "cancelada"
   );
+}
+
+function isRefundStatus(v: unknown): v is RefundStatus {
+  return v === "none" || v === "pending_refund" || v === "resolved";
 }
 
 function isReservaDoc(v: unknown): v is ReservaDoc {
@@ -49,7 +53,13 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
     (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
-    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
+    (o.originalCheckInDate === undefined || typeof o.originalCheckInDate === "string") &&
+    (o.refundPercentApplied === undefined || typeof o.refundPercentApplied === "number") &&
+    (o.refundDeltaArs === undefined || typeof o.refundDeltaArs === "number") &&
+    (o.refundStatus === undefined || isRefundStatus(o.refundStatus)) &&
+    (o.cancelledAtMs === undefined || typeof o.cancelledAtMs === "number") &&
+    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string")
   );
 }
 

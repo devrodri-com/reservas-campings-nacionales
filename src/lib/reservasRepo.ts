@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
+import type { Reserva, ReservaEstado, CreatedByMode, RefundStatus } from "@/types/reserva";
 
 type ReservaDoc = Omit<Reserva, "id">;
 
@@ -15,6 +15,10 @@ function isReservaEstado(v: unknown): v is ReservaEstado {
 
 function isCreatedByMode(v: unknown): v is CreatedByMode {
   return v === "public" || v === "admin";
+}
+
+function isRefundStatus(v: unknown): v is RefundStatus {
+  return v === "none" || v === "pending_refund" || v === "resolved";
 }
 
 function isReservaDoc(v: unknown): v is ReservaDoc {
@@ -46,7 +50,13 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
     (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
-    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
+    (o.originalCheckInDate === undefined || typeof o.originalCheckInDate === "string") &&
+    (o.refundPercentApplied === undefined || typeof o.refundPercentApplied === "number") &&
+    (o.refundDeltaArs === undefined || typeof o.refundDeltaArs === "number") &&
+    (o.refundStatus === undefined || isRefundStatus(o.refundStatus)) &&
+    (o.cancelledAtMs === undefined || typeof o.cancelledAtMs === "number") &&
+    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string")
   );
 }
 

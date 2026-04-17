@@ -31,7 +31,14 @@ export function isCampingDoc(v: unknown): v is CampingDoc {
     (o.coverImageUrl === undefined || typeof o.coverImageUrl === "string") &&
     (o.direccion === undefined || typeof o.direccion === "string") &&
     (o.mapsUrl === undefined || typeof o.mapsUrl === "string") &&
-    (o.mapsEmbedUrl === undefined || typeof o.mapsEmbedUrl === "string")
+    (o.mapsEmbedUrl === undefined || typeof o.mapsEmbedUrl === "string") &&
+    (o.cancellationPolicyEnabled === undefined || typeof o.cancellationPolicyEnabled === "boolean") &&
+    (o.cancellationRefundDaysThreshold === undefined ||
+      typeof o.cancellationRefundDaysThreshold === "number") &&
+    (o.cancellationRefundPercentBeforeThreshold === undefined ||
+      typeof o.cancellationRefundPercentBeforeThreshold === "number") &&
+    (o.cancellationRefundPercentAfterThreshold === undefined ||
+      typeof o.cancellationRefundPercentAfterThreshold === "number")
   );
 }
 

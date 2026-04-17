@@ -90,6 +90,13 @@ export default function AdminCampingsPage() {
     mapsEmbedUrl: "",
   });
 
+  const [cancellationPolicyEnabled, setCancellationPolicyEnabled] = useState(false);
+  const [cancellationRefundDaysThreshold, setCancellationRefundDaysThreshold] = useState(7);
+  const [cancellationRefundPercentBeforeThreshold, setCancellationRefundPercentBeforeThreshold] =
+    useState(100);
+  const [cancellationRefundPercentAfterThreshold, setCancellationRefundPercentAfterThreshold] =
+    useState(0);
+
   const [saving, setSaving] = useState(false);
   const [showNewCamping, setShowNewCamping] = useState(false);
   const [newCampingId, setNewCampingId] = useState("");
@@ -311,6 +318,25 @@ export default function AdminCampingsPage() {
       mapsUrl: selectedCamping.mapsUrl ?? "",
       mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
     });
+    setCancellationPolicyEnabled(Boolean(selectedCamping.cancellationPolicyEnabled));
+    setCancellationRefundDaysThreshold(
+      typeof selectedCamping.cancellationRefundDaysThreshold === "number" &&
+        Number.isFinite(selectedCamping.cancellationRefundDaysThreshold)
+        ? Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold))
+        : 7
+    );
+    setCancellationRefundPercentBeforeThreshold(
+      typeof selectedCamping.cancellationRefundPercentBeforeThreshold === "number" &&
+        Number.isFinite(selectedCamping.cancellationRefundPercentBeforeThreshold)
+        ? Math.min(100, Math.max(0, Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)))
+        : 100
+    );
+    setCancellationRefundPercentAfterThreshold(
+      typeof selectedCamping.cancellationRefundPercentAfterThreshold === "number" &&
+        Number.isFinite(selectedCamping.cancellationRefundPercentAfterThreshold)
+        ? Math.min(100, Math.max(0, Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)))
+        : 0
+    );
   }, [selectedCamping]);
 
   const onSave = async () => {
@@ -320,7 +346,12 @@ export default function AdminCampingsPage() {
     setError(null);
 
     try {
-      const payload: EditableFields = {
+      const payload: EditableFields & {
+        cancellationPolicyEnabled: boolean;
+        cancellationRefundDaysThreshold: number;
+        cancellationRefundPercentBeforeThreshold: number;
+        cancellationRefundPercentAfterThreshold: number;
+      } = {
         descripcionCorta: form.descripcionCorta?.trim() || "",
         igUrl: sanitizeUrl(form.igUrl || ""),
         webUrl: sanitizeUrl(form.webUrl || ""),
@@ -328,6 +359,37 @@ export default function AdminCampingsPage() {
         direccion: form.direccion?.trim() || "",
         mapsUrl: sanitizeUrl(form.mapsUrl || ""),
         mapsEmbedUrl: sanitizeUrl(extractIframeSrc(form.mapsEmbedUrl || "")),
+        cancellationPolicyEnabled,
+        cancellationRefundDaysThreshold: Math.max(
+          0,
+          Math.round(
+            Number.isFinite(cancellationRefundDaysThreshold)
+              ? cancellationRefundDaysThreshold
+              : 0
+          )
+        ),
+        cancellationRefundPercentBeforeThreshold: Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              Number.isFinite(cancellationRefundPercentBeforeThreshold)
+                ? cancellationRefundPercentBeforeThreshold
+                : 0
+            )
+          )
+        ),
+        cancellationRefundPercentAfterThreshold: Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              Number.isFinite(cancellationRefundPercentAfterThreshold)
+                ? cancellationRefundPercentAfterThreshold
+                : 0
+            )
+          )
+        ),
       };
 
       await updateDoc(doc(db, "campings", selectedCamping.id), payload);
@@ -377,6 +439,10 @@ export default function AdminCampingsPage() {
         direccion: "",
         mapsUrl: "",
         mapsEmbedUrl: "",
+        cancellationPolicyEnabled: false,
+        cancellationRefundDaysThreshold: 7,
+        cancellationRefundPercentBeforeThreshold: 100,
+        cancellationRefundPercentAfterThreshold: 0,
       });
 
       const list = await fetchCampings();
@@ -894,9 +960,6 @@ export default function AdminCampingsPage() {
           <p style={{ marginTop: 0, color: "var(--color-text-muted)" }}>
             No tenés permisos para acceder a esta sección.
           </p>
-          <Button variant="secondary" onClick={() => router.push("/admin")}>
-            Volver al admin
-          </Button>
         </Card>
       </main>
     );
@@ -909,9 +972,6 @@ export default function AdminCampingsPage() {
           <p style={{ marginTop: 0, color: "var(--color-text-muted)" }}>
             Solo el rol <strong>admin_global</strong> puede editar campings.
           </p>
-          <Button variant="secondary" onClick={() => router.push("/admin")}>
-            Volver al admin
-          </Button>
         </Card>
       </main>
     );
@@ -1044,9 +1104,6 @@ export default function AdminCampingsPage() {
                   ) : null}
                 </>
               )}
-              <Button variant="ghost" onClick={() => router.push("/admin")}>
-                Volver al panel
-              </Button>
             </div>
           )}
         </Card>
@@ -1160,13 +1217,79 @@ export default function AdminCampingsPage() {
                 />
               </label>
 
+              <div
+                style={{
+                  marginTop: 8,
+                  paddingTop: 14,
+                  borderTop: "1px solid var(--color-border)",
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
+                <div style={{ fontWeight: 800, color: "var(--color-text)" }}>
+                  Política de cancelación (V1)
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
+                  Si está desactivada, al cancelar una reserva pagada se considera devolución del 100 % del
+                  monto. Si está activa, el porcentaje depende de los días de anticipación respecto al{" "}
+                  <strong>check-in original</strong> de la reserva (no cambia si luego modifican fechas).
+                </p>
+                <label style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    type="checkbox"
+                    checked={cancellationPolicyEnabled}
+                    onChange={(e) => setCancellationPolicyEnabled(e.target.checked)}
+                  />
+                  <span style={{ fontWeight: 700 }}>Política habilitada</span>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 700 }}>Umbral (días de anticipación)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={cancellationRefundDaysThreshold}
+                    onChange={(e) => setCancellationRefundDaysThreshold(Number(e.target.value))}
+                    style={inputStyle}
+                    disabled={!cancellationPolicyEnabled}
+                  />
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                    Con esta cantidad de días o más hasta el check-in original → % “antes”; con menos → %
+                    “después”.
+                  </span>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 700 }}>Devolución antes del umbral (%)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={cancellationRefundPercentBeforeThreshold}
+                    onChange={(e) => setCancellationRefundPercentBeforeThreshold(Number(e.target.value))}
+                    style={inputStyle}
+                    disabled={!cancellationPolicyEnabled}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontWeight: 700 }}>Devolución después del umbral (%)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={cancellationRefundPercentAfterThreshold}
+                    onChange={(e) => setCancellationRefundPercentAfterThreshold(Number(e.target.value))}
+                    style={inputStyle}
+                    disabled={!cancellationPolicyEnabled}
+                  />
+                </label>
+              </div>
+
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <Button variant="primary" onClick={onSave} disabled={saving}>
                   {saving ? "Guardando..." : "Guardar cambios"}
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() =>
+                  onClick={() => {
                     setForm({
                       descripcionCorta: selectedCamping.descripcionCorta ?? "",
                       igUrl: selectedCamping.igUrl ?? "",
@@ -1175,8 +1298,39 @@ export default function AdminCampingsPage() {
                       direccion: selectedCamping.direccion ?? "",
                       mapsUrl: selectedCamping.mapsUrl ?? "",
                       mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
-                    })
-                  }
+                    });
+                    setCancellationPolicyEnabled(Boolean(selectedCamping.cancellationPolicyEnabled));
+                    setCancellationRefundDaysThreshold(
+                      typeof selectedCamping.cancellationRefundDaysThreshold === "number" &&
+                        Number.isFinite(selectedCamping.cancellationRefundDaysThreshold)
+                        ? Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold))
+                        : 7
+                    );
+                    setCancellationRefundPercentBeforeThreshold(
+                      typeof selectedCamping.cancellationRefundPercentBeforeThreshold === "number" &&
+                        Number.isFinite(selectedCamping.cancellationRefundPercentBeforeThreshold)
+                        ? Math.min(
+                            100,
+                            Math.max(
+                              0,
+                              Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)
+                            )
+                          )
+                        : 100
+                    );
+                    setCancellationRefundPercentAfterThreshold(
+                      typeof selectedCamping.cancellationRefundPercentAfterThreshold === "number" &&
+                        Number.isFinite(selectedCamping.cancellationRefundPercentAfterThreshold)
+                        ? Math.min(
+                            100,
+                            Math.max(
+                              0,
+                              Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)
+                            )
+                          )
+                        : 0
+                    );
+                  }}
                   disabled={saving}
                 >
                   Revertir

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
+import type { Reserva, ReservaEstado, CreatedByMode, RefundStatus } from "@/types/reserva";
 import type { Camping } from "@/types/camping";
 import { formatArs } from "@/lib/money";
 import { formatYmdToDmy } from "@/lib/dates";
@@ -23,6 +23,10 @@ function isReservaEstado(v: unknown): v is ReservaEstado {
 
 function isCreatedByMode(v: unknown): v is CreatedByMode {
   return v === "public" || v === "admin";
+}
+
+function isRefundStatus(v: unknown): v is RefundStatus {
+  return v === "none" || v === "pending_refund" || v === "resolved";
 }
 
 function isReservaDoc(v: unknown): v is ReservaDoc {
@@ -54,7 +58,13 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
     (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
-    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
+    (o.originalCheckInDate === undefined || typeof o.originalCheckInDate === "string") &&
+    (o.refundPercentApplied === undefined || typeof o.refundPercentApplied === "number") &&
+    (o.refundDeltaArs === undefined || typeof o.refundDeltaArs === "number") &&
+    (o.refundStatus === undefined || isRefundStatus(o.refundStatus)) &&
+    (o.cancelledAtMs === undefined || typeof o.cancelledAtMs === "number") &&
+    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string")
   );
 }
 
@@ -73,7 +83,15 @@ function isCampingDoc(v: unknown): v is CampingDoc {
     typeof o.maxPersonasPorParcela === "number" &&
     typeof o.checkInHour === "number" &&
     typeof o.checkOutHour === "number" &&
-    typeof o.activo === "boolean"
+    typeof o.activo === "boolean" &&
+    (o.inventoryMode === undefined || o.inventoryMode === "capacity" || o.inventoryMode === "unit_based") &&
+    (o.cancellationPolicyEnabled === undefined || typeof o.cancellationPolicyEnabled === "boolean") &&
+    (o.cancellationRefundDaysThreshold === undefined ||
+      typeof o.cancellationRefundDaysThreshold === "number") &&
+    (o.cancellationRefundPercentBeforeThreshold === undefined ||
+      typeof o.cancellationRefundPercentBeforeThreshold === "number") &&
+    (o.cancellationRefundPercentAfterThreshold === undefined ||
+      typeof o.cancellationRefundPercentAfterThreshold === "number")
   );
 }
 

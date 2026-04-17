@@ -21,6 +21,8 @@ export type Reserva = {
 
   checkInDate: string;  // YYYY-MM-DD
   checkOutDate: string; // YYYY-MM-DD
+  /** Check-in original al crear la reserva; no debe modificarse (política de cancelación). */
+  originalCheckInDate?: string;
 
   parcelas: number;
   adultos: number;
@@ -66,6 +68,8 @@ export type Reserva = {
   /** Trazabilidad y ajuste económico por cancelación. */
   cancelledAtMs?: number;
   cancelledByUid?: string;
+  /** Porcentaje de devolución aplicado al cancelar (0–100). */
+  refundPercentApplied?: number;
   refundDeltaArs?: number;
   refundStatus?: RefundStatus;
 };

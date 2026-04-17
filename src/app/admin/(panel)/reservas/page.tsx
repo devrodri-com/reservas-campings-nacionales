@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/useAuth";
 import { fetchUserProfile } from "@/lib/userProfile";
 import type { Camping } from "@/types/camping";
 import type { UserProfile } from "@/types/user";
-import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
+import type { Reserva, ReservaEstado, CreatedByMode, RefundStatus } from "@/types/reserva";
 import type { Unit } from "@/types/unit";
 import type { UnitType } from "@/types/unitType";
 import type { UnitBlock } from "@/types/unitBlock";
@@ -46,7 +46,14 @@ function isCampingDoc(v: unknown): v is CampingDoc {
     typeof o.activo === "boolean" &&
     (o.inventoryMode === undefined ||
       o.inventoryMode === "capacity" ||
-      o.inventoryMode === "unit_based")
+      o.inventoryMode === "unit_based") &&
+    (o.cancellationPolicyEnabled === undefined || typeof o.cancellationPolicyEnabled === "boolean") &&
+    (o.cancellationRefundDaysThreshold === undefined ||
+      typeof o.cancellationRefundDaysThreshold === "number") &&
+    (o.cancellationRefundPercentBeforeThreshold === undefined ||
+      typeof o.cancellationRefundPercentBeforeThreshold === "number") &&
+    (o.cancellationRefundPercentAfterThreshold === undefined ||
+      typeof o.cancellationRefundPercentAfterThreshold === "number")
   );
 }
 
@@ -63,6 +70,10 @@ function isReservaEstado(v: unknown): v is ReservaEstado {
 
 function isCreatedByMode(v: unknown): v is CreatedByMode {
   return v === "public" || v === "admin";
+}
+
+function isRefundStatus(v: unknown): v is RefundStatus {
+  return v === "none" || v === "pending_refund" || v === "resolved";
 }
 
 function isReservaDoc(v: unknown): v is ReservaDoc {
@@ -94,7 +105,13 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.mpPreferenceId === undefined || typeof o.mpPreferenceId === "string") &&
     (o.mpPaymentId === undefined || typeof o.mpPaymentId === "string") &&
     (o.paidAtMs === undefined || typeof o.paidAtMs === "number") &&
-    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number")
+    (o.expiresAtMs === undefined || typeof o.expiresAtMs === "number") &&
+    (o.originalCheckInDate === undefined || typeof o.originalCheckInDate === "string") &&
+    (o.refundPercentApplied === undefined || typeof o.refundPercentApplied === "number") &&
+    (o.refundDeltaArs === undefined || typeof o.refundDeltaArs === "number") &&
+    (o.refundStatus === undefined || isRefundStatus(o.refundStatus)) &&
+    (o.cancelledAtMs === undefined || typeof o.cancelledAtMs === "number") &&
+    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string")
   );
 }
 
@@ -578,20 +595,6 @@ export default function AdminReservasPage() {
           {error}
         </div>
       ) : null}
-
-      <div className="admin-actions" style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <Button variant="ghost" onClick={() => router.push("/admin")}>
-          Panel admin
-        </Button>
-        {profile.role === "admin_global" ? (
-          <Button variant="secondary" onClick={() => router.push("/admin/campings")}>
-            Campings
-          </Button>
-        ) : null}
-        <Button variant="ghost" onClick={() => void signOut(auth).then(() => router.replace("/admin/login"))}>
-          Cerrar sesión
-        </Button>
-      </div>
 
       <AdminReservationsFilters
         profile={profile}

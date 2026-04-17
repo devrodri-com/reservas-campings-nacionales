@@ -33,4 +33,13 @@ export type Camping = {
   mapsUrl?: string;
   /** Opcional. URL embebida de Google Maps (iframe src). */
   mapsEmbedUrl?: string;
+
+  /** Política de cancelación V1 (por camping). Si no está habilitada, se usa 100 % de devolución sobre lo pagado. */
+  cancellationPolicyEnabled?: boolean;
+  /** Días de anticipación (calendario) respecto al check-in original para aplicar el porcentaje “antes”. */
+  cancellationRefundDaysThreshold?: number;
+  /** Porcentaje de devolución si quedan >= `cancellationRefundDaysThreshold` días hasta el check-in original. */
+  cancellationRefundPercentBeforeThreshold?: number;
+  /** Porcentaje de devolución si quedan < `cancellationRefundDaysThreshold` días. */
+  cancellationRefundPercentAfterThreshold?: number;
 };
