@@ -44,7 +44,6 @@ import {
   computeReservaUnitBasedMontoTotalArs,
   formatWalkInUnitOptionLabel,
 } from "@/lib/adminUnitReassignSupport";
-import { SunIcon, MoonIcon } from "@/components/icons";
 import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
 import { fetchUnitsByCamping, updateUnit, createUnit } from "@/lib/unitsRepo";
 import {
@@ -234,7 +233,6 @@ export default function AdminHomePage() {
   const [oldUnitNextStatus, setOldUnitNextStatus] = useState<"available" | "blocked" | "maintenance">(
     "available"
   );
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [unitBlocks, setUnitBlocks] = useState<UnitBlock[]>([]);
@@ -280,20 +278,6 @@ export default function AdminHomePage() {
     await batch.commit();
     return true;
   };
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("theme");
-    if (stored === "dark" || stored === "light") {
-      setTheme(stored);
-      if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
-      return;
-    }
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
-    if (prefersDark) {
-      setTheme("dark");
-      document.documentElement.setAttribute("data-theme", "dark");
-    }
-  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -765,18 +749,6 @@ export default function AdminHomePage() {
     setReassigningReservaId(null);
     setReassignTargetUnitId("");
     setOldUnitNextStatus("available");
-  };
-
-  const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    if (next === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-      window.localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-      window.localStorage.setItem("theme", "light");
-    }
   };
 
   const setUnitOperationalStatus = async (
@@ -1634,15 +1606,6 @@ export default function AdminHomePage() {
             CSV global
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          onClick={toggleTheme}
-          title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
-          aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
-          style={{ width: 40, height: 40, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-        >
-          {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
-        </Button>
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", rowGap: 10 }}>

@@ -194,7 +194,7 @@ select, input, textarea, button {
 
 @media (min-width: 900px) {
   .admin-campings-grid {
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
   }
 }
 

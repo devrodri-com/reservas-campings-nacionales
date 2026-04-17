@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -15,6 +15,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     if (!user) {
@@ -36,6 +37,34 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
     };
   }, [user]);
 
+  useEffect(() => {
+    const stored = window.localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      setTheme(stored);
+      if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
+      return;
+    }
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+    if (prefersDark) {
+      setTheme("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      if (next === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        window.localStorage.setItem("theme", "dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        window.localStorage.setItem("theme", "light");
+      }
+      return next;
+    });
+  }, []);
+
   const showCampingsAndUsuarios = Boolean(profile?.activo && profile.role === "admin_global");
 
   const onSignOut = () => {
@@ -54,6 +83,8 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
         <AdminSidebar
           showCampingsAndUsuarios={!profileLoading && showCampingsAndUsuarios}
           sessionEmail={user.email ?? undefined}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onSignOut={onSignOut}
         />
       }

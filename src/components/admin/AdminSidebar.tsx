@@ -3,11 +3,14 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SunIcon, MoonIcon } from "@/components/icons";
 
 export type AdminSidebarProps = {
   /** Mostrar enlaces solo para rol `admin_global` (misma regla que el panel principal). */
   showCampingsAndUsuarios: boolean;
   sessionEmail?: string;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
   onSignOut: () => void;
 };
 
@@ -39,6 +42,8 @@ const linkBox: CSSProperties = {
 export default function AdminSidebar({
   showCampingsAndUsuarios,
   sessionEmail,
+  theme,
+  onToggleTheme,
   onSignOut,
 }: AdminSidebarProps) {
   const pathname = usePathname() ?? "";
@@ -62,6 +67,27 @@ export default function AdminSidebar({
     ...linkBox,
     color: "var(--color-text-muted)",
     fontWeight: 500,
+  };
+
+  const themeBtn: CSSProperties = {
+    margin: 0,
+    marginBottom: 8,
+    padding: 0,
+    width: "100%",
+    height: 36,
+    boxSizing: "border-box",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--color-text-muted)",
+    cursor: "pointer",
+    background: "transparent",
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderStyle: "none",
+    borderRadius: 6,
   };
 
   const signOutBtn: CSSProperties = {
@@ -93,6 +119,9 @@ export default function AdminSidebar({
       style={{
         width: 200,
         flexShrink: 0,
+        alignSelf: "stretch",
+        minHeight: 0,
+        maxHeight: "100%",
         borderRightWidth: 1,
         borderRightStyle: "solid",
         borderRightColor: "var(--color-border)",
@@ -103,10 +132,13 @@ export default function AdminSidebar({
         paddingRight: 10,
         paddingBottom: 12,
         paddingLeft: 10,
+        boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       <header
         style={{
+          flexShrink: 0,
           paddingBottom: 12,
           marginBottom: 2,
           borderBottomWidth: 1,
@@ -147,6 +179,9 @@ export default function AdminSidebar({
           flexDirection: "column",
           gap: 2,
           flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
           paddingTop: 10,
           paddingBottom: 8,
         }}
@@ -171,12 +206,22 @@ export default function AdminSidebar({
 
       <footer
         style={{
+          flexShrink: 0,
           borderTopWidth: 1,
           borderTopStyle: "solid",
           borderTopColor: "var(--color-border)",
           paddingTop: 10,
         }}
       >
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
+          style={themeBtn}
+        >
+          {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
+        </button>
         <button type="button" onClick={onSignOut} style={signOutBtn}>
           Cerrar sesión
         </button>

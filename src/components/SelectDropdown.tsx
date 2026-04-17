@@ -17,6 +17,10 @@ type Props = {
   disabled?: boolean;
   hasError?: boolean;
   searchable?: boolean;
+  /** Alineado a inputs compactos (toolbar / filtros admin). */
+  size?: "default" | "compact";
+  /** Solo aplica con `size="compact"`: control aún más liviano (p. ej. panel lateral). */
+  compactDensity?: "normal" | "minimal";
 };
 
 export default function SelectDropdown(props: Props) {
@@ -48,10 +52,27 @@ export default function SelectDropdown(props: Props) {
   const border = props.hasError
     ? "1px solid rgba(239,68,68,0.8)"
     : "1px solid var(--color-border)";
+  const borderMinimal =
+    "1px solid color-mix(in srgb, var(--color-border) 78%, transparent)";
+
+  const compact = props.size === "compact";
+  const minimal = compact && props.compactDensity === "minimal";
 
   return (
-    <label style={{ display: "grid", gap: 6 }}>
-      {props.label ? <span style={{ fontWeight: 700 }}>{props.label}</span> : null}
+    <label style={{ display: "grid", gap: minimal ? 3 : compact ? 4 : 6 }}>
+      {props.label ? (
+        <span
+          style={
+            minimal
+              ? { fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)" }
+              : compact
+                ? { fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)" }
+                : { fontWeight: 700 }
+          }
+        >
+          {props.label}
+        </span>
+      ) : null}
 
       <div ref={containerRef} style={{ position: "relative" }}>
         <button
@@ -63,21 +84,49 @@ export default function SelectDropdown(props: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 12,
-            padding: 10,
-            borderRadius: 10,
-            border,
-            background: "var(--color-surface)",
+            gap: minimal ? 6 : compact ? 8 : 12,
+            padding: minimal ? "5px 8px" : compact ? "8px 10px" : 10,
+            minHeight: minimal ? 34 : compact ? 40 : undefined,
+            borderRadius: minimal ? 7 : compact ? 8 : 10,
+            fontSize: minimal ? 13 : compact ? 14 : undefined,
+            lineHeight: minimal ? "20px" : compact ? "22px" : undefined,
+            border: minimal && !props.hasError ? borderMinimal : border,
+            fontWeight: minimal ? 500 : undefined,
+            background: minimal
+              ? "color-mix(in srgb, var(--color-border) 6%, var(--color-surface))"
+              : "var(--color-surface)",
             color: "var(--color-text)",
             cursor: props.disabled ? "not-allowed" : "pointer",
             opacity: props.disabled ? 0.6 : 1,
             boxSizing: "border-box",
           }}
         >
-          <span style={{ textAlign: "left" }}>
+          <span
+            style={
+              compact
+                ? {
+                    textAlign: "left",
+                    minWidth: 0,
+                    flex: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }
+                : { textAlign: "left" }
+            }
+          >
             {selected ? selected.label : props.placeholder ?? "Seleccionar…"}
           </span>
-          <span style={{ color: "var(--color-text-muted)" }}>▼</span>
+          <span
+            style={{
+              color: "var(--color-text-muted)",
+              flexShrink: 0,
+              fontSize: minimal ? 9 : undefined,
+              lineHeight: 1,
+            }}
+          >
+            ▼
+          </span>
         </button>
 
         {open ? (

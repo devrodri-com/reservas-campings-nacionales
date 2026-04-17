@@ -17,8 +17,12 @@ export default function AdminShell({ sidebar, children }: AdminShellProps) {
       style={{
         display: "flex",
         width: "100%",
+        height: "100vh",
         minHeight: "100vh",
+        maxHeight: "100vh",
+        overflow: "hidden",
         alignItems: "stretch",
+        boxSizing: "border-box",
         background: "var(--color-background)",
       }}
     >
@@ -27,9 +31,13 @@ export default function AdminShell({ sidebar, children }: AdminShellProps) {
         style={{
           flex: 1,
           minWidth: 0,
+          minHeight: 0,
           display: "flex",
           flexDirection: "column",
           overflow: "auto",
+          boxSizing: "border-box",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehaviorY: "contain",
           background: "var(--color-background)",
         }}
       >

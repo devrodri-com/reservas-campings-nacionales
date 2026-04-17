@@ -11,6 +11,8 @@ type Props = {
   disabled?: boolean;
   hasError?: boolean;
   disablePast?: boolean;
+  /** Alineado a SelectDropdown compact / toolbar admin. */
+  size?: "default" | "compact";
 };
 
 function startOfMonth(d: Date): Date {
@@ -73,6 +75,8 @@ export default function DateRangePicker(props: Props) {
   const border = props.hasError
     ? "1px solid rgba(239,68,68,0.8)"
     : "1px solid var(--color-border)";
+
+  const compact = props.size === "compact";
 
   const startDateObj = isYmd(tempStart) ? clampDate(parseYmd(tempStart)) : new Date(NaN);
   const endDateObj = isYmd(tempEnd) ? clampDate(parseYmd(tempEnd)) : new Date(NaN);
@@ -142,8 +146,18 @@ export default function DateRangePicker(props: Props) {
   };
 
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      {props.label ? <span style={{ fontWeight: 700 }}>{props.label}</span> : null}
+    <div style={{ display: "grid", gap: compact ? 4 : 6 }}>
+      {props.label ? (
+        <span
+          style={
+            compact
+              ? { fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)" }
+              : { fontWeight: 700 }
+          }
+        >
+          {props.label}
+        </span>
+      ) : null}
 
       <div ref={ref} style={{ position: "relative" }}>
         <button
@@ -157,9 +171,12 @@ export default function DateRangePicker(props: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
-            gap: 12,
-            padding: 10,
-            borderRadius: 10,
+            gap: compact ? 8 : 12,
+            padding: compact ? "8px 10px" : 10,
+            minHeight: compact ? 40 : undefined,
+            borderRadius: compact ? 8 : 10,
+            fontSize: compact ? 14 : undefined,
+            lineHeight: compact ? "22px" : undefined,
             border,
             background: "var(--color-surface)",
             color: "var(--color-text)",

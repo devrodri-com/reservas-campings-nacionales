@@ -552,14 +552,14 @@ export default function AdminReservasPage() {
 
   if (loading || profileLoading) {
     return (
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>Cargando…</main>
+      <main style={{ maxWidth: 1240, margin: "0 auto", padding: "28px 20px" }}>Cargando…</main>
     );
   }
   if (!user) return null;
 
   if (!profile || !profile.activo) {
     return (
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
+      <main style={{ maxWidth: 1240, margin: "0 auto", padding: "28px 20px" }}>
         <h1 style={{ color: "var(--color-accent)" }}>No autorizado</h1>
         <p style={{ color: "var(--color-text-muted)" }}>
           No tenés permiso para acceder al panel o tu usuario está inactivo.
@@ -578,14 +578,47 @@ export default function AdminReservasPage() {
   }
 
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
-      <h1>Reservas</h1>
-      <p style={{ color: "var(--color-text-muted)" }}>Sesión: {user.email}</p>
+    <main
+      style={{
+        width: "100%",
+        maxWidth: 1240,
+        minWidth: 0,
+        margin: "0 auto",
+        padding: "28px 20px",
+        display: "grid",
+        gap: 22,
+        boxSizing: "border-box",
+      }}
+    >
+      <header style={{ display: "grid", gap: 8 }}>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 28,
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            color: "var(--color-accent)",
+          }}
+        >
+          Reservas
+        </h1>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--color-text-muted)" }}>Sesión: {user.email}</p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 14,
+            color: "var(--color-text-muted)",
+            lineHeight: 1.5,
+            maxWidth: 640,
+          }}
+        >
+          Consultá y filtrá por camping, fechas, estado y origen. Abrí el detalle para revisar cada reserva.
+        </p>
+      </header>
 
       {error ? (
         <div
           style={{
-            marginBottom: 12,
             padding: 12,
             borderRadius: 10,
             border: "1px solid rgba(239,68,68,0.4)",
@@ -603,23 +636,34 @@ export default function AdminReservasPage() {
         onChange={setFilterValues}
       />
 
-      <div style={{ marginTop: 16 }}>
-      <Card title={`Listado (${tableRows.length})`}>
-        <div style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button variant="secondary" onClick={exportCsv} disabled={exportBusy || dataLoading}>
-            Exportar CSV
-          </Button>
-        </div>
-        {dataLoading ? (
-          <p style={{ color: "var(--color-text-muted)" }}>Cargando reservas…</p>
-        ) : (
-          <AdminReservationsTable
-            rows={tableRows}
-            busy={detailBusy}
-            onOpenDetail={openDetail}
-          />
-        )}
-      </Card>
+      {!dataLoading ? (
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            fontWeight: 500,
+            color: "var(--color-text-muted)",
+          }}
+        >
+          Mostrando{" "}
+          <strong style={{ color: "var(--color-text)", fontWeight: 700 }}>{tableRows.length}</strong>{" "}
+          reserva{tableRows.length === 1 ? "" : "s"} según filtros.
+        </p>
+      ) : null}
+
+      <div style={{ width: "100%", minWidth: 0 }}>
+        <Card title="Listado">
+          <div style={{ marginBottom: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <Button variant="secondary" onClick={exportCsv} disabled={exportBusy || dataLoading}>
+              Exportar CSV
+            </Button>
+          </div>
+          {dataLoading ? (
+            <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 14 }}>Cargando reservas…</p>
+          ) : (
+            <AdminReservationsTable rows={tableRows} busy={detailBusy} onOpenDetail={openDetail} />
+          )}
+        </Card>
       </div>
 
       <ReservaDetailModal

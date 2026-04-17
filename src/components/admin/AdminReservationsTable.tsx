@@ -1,7 +1,8 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { Reserva } from "@/types/reserva";
-import { Button, Table, Th, Td } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { enumerateNights, formatYmdToDmy } from "@/lib/dates";
 
 export type AdminReservationTableRow = {
@@ -13,25 +14,30 @@ export type AdminReservationTableRow = {
 
 type BadgeTone = "green" | "yellow" | "red" | "gray" | "blue";
 
-function SmallBadge(props: { text: string; tone: BadgeTone }) {
+function SmallBadge(props: { text: string; tone: BadgeTone; compact?: boolean }) {
   const tones: Record<BadgeTone, { bg: string; border: string; color: string }> = {
     green: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)", color: "rgb(22,101,52)" },
-    yellow: { bg: "rgba(234,179,8,0.12)", border: "rgba(234,179,8,0.35)", color: "rgb(133,77,14)" },
+    yellow: { bg: "rgba(234,179,8,0.2)", border: "rgba(234,179,8,0.5)", color: "rgb(113,63,18)" },
     red: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.35)", color: "rgb(153,27,27)" },
-    gray: { bg: "rgba(100,116,139,0.12)", border: "rgba(100,116,139,0.3)", color: "rgb(51,65,85)" },
+    gray: {
+      bg: "color-mix(in srgb, var(--color-text-muted) 22%, var(--color-surface))",
+      border: "color-mix(in srgb, var(--color-text-muted) 45%, var(--color-border))",
+      color: "var(--color-text)",
+    },
     blue: { bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.35)", color: "rgb(30,64,175)" },
   };
   const t = tones[props.tone];
+  const compact = Boolean(props.compact);
   return (
     <span
       style={{
         display: "inline-block",
-        padding: "2px 8px",
+        padding: compact ? "2px 6px" : "3px 9px",
         borderRadius: 999,
         border: `1px solid ${t.border}`,
         background: t.bg,
         color: t.color,
-        fontSize: 11,
+        fontSize: compact ? 10 : 11,
         fontWeight: 700,
         whiteSpace: "nowrap",
       }}
@@ -74,6 +80,54 @@ function shortReservaId(id: string): string {
   return id.length > 10 ? `${id.slice(0, 8)}…` : id;
 }
 
+/** Un solo contenedor de scroll horizontal (mismo patrón que `Table` en ui.tsx), sin padding lateral que recorte celdas. */
+const tableScroller: CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  overflowX: "auto",
+  overflowY: "visible",
+  WebkitOverflowScrolling: "touch",
+  overscrollBehaviorX: "contain",
+  background: "var(--color-surface)",
+  border: "1px solid var(--color-border)",
+  borderRadius: "var(--radius)",
+  boxShadow: "var(--shadow-sm)",
+};
+
+const thBase: CSSProperties = {
+  textAlign: "left",
+  borderBottomWidth: 2,
+  borderBottomStyle: "solid",
+  borderBottomColor: "var(--color-border)",
+  color: "var(--color-text-muted)",
+  fontWeight: 700,
+  fontSize: 11,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  background: "color-mix(in srgb, var(--color-accent) 7%, var(--color-surface))",
+  verticalAlign: "bottom",
+};
+
+const tdBase: CSSProperties = {
+  borderBottomWidth: 1,
+  borderBottomStyle: "solid",
+  borderBottomColor: "var(--color-border)",
+  color: "var(--color-text)",
+  verticalAlign: "top",
+  lineHeight: 1.45,
+};
+
+const padAir = "14px 14px";
+const padTight = "12px 8px";
+
+const secondaryText: CSSProperties = {
+  fontSize: 12,
+  color: "var(--color-text-muted)",
+  marginTop: 4,
+};
+
 type Props = {
   rows: AdminReservationTableRow[];
   busy: boolean;
@@ -82,98 +136,131 @@ type Props = {
 
 export default function AdminReservationsTable({ rows, busy, onOpenDetail }: Props) {
   return (
-    <Table>
-      <thead>
-        <tr>
-          <Th>Reserva</Th>
-          <Th>Titular</Th>
-          <Th>Camping</Th>
-          <Th>Unidad</Th>
-          <Th>Fechas</Th>
-          <Th>Personas</Th>
-          <Th>Total</Th>
-          <Th>Estado</Th>
-          <Th>Origen</Th>
-          <Th>Acción</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
+    <div style={tableScroller}>
+      <table
+        style={{
+          width: "100%",
+          minWidth: 1040,
+          borderCollapse: "collapse",
+          tableLayout: "auto",
+        }}
+      >
+        <thead>
           <tr>
-            <td
-              colSpan={10}
-              style={{
-                padding: 16,
-                textAlign: "center",
-                color: "var(--color-text-muted)",
-                borderBottom: "1px solid var(--color-border)",
-              }}
-            >
-              No hay reservas con los filtros actuales.
-            </td>
+            <th style={{ ...thBase, padding: padTight, minWidth: 108 }}>Reserva</th>
+            <th style={{ ...thBase, padding: padAir, minWidth: 188 }}>Titular</th>
+            <th style={{ ...thBase, padding: padAir, minWidth: 140 }}>Camping</th>
+            <th style={{ ...thBase, padding: padAir, minWidth: 140 }}>Unidad</th>
+            <th style={{ ...thBase, padding: padAir, minWidth: 150 }}>Fechas</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 76 }}>Personas</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 100 }}>Total</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 96 }}>Estado</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 84 }}>Origen</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 104 }}>Acción</th>
           </tr>
-        ) : (
-          rows.map(({ reserva: r, campingNombre, unitLabel, tipoUnidadLabel }) => {
-            const noches = enumerateNights(r.checkInDate, r.checkOutDate).length;
-            const eb = estadoBadge(r.estado);
-            const ob = origenLabel(r.createdByMode);
-            const adj = unitChangeSecondaryBadge(r.unitChangeAdjustmentStatus);
-            return (
-              <tr key={r.id}>
-                <Td>
-                  <div style={{ fontWeight: 700 }}>{shortReservaId(r.id)}</div>
-                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>
-                    {new Date(r.createdAtMs).toLocaleString("es-AR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </div>
-                </Td>
-                <Td>
-                  <div style={{ fontWeight: 600 }}>{r.titularNombre}</div>
-                  <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{r.titularEmail}</div>
-                </Td>
-                <Td>{campingNombre}</Td>
-                <Td>
-                  <div>{unitLabel}</div>
-                  {tipoUnidadLabel !== "—" ? (
-                    <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{tipoUnidadLabel}</div>
-                  ) : null}
-                </Td>
-                <Td>
-                  <div>
-                    {formatYmdToDmy(r.checkInDate)} → {formatYmdToDmy(r.checkOutDate)}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{noches} noche(s)</div>
-                </Td>
-                <Td>
-                  {r.adultos} / {r.menores}
-                </Td>
-                <Td>${r.montoTotalArs.toLocaleString("es-AR")}</Td>
-                <Td>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
-                    <SmallBadge text={eb.text} tone={eb.tone} />
-                    {adj ? <SmallBadge text={adj.text} tone={adj.tone} /> : null}
-                  </div>
-                </Td>
-                <Td>
-                  <SmallBadge text={ob.text} tone={ob.tone} />
-                </Td>
-                <Td>
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    style={{ padding: "6px 10px" }}
-                    onClick={() => onOpenDetail(r)}
-                  >
-                    Ver detalle
-                  </Button>
-                </Td>
-              </tr>
-            );
-          })
-        )}
-      </tbody>
-    </Table>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td
+                colSpan={10}
+                style={{
+                  ...tdBase,
+                  padding: 28,
+                  textAlign: "center",
+                  color: "var(--color-text-muted)",
+                  fontSize: 14,
+                }}
+              >
+                No hay reservas con los filtros actuales.
+              </td>
+            </tr>
+          ) : (
+            rows.map(({ reserva: r, campingNombre, unitLabel, tipoUnidadLabel }) => {
+              const noches = enumerateNights(r.checkInDate, r.checkOutDate).length;
+              const eb = estadoBadge(r.estado);
+              const ob = origenLabel(r.createdByMode);
+              const adj = unitChangeSecondaryBadge(r.unitChangeAdjustmentStatus);
+              return (
+                <tr key={r.id}>
+                  <td style={{ ...tdBase, padding: padTight }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "ui-monospace, monospace" }}>
+                      {shortReservaId(r.id)}
+                    </div>
+                    <div style={{ ...secondaryText, marginTop: 6, fontSize: 11 }}>
+                      {new Date(r.createdAtMs).toLocaleString("es-AR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </div>
+                  </td>
+                  <td style={{ ...tdBase, padding: padAir }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{r.titularNombre}</div>
+                    <div style={{ ...secondaryText, wordBreak: "break-word", lineHeight: 1.4 }}>
+                      {r.titularEmail}
+                    </div>
+                  </td>
+                  <td style={{ ...tdBase, padding: padAir }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--color-text)", lineHeight: 1.35 }}>
+                      {campingNombre}
+                    </div>
+                  </td>
+                  <td style={{ ...tdBase, padding: padAir }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.35 }}>{unitLabel}</div>
+                    {tipoUnidadLabel !== "—" ? (
+                      <div style={{ ...secondaryText, lineHeight: 1.35 }}>{tipoUnidadLabel}</div>
+                    ) : null}
+                  </td>
+                  <td style={{ ...tdBase, padding: padAir }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.4 }}>
+                      {formatYmdToDmy(r.checkInDate)}
+                      {"\u00A0→\u00A0"}
+                      {formatYmdToDmy(r.checkOutDate)}
+                    </div>
+                    <div style={secondaryText}>{noches} noche(s)</div>
+                  </td>
+                  <td style={{ ...tdBase, padding: padTight }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>
+                      {r.adultos} / {r.menores}
+                    </span>
+                  </td>
+                  <td style={{ ...tdBase, padding: padTight }}>
+                    <span
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 800,
+                        fontVariantNumeric: "tabular-nums",
+                        color: "var(--color-text)",
+                      }}
+                    >
+                      ${r.montoTotalArs.toLocaleString("es-AR")}
+                    </span>
+                  </td>
+                  <td style={{ ...tdBase, padding: padTight }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                      <SmallBadge text={eb.text} tone={eb.tone} compact />
+                      {adj ? <SmallBadge text={adj.text} tone={adj.tone} compact /> : null}
+                    </div>
+                  </td>
+                  <td style={{ ...tdBase, padding: padTight }}>
+                    <SmallBadge text={ob.text} tone={ob.tone} compact />
+                  </td>
+                  <td style={{ ...tdBase, padding: padTight, whiteSpace: "nowrap" }}>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      style={{ padding: "6px 10px", fontSize: 12, fontWeight: 600 }}
+                      onClick={() => onOpenDetail(r)}
+                    >
+                      Ver detalle
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }

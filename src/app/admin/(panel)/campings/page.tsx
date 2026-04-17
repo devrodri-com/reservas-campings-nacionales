@@ -17,14 +17,15 @@ import type {
   UnitTypeBookingMode,
   UnitTypePricingModel,
 } from "@/types/unitType";
-import UnitTypeForm from "@/components/admin/UnitTypeForm";
-import AdminCampingUnitsList from "@/components/admin/AdminCampingUnitsList";
-import AdminCollapsibleSection from "@/components/admin/AdminCollapsibleSection";
+import AdminCampingDataSection from "@/components/admin/AdminCampingDataSection";
+import AdminCampingSectionNav, {
+  type CampingEditorTab,
+} from "@/components/admin/AdminCampingSectionNav";
+import AdminCampingUnitTypesSection from "@/components/admin/AdminCampingUnitTypesSection";
+import AdminCampingUnitsSection from "@/components/admin/AdminCampingUnitsSection";
 import { Button, Card } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
-
-type OpenSection = "camping" | "unitTypes" | "units" | null;
 
 type EditableFields = Pick<
   Camping,
@@ -66,6 +67,36 @@ function campingInventoryModeLabel(mode: Camping["inventoryMode"]): string {
   if (mode === "unit_based") return "Modo: Por unidad";
   if (mode === "capacity") return "Modo: Por capacidad";
   return "Modo: no indicado";
+}
+
+function looksLikeHttpUrl(s: string): boolean {
+  const t = s.trim();
+  if (/^https?:\/\//i.test(t) || /^\/\//.test(t)) return true;
+  if (/^www\.google\./i.test(t) && t.toLowerCase().includes("maps")) return true;
+  return false;
+}
+
+/** Ubicación que no conviene mostrar en el lateral (links Maps, embeds, acortadores, etc.). */
+function looksLikeMapsOrLinkNoise(s: string): boolean {
+  const t = s.trim();
+  if (!t) return false;
+  if (looksLikeHttpUrl(t)) return true;
+  const lower = t.toLowerCase();
+  if (/^maps\.app\.goo\.gl\//i.test(t)) return true;
+  if (lower.includes("google.com/maps") || lower.includes("maps.google")) return true;
+  if (lower.includes("maps/embed") || lower.includes("/embed?")) return true;
+  if (lower.includes("goo.gl/maps") || lower.includes("maps.app.goo.gl")) return true;
+  return false;
+}
+
+/** Texto de ubicación para el resumen lateral: sin URLs ni cadenas enormes. */
+function campingContextUbicacionLine(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const t = raw.trim();
+  if (!t) return null;
+  if (looksLikeMapsOrLinkNoise(t)) return null;
+  if (t.length > 120) return `${t.slice(0, 117)}…`;
+  return t;
 }
 
 export default function AdminCampingsPage() {
@@ -146,7 +177,7 @@ export default function AdminCampingsPage() {
   const [editUnitNumber, setEditUnitNumber] = useState("");
   const [editUnitSector, setEditUnitSector] = useState("");
   const [editUnitPriceOverride, setEditUnitPriceOverride] = useState("");
-  const [openSection, setOpenSection] = useState<OpenSection>(null);
+  const [campingEditorTab, setCampingEditorTab] = useState<CampingEditorTab>("data");
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -195,7 +226,7 @@ export default function AdminCampingsPage() {
   );
 
   useEffect(() => {
-    setOpenSection(selectedCamping ? "camping" : null);
+    setCampingEditorTab("data");
   }, [selectedCamping?.id]);
 
   const campingOptions: SelectOption[] = useMemo(
@@ -203,7 +234,6 @@ export default function AdminCampingsPage() {
       campings.map((c) => ({
         value: c.id,
         label: `${c.nombre} (${c.areaProtegida})`,
-        description: c.ubicacionTexto,
       })),
     [campings]
   );
@@ -913,6 +943,8 @@ export default function AdminCampingsPage() {
     lineHeight: 1.4,
     maxWidth: "100%",
     display: "block",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
   };
 
   const flowStepPanel: CSSProperties = {
@@ -924,6 +956,10 @@ export default function AdminCampingsPage() {
     border: "1px solid var(--color-border)",
     background: "var(--color-surface)",
     boxShadow: "0 1px 0 rgba(0, 0, 0, 0.04)",
+    minWidth: 0,
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   };
 
   const flowSubPanelSolo: CSSProperties = {
@@ -935,6 +971,10 @@ export default function AdminCampingsPage() {
     border: "1px solid var(--color-border)",
     borderLeft: "4px solid var(--color-accent)",
     background: "var(--color-surface)",
+    minWidth: 0,
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   };
 
   const flowSubPanelBulk: CSSProperties = {
@@ -945,6 +985,10 @@ export default function AdminCampingsPage() {
     borderRadius: 10,
     border: "2px dashed var(--color-border)",
     background: "var(--color-surface)",
+    minWidth: 0,
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   };
 
   if (loading || profileLoading) {
@@ -977,8 +1021,21 @@ export default function AdminCampingsPage() {
     );
   }
 
+  const campingSidebarUbicacionLine = selectedCamping
+    ? campingContextUbicacionLine(selectedCamping.ubicacionTexto)
+    : null;
+
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
+    <main
+      style={{
+        maxWidth: 1100,
+        margin: "0 auto",
+        padding: "24px 16px",
+        width: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
+      }}
+    >
       <h1 style={{ margin: "0 0 12px 0", color: "var(--color-accent)" }}>
         Editar campings
       </h1>
@@ -1015,7 +1072,7 @@ export default function AdminCampingsPage() {
           {loadingData ? (
             <p>Cargando…</p>
           ) : showNewCamping ? (
-            <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontWeight: 700 }}>ID (slug)</span>
                 <input
@@ -1059,433 +1116,246 @@ export default function AdminCampingsPage() {
               </div>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              <Button variant="secondary" onClick={() => setShowNewCamping(true)}>
-                Crear nuevo camping
-              </Button>
+            <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowNewCamping(true)}
+                  style={{ width: "auto", flex: "0 0 auto" }}
+                >
+                  Crear nuevo camping
+                </Button>
+              </div>
               {campings.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--color-text-muted)" }}>No hay campings cargados.</p>
+                <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
+                  No hay campings cargados.
+                </p>
               ) : (
-                <>
-                  <SelectDropdown
-                    label="Camping"
-                    value={selectedId}
-                    options={campingOptions}
-                    onChange={setSelectedId}
-                    placeholder="Seleccionar camping…"
-                    disabled={loadingData || campings.length === 0 || saving}
-                    searchable
-                  />
+                <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: "min(100%, 200px)",
+                      minWidth: 0,
+                    }}
+                  >
+                    <SelectDropdown
+                      label="Elegí camping"
+                      value={selectedId}
+                      options={campingOptions}
+                      onChange={setSelectedId}
+                      placeholder="Seleccionar…"
+                      disabled={loadingData || campings.length === 0 || saving}
+                      searchable
+                      size="compact"
+                      compactDensity="minimal"
+                    />
+                  </div>
                   {selectedCamping ? (
                     <div
                       style={{
                         margin: 0,
-                        paddingTop: 4,
+                        padding: "7px 9px",
                         display: "grid",
                         gap: 4,
-                        fontSize: 14,
-                        color: "var(--color-text-muted)",
+                        minWidth: 0,
+                        borderRadius: 8,
+                        border: "1px solid color-mix(in srgb, var(--color-border) 75%, transparent)",
+                        background: "color-mix(in srgb, var(--color-border) 4%, var(--color-surface))",
                       }}
                     >
                       <div
                         style={{
                           fontWeight: 800,
-                          fontSize: 15,
+                          fontSize: 13,
                           color: "var(--color-text)",
+                          lineHeight: 1.35,
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-word",
                         }}
                       >
                         {selectedCamping.nombre}
                       </div>
-                      <div>
-                        {selectedCamping.areaProtegida} · {selectedCamping.ubicacionTexto}
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "var(--color-text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {selectedCamping.areaProtegida}
                       </div>
-                      <div>{campingInventoryModeLabel(selectedCamping.inventoryMode)}</div>
+                      {campingSidebarUbicacionLine ? (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--color-text-muted)",
+                            lineHeight: 1.45,
+                            overflowWrap: "anywhere",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {campingSidebarUbicacionLine}
+                        </div>
+                      ) : null}
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "var(--color-text)",
+                          paddingTop: 2,
+                          borderTop: "1px solid var(--color-border)",
+                        }}
+                      >
+                        {campingInventoryModeLabel(selectedCamping.inventoryMode)}
+                      </div>
                     </div>
                   ) : null}
-                </>
+                </div>
               )}
             </div>
           )}
         </Card>
 
-        <div style={{ minWidth: 0, overflow: "hidden" }}>
-          <Card title="Datos del camping">
-          {showNewCamping ? (
-            <p style={{ color: "var(--color-text-muted)" }}>Completá el formulario a la izquierda y hacé clic en Crear.</p>
-          ) : !selectedCamping ? (
-            <p>Seleccioná un camping.</p>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              <AdminCollapsibleSection
-                title="Datos del camping"
-                subtitle="Completá la ficha pública del camping: texto, redes y mapas."
-                isOpen={openSection === "camping"}
-                onToggle={(nextOpen) => setOpenSection(nextOpen ? "camping" : null)}
-              >
-                <div style={{ display: "grid", gap: 12 }}>
-                <div>
-                <div style={{ fontWeight: 800, color: "var(--color-accent)", fontSize: 16 }}>
-                  {selectedCamping.nombre}
-                </div>
-                <div style={{ color: "var(--color-text-muted)" }}>
-                  {selectedCamping.areaProtegida} · {selectedCamping.ubicacionTexto}
-                </div>
-              </div>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Descripción corta</span>
-                <textarea
-                  value={form.descripcionCorta ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, descripcionCorta: e.target.value }))}
-                  rows={3}
-                  style={textAreaStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Instagram (URL)</span>
-                <textarea
-                  value={form.igUrl ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, igUrl: e.target.value }))}
-                  placeholder="https://instagram.com/..."
-                  rows={2}
-                  style={textAreaStyle}
-                  spellCheck={false}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Sitio oficial (URL)</span>
-                <textarea
-                  value={form.webUrl ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, webUrl: e.target.value }))}
-                  placeholder="https://..."
-                  rows={2}
-                  style={textAreaStyle}
-                  spellCheck={false}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Imagen de portada (URL opcional)</span>
-                <input
-                  value={form.coverImageUrl ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, coverImageUrl: e.target.value }))}
-                  placeholder="Dejar vacío para usar el placeholder"
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 10,
-                    background: "var(--color-surface)",
-                    color: "var(--color-text)",
-                  }}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Dirección</span>
-                <input
-                  value={form.direccion ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, direccion: e.target.value }))}
-                  placeholder="Dirección del camping"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Google Maps (URL)</span>
-                <textarea
-                  value={form.mapsUrl ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, mapsUrl: e.target.value }))}
-                  placeholder="https://maps.google.com/..."
-                  rows={2}
-                  style={textAreaStyle}
-                  spellCheck={false}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontWeight: 700 }}>Google Maps (Embed URL)</span>
-                <textarea
-                  value={form.mapsEmbedUrl ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, mapsEmbedUrl: e.target.value }))}
-                  placeholder="Pegá el iframe completo o el src https://www.google.com/maps/embed?pb=..."
-                  rows={2}
-                  style={textAreaStyle}
-                  spellCheck={false}
-                />
-              </label>
-
-              <div
-                style={{
-                  marginTop: 8,
-                  paddingTop: 14,
-                  borderTop: "1px solid var(--color-border)",
-                  display: "grid",
-                  gap: 12,
-                }}
-              >
-                <div style={{ fontWeight: 800, color: "var(--color-text)" }}>
-                  Política de cancelación (V1)
-                </div>
-                <p style={{ margin: 0, fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
-                  Si está desactivada, al cancelar una reserva pagada se considera devolución del 100 % del
-                  monto. Si está activa, el porcentaje depende de los días de anticipación respecto al{" "}
-                  <strong>check-in original</strong> de la reserva (no cambia si luego modifican fechas).
-                </p>
-                <label style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <input
-                    type="checkbox"
-                    checked={cancellationPolicyEnabled}
-                    onChange={(e) => setCancellationPolicyEnabled(e.target.checked)}
-                  />
-                  <span style={{ fontWeight: 700 }}>Política habilitada</span>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 700 }}>Umbral (días de anticipación)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={cancellationRefundDaysThreshold}
-                    onChange={(e) => setCancellationRefundDaysThreshold(Number(e.target.value))}
-                    style={inputStyle}
-                    disabled={!cancellationPolicyEnabled}
-                  />
-                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                    Con esta cantidad de días o más hasta el check-in original → % “antes”; con menos → %
-                    “después”.
-                  </span>
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 700 }}>Devolución antes del umbral (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={cancellationRefundPercentBeforeThreshold}
-                    onChange={(e) => setCancellationRefundPercentBeforeThreshold(Number(e.target.value))}
-                    style={inputStyle}
-                    disabled={!cancellationPolicyEnabled}
-                  />
-                </label>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontWeight: 700 }}>Devolución después del umbral (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={cancellationRefundPercentAfterThreshold}
-                    onChange={(e) => setCancellationRefundPercentAfterThreshold(Number(e.target.value))}
-                    style={inputStyle}
-                    disabled={!cancellationPolicyEnabled}
-                  />
-                </label>
-              </div>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Button variant="primary" onClick={onSave} disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar cambios"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setForm({
-                      descripcionCorta: selectedCamping.descripcionCorta ?? "",
-                      igUrl: selectedCamping.igUrl ?? "",
-                      webUrl: selectedCamping.webUrl ?? "",
-                      coverImageUrl: selectedCamping.coverImageUrl ?? "",
-                      direccion: selectedCamping.direccion ?? "",
-                      mapsUrl: selectedCamping.mapsUrl ?? "",
-                      mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
-                    });
-                    setCancellationPolicyEnabled(Boolean(selectedCamping.cancellationPolicyEnabled));
-                    setCancellationRefundDaysThreshold(
-                      typeof selectedCamping.cancellationRefundDaysThreshold === "number" &&
-                        Number.isFinite(selectedCamping.cancellationRefundDaysThreshold)
-                        ? Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold))
-                        : 7
-                    );
-                    setCancellationRefundPercentBeforeThreshold(
-                      typeof selectedCamping.cancellationRefundPercentBeforeThreshold === "number" &&
-                        Number.isFinite(selectedCamping.cancellationRefundPercentBeforeThreshold)
-                        ? Math.min(
-                            100,
-                            Math.max(
-                              0,
-                              Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)
-                            )
-                          )
-                        : 100
-                    );
-                    setCancellationRefundPercentAfterThreshold(
-                      typeof selectedCamping.cancellationRefundPercentAfterThreshold === "number" &&
-                        Number.isFinite(selectedCamping.cancellationRefundPercentAfterThreshold)
-                        ? Math.min(
-                            100,
-                            Math.max(
-                              0,
-                              Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)
-                            )
-                          )
-                        : 0
-                    );
-                  }}
-                  disabled={saving}
-                >
-                  Revertir
-                </Button>
-              </div>
-
-              <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
-                Si dejás “Imagen de portada” vacío, se usa <code>/campings/placeholder.jpg</code>.
+        <div style={{ minWidth: 0, width: "100%", maxWidth: "100%" }}>
+          <Card title="Camping">
+            {showNewCamping ? (
+              <p style={{ color: "var(--color-text-muted)" }}>
+                Completá el formulario a la izquierda y hacé clic en Crear.
               </p>
-                </div>
-              </AdminCollapsibleSection>
-
-              {selectedCamping.inventoryMode === "unit_based" ? (
-                <>
-                  <AdminCollapsibleSection
-                    title="Paso 1 - Tipos de unidad"
-                    subtitle="Primero definí las categorías base, por ejemplo: Parcela, Cabaña, Cabina."
-                    isOpen={openSection === "unitTypes"}
-                    onToggle={(nextOpen) => setOpenSection(nextOpen ? "unitTypes" : null)}
-                  >
-                    <div style={flowStepPanel}>
-                  {unitTypes.length === 0 ? (
-                    <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
-                      Todavía no hay tipos cargados.
-                    </p>
-                  ) : (
-                    <ul
-                      style={{
-                        margin: 0,
-                        paddingLeft: 0,
-                        listStyle: "none",
-                        color: "var(--color-text)",
-                        display: "grid",
-                        gap: 12,
-                      }}
-                    >
-                      {unitTypes.map((ut) => (
-                        <li
-                          key={ut.id}
-                          style={{
-                            paddingBottom: 12,
-                            borderBottom: "1px solid var(--color-border)",
-                          }}
-                        >
-                          {editingUnitTypeId === ut.id ? (
-                            <UnitTypeForm
-                              name={editUnitTypeName}
-                              onNameChange={setEditUnitTypeName}
-                              code={ut.code}
-                              capacityMax={editUnitTypeCapacity}
-                              onCapacityMaxChange={setEditUnitTypeCapacity}
-                              pricingModel={editUnitTypePricingModel}
-                              onPricingModelChange={setEditUnitTypePricingModel}
-                              pricingModelOptions={unitTypePricingModelOptions}
-                              adultPriceArs={editUnitTypeAdultPrice}
-                              onAdultPriceArsChange={setEditUnitTypeAdultPrice}
-                              childPriceArs={editUnitTypeChildPrice}
-                              onChildPriceArsChange={setEditUnitTypeChildPrice}
-                              unitPriceArs={editUnitTypePricePerUnit}
-                              onUnitPriceArsChange={setEditUnitTypePricePerUnit}
-                              bookingMode={editUnitTypeBookingMode}
-                              onBookingModeChange={setEditUnitTypeBookingMode}
-                              bookingModeOptions={unitTypeBookingModeOptions}
-                              saving={saving}
-                              submitLabel="Guardar"
-                              onSubmit={handleSaveEditUnitType}
-                              onCancel={handleCancelEditUnitType}
-                              inputStyle={inputStyle}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                alignItems: "flex-start",
-                                justifyContent: "space-between",
-                                gap: 10,
-                              }}
-                            >
-                              <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                                <strong>{ut.name}</strong> · código <code>{ut.code}</code> ·
-                                capacidad {ut.capacityMax} ·{" "}
-                                {ut.pricingModel === "per_unit"
-                                  ? typeof ut.unitPriceArs === "number"
-                                    ? `Por unidad · $${ut.unitPriceArs.toLocaleString("es-AR")} ARS`
-                                    : "Precio no disponible"
-                                  : typeof ut.adultPriceArs === "number" &&
-                                      typeof ut.childPriceArs === "number"
-                                    ? `Por persona · adulto $${ut.adultPriceArs.toLocaleString("es-AR")} ARS · menor $${ut.childPriceArs.toLocaleString("es-AR")} ARS`
-                                    : "Precio no disponible"}
-                              </div>
-                              <Button
-                                variant="secondary"
-                                type="button"
-                                onClick={() => handleStartEditUnitType(ut)}
-                                disabled={saving || editingUnitTypeId !== ""}
-                              >
-                                Editar
-                              </Button>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: 10,
-                      paddingTop: 12,
-                      borderTop: "1px dashed var(--color-border)",
+            ) : !selectedCamping ? (
+              <p>Seleccioná un camping.</p>
+            ) : (
+              <>
+                <AdminCampingSectionNav
+                  active={campingEditorTab}
+                  onChange={setCampingEditorTab}
+                  inventoryUnitBased={selectedCamping.inventoryMode === "unit_based"}
+                />
+                {campingEditorTab === "data" ? (
+                  <AdminCampingDataSection
+                    selectedCamping={selectedCamping}
+                    form={form}
+                    setForm={setForm}
+                    cancellationPolicyEnabled={cancellationPolicyEnabled}
+                    setCancellationPolicyEnabled={setCancellationPolicyEnabled}
+                    cancellationRefundDaysThreshold={cancellationRefundDaysThreshold}
+                    setCancellationRefundDaysThreshold={setCancellationRefundDaysThreshold}
+                    cancellationRefundPercentBeforeThreshold={cancellationRefundPercentBeforeThreshold}
+                    setCancellationRefundPercentBeforeThreshold={
+                      setCancellationRefundPercentBeforeThreshold
+                    }
+                    cancellationRefundPercentAfterThreshold={cancellationRefundPercentAfterThreshold}
+                    setCancellationRefundPercentAfterThreshold={
+                      setCancellationRefundPercentAfterThreshold
+                    }
+                    onSave={onSave}
+                    onRevert={() => {
+                      setForm({
+                        descripcionCorta: selectedCamping.descripcionCorta ?? "",
+                        igUrl: selectedCamping.igUrl ?? "",
+                        webUrl: selectedCamping.webUrl ?? "",
+                        coverImageUrl: selectedCamping.coverImageUrl ?? "",
+                        direccion: selectedCamping.direccion ?? "",
+                        mapsUrl: selectedCamping.mapsUrl ?? "",
+                        mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
+                      });
+                      setCancellationPolicyEnabled(Boolean(selectedCamping.cancellationPolicyEnabled));
+                      setCancellationRefundDaysThreshold(
+                        typeof selectedCamping.cancellationRefundDaysThreshold === "number" &&
+                          Number.isFinite(selectedCamping.cancellationRefundDaysThreshold)
+                          ? Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold))
+                          : 7
+                      );
+                      setCancellationRefundPercentBeforeThreshold(
+                        typeof selectedCamping.cancellationRefundPercentBeforeThreshold === "number" &&
+                          Number.isFinite(selectedCamping.cancellationRefundPercentBeforeThreshold)
+                          ? Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)
+                              )
+                            )
+                          : 100
+                      );
+                      setCancellationRefundPercentAfterThreshold(
+                        typeof selectedCamping.cancellationRefundPercentAfterThreshold === "number" &&
+                          Number.isFinite(selectedCamping.cancellationRefundPercentAfterThreshold)
+                          ? Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)
+                              )
+                            )
+                          : 0
+                      );
                     }}
-                  >
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>Nuevo tipo</span>
-                    <UnitTypeForm
-                      name={unitTypeName}
-                      onNameChange={setUnitTypeName}
-                      code={unitTypeCode}
-                      onCodeChange={setUnitTypeCode}
-                      codePlaceholder="ej: cabaña-4p"
-                      capacityMax={unitTypeCapacity}
-                      onCapacityMaxChange={setUnitTypeCapacity}
-                      pricingModel={unitTypePricingModel}
-                      onPricingModelChange={setUnitTypePricingModel}
-                      pricingModelOptions={unitTypePricingModelOptions}
-                      adultPriceArs={unitTypeAdultPrice}
-                      onAdultPriceArsChange={setUnitTypeAdultPrice}
-                      childPriceArs={unitTypeChildPrice}
-                      onChildPriceArsChange={setUnitTypeChildPrice}
-                      unitPriceArs={unitTypePricePerUnit}
-                      onUnitPriceArsChange={setUnitTypePricePerUnit}
-                      bookingMode={unitTypeBookingMode}
-                      onBookingModeChange={setUnitTypeBookingMode}
-                      bookingModeOptions={unitTypeBookingModeOptions}
-                      saving={saving}
-                      submitLabel="Crear tipo"
-                      onSubmit={handleCreateUnitType}
-                      inputStyle={inputStyle}
-                    />
-                  </div>
-                    </div>
-                  </AdminCollapsibleSection>
-
-                  <AdminCollapsibleSection
-                    title="Paso 2 - Unidades"
-                    subtitle="Después cargá las unidades reales de este camping. Podés crear una sola o varias en lote."
-                    isOpen={openSection === "units"}
-                    onToggle={(nextOpen) => setOpenSection(nextOpen ? "units" : null)}
-                  >
-                    <div style={flowStepPanel}>
-                  <AdminCampingUnitsList
+                    saving={saving}
+                    inputStyle={inputStyle}
+                    textAreaStyle={textAreaStyle}
+                  />
+                ) : null}
+                {selectedCamping.inventoryMode === "unit_based" && campingEditorTab === "unitTypes" ? (
+                  <AdminCampingUnitTypesSection
+                    panelStyle={flowStepPanel}
+                    saving={saving}
+                    unitTypes={unitTypes}
+                    unitTypePricingModelOptions={unitTypePricingModelOptions}
+                    unitTypeBookingModeOptions={unitTypeBookingModeOptions}
+                    inputStyle={inputStyle}
+                    unitTypeName={unitTypeName}
+                    setUnitTypeName={setUnitTypeName}
+                    unitTypeCode={unitTypeCode}
+                    setUnitTypeCode={setUnitTypeCode}
+                    unitTypeCapacity={unitTypeCapacity}
+                    setUnitTypeCapacity={setUnitTypeCapacity}
+                    unitTypePricingModel={unitTypePricingModel}
+                    setUnitTypePricingModel={setUnitTypePricingModel}
+                    unitTypeAdultPrice={unitTypeAdultPrice}
+                    setUnitTypeAdultPrice={setUnitTypeAdultPrice}
+                    unitTypeChildPrice={unitTypeChildPrice}
+                    setUnitTypeChildPrice={setUnitTypeChildPrice}
+                    unitTypePricePerUnit={unitTypePricePerUnit}
+                    setUnitTypePricePerUnit={setUnitTypePricePerUnit}
+                    unitTypeBookingMode={unitTypeBookingMode}
+                    setUnitTypeBookingMode={setUnitTypeBookingMode}
+                    editingUnitTypeId={editingUnitTypeId}
+                    editUnitTypeName={editUnitTypeName}
+                    setEditUnitTypeName={setEditUnitTypeName}
+                    editUnitTypeCapacity={editUnitTypeCapacity}
+                    setEditUnitTypeCapacity={setEditUnitTypeCapacity}
+                    editUnitTypePricingModel={editUnitTypePricingModel}
+                    setEditUnitTypePricingModel={setEditUnitTypePricingModel}
+                    editUnitTypeAdultPrice={editUnitTypeAdultPrice}
+                    setEditUnitTypeAdultPrice={setEditUnitTypeAdultPrice}
+                    editUnitTypeChildPrice={editUnitTypeChildPrice}
+                    setEditUnitTypeChildPrice={setEditUnitTypeChildPrice}
+                    editUnitTypePricePerUnit={editUnitTypePricePerUnit}
+                    setEditUnitTypePricePerUnit={setEditUnitTypePricePerUnit}
+                    editUnitTypeBookingMode={editUnitTypeBookingMode}
+                    setEditUnitTypeBookingMode={setEditUnitTypeBookingMode}
+                    onCreateUnitType={handleCreateUnitType}
+                    onStartEditUnitType={handleStartEditUnitType}
+                    onCancelEditUnitType={handleCancelEditUnitType}
+                    onSaveEditUnitType={handleSaveEditUnitType}
+                  />
+                ) : null}
+                {selectedCamping.inventoryMode === "unit_based" && campingEditorTab === "units" ? (
+                  <AdminCampingUnitsSection
+                    panelStyle={flowStepPanel}
+                    flowSubPanelSolo={flowSubPanelSolo}
+                    flowSubPanelBulk={flowSubPanelBulk}
                     units={units}
                     unitTypes={unitTypes}
-                    editingUnitId={editingUnitId}
+                    unitTypeSelectOptions={unitTypeSelectOptions}
                     saving={saving}
+                    editingUnitId={editingUnitId}
                     editUnitDisplayName={editUnitDisplayName}
                     onEditUnitDisplayNameChange={setEditUnitDisplayName}
                     editUnitNumber={editUnitNumber}
@@ -1499,158 +1369,34 @@ export default function AdminCampingsPage() {
                     onCancelEditUnit={handleCancelEditUnit}
                     operationalStatusLabel={operationalStatusLabel}
                     inputStyle={inputStyle}
+                    unitDisplayName={unitDisplayName}
+                    setUnitDisplayName={setUnitDisplayName}
+                    unitNumber={unitNumber}
+                    setUnitNumber={setUnitNumber}
+                    unitTypeIdToCreate={unitTypeIdToCreate}
+                    setUnitTypeIdToCreate={setUnitTypeIdToCreate}
+                    unitSector={unitSector}
+                    setUnitSector={setUnitSector}
+                    unitPriceOverride={unitPriceOverride}
+                    setUnitPriceOverride={setUnitPriceOverride}
+                    onCreateUnit={handleCreateUnit}
+                    bulkUnitTypeId={bulkUnitTypeId}
+                    setBulkUnitTypeId={setBulkUnitTypeId}
+                    bulkPrefix={bulkPrefix}
+                    setBulkPrefix={setBulkPrefix}
+                    bulkFromNumber={bulkFromNumber}
+                    setBulkFromNumber={setBulkFromNumber}
+                    bulkToNumber={bulkToNumber}
+                    setBulkToNumber={setBulkToNumber}
+                    bulkSector={bulkSector}
+                    setBulkSector={setBulkSector}
+                    bulkPriceOverride={bulkPriceOverride}
+                    setBulkPriceOverride={setBulkPriceOverride}
+                    onCreateUnitsBulk={handleCreateUnitsBulk}
                   />
-
-                  <div style={flowSubPanelSolo}>
-                    <span style={{ fontWeight: 800, fontSize: 15 }}>Crear una unidad</span>
-                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.45 }}>
-                      Usá este formulario si querés crear una unidad puntual.
-                    </p>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Nombre visible</span>
-                      <input
-                        value={unitDisplayName}
-                        onChange={(e) => setUnitDisplayName(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Número / código</span>
-                      <input
-                        value={unitNumber}
-                        onChange={(e) => setUnitNumber(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                        placeholder="ej: A-12"
-                      />
-                    </label>
-                    <SelectDropdown
-                      label="Tipo de unidad"
-                      value={unitTypeIdToCreate}
-                      options={unitTypeSelectOptions}
-                      onChange={setUnitTypeIdToCreate}
-                      placeholder="Seleccionar tipo…"
-                      disabled={saving || unitTypes.length === 0}
-                    />
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
-                      <input
-                        value={unitSector}
-                        onChange={(e) => setUnitSector(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
-                      <input
-                        value={unitPriceOverride}
-                        onChange={(e) => setUnitPriceOverride(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                        placeholder="Vacío = usa precio del tipo"
-                        inputMode="decimal"
-                      />
-                    </label>
-                    <div>
-                      <Button
-                        variant="secondary"
-                        onClick={handleCreateUnit}
-                        disabled={saving || unitTypes.length === 0}
-                      >
-                        {saving ? "Guardando…" : "Crear unidad"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div style={flowSubPanelBulk}>
-                    <span style={{ fontWeight: 800, fontSize: 15 }}>Crear unidades en lote</span>
-                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.45 }}>
-                      Usá este bloque si querés crear muchas unidades parecidas de una sola vez.
-                    </p>
-                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
-                      Ejemplo: prefijo <strong>Parcela</strong>, desde <strong>1</strong>, hasta{" "}
-                      <strong>55</strong> → se crean “Parcela 1” … “Parcela 55” con número{" "}
-                      <code>1</code> … <code>55</code>.
-                    </p>
-                    <SelectDropdown
-                      label="Tipo de unidad"
-                      value={bulkUnitTypeId}
-                      options={unitTypeSelectOptions}
-                      onChange={setBulkUnitTypeId}
-                      placeholder="Seleccionar tipo…"
-                      disabled={saving || unitTypes.length === 0}
-                    />
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Prefijo visible</span>
-                      <input
-                        value={bulkPrefix}
-                        onChange={(e) => setBulkPrefix(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                        placeholder="ej: Parcela"
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Desde número</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={bulkFromNumber}
-                        onChange={(e) => setBulkFromNumber(Number(e.target.value) || 0)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Hasta número</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={bulkToNumber}
-                        onChange={(e) => setBulkToNumber(Number(e.target.value) || 0)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                        placeholder="ej: 55"
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
-                      <input
-                        value={bulkSector}
-                        onChange={(e) => setBulkSector(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
-                      <input
-                        value={bulkPriceOverride}
-                        onChange={(e) => setBulkPriceOverride(e.target.value)}
-                        style={inputStyle}
-                        disabled={saving || unitTypes.length === 0}
-                        placeholder="Vacío = usa precio del tipo"
-                        inputMode="decimal"
-                      />
-                    </label>
-                    <div>
-                      <Button
-                        variant="secondary"
-                        onClick={handleCreateUnitsBulk}
-                        disabled={saving || unitTypes.length === 0}
-                      >
-                        {saving ? "Guardando…" : "Crear en lote"}
-                      </Button>
-                    </div>
-                  </div>
-                    </div>
-                  </AdminCollapsibleSection>
-                </>
-              ) : null}
-            </div>
-          )}
+                ) : null}
+              </>
+            )}
           </Card>
         </div>
       </div>

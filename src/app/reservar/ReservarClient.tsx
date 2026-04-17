@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { doc, collection, writeBatch } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { Camping } from "@/types/camping";
@@ -15,7 +15,7 @@ import { buildAvailabilityForRange } from "@/lib/availability";
 import type { Unit } from "@/types/unit";
 import type { UnitType } from "@/types/unitType";
 import type { UnitBlock } from "@/types/unitBlock";
-import { enumerateNights, todayYmd, addDaysYmd } from "@/lib/dates";
+import { enumerateNights, formatYmdToDmy, todayYmd, addDaysYmd } from "@/lib/dates";
 import { formatArs } from "@/lib/money";
 import { ensureSignedInGuest } from "@/lib/ensureAuth";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -144,7 +144,51 @@ export default function ReservarClient() {
 
   const errorBorder = "1px solid rgba(239,68,68,0.8)";
 
-  const inputStyle: React.CSSProperties = {
+  const flowSection: CSSProperties = {
+    display: "grid",
+    gap: 14,
+    padding: "18px 16px",
+    borderRadius: 14,
+    border: "1px solid var(--color-border)",
+    background: "color-mix(in srgb, var(--color-border) 6%, var(--color-surface))",
+    boxSizing: "border-box",
+    minWidth: 0,
+  };
+
+  const unitsFlowSection: CSSProperties = {
+    ...flowSection,
+    gap: 16,
+    border: "1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border))",
+    background: "color-mix(in srgb, var(--color-accent) 7%, var(--color-surface))",
+  };
+
+  const stepKicker: CSSProperties = {
+    margin: 0,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--color-text-muted)",
+  };
+
+  const blockTitle: CSSProperties = {
+    margin: 0,
+    marginTop: 4,
+    fontSize: 19,
+    fontWeight: 800,
+    letterSpacing: "-0.02em",
+    color: "var(--color-text)",
+  };
+
+  const blockHint: CSSProperties = {
+    margin: 0,
+    marginTop: 6,
+    fontSize: 13,
+    color: "var(--color-text-muted)",
+    lineHeight: 1.55,
+  };
+
+  const inputStyle: CSSProperties = {
     width: "100%",
     padding: 10,
     border: "1px solid var(--color-border)",
@@ -154,7 +198,7 @@ export default function ReservarClient() {
     boxSizing: "border-box",
   };
 
-  const selectStyle: React.CSSProperties = { ...inputStyle };
+  const selectStyle: CSSProperties = { ...inputStyle };
 
   const selectedCamping = useMemo(
     () => campings.find((c) => c.id === campingId) ?? null,
@@ -782,9 +826,48 @@ export default function ReservarClient() {
     }
   };
 
+  const contactStepKicker = isUnitBased ? "Paso 3 · Contacto" : "Paso 2 · Contacto";
+  const summaryStepKicker = isUnitBased ? "Paso 4 · Cierre" : "Paso 3 · Cierre";
+
+  const summaryRowLabel: CSSProperties = {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--color-text-muted)",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  };
+
+  const summaryRowValue: CSSProperties = {
+    fontSize: 15,
+    fontWeight: 600,
+    color: "var(--color-text)",
+    lineHeight: 1.4,
+  };
+
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px", overflowX: "hidden" }}>
-      <h1>Reservar</h1>
+    <main
+      style={{
+        maxWidth: 920,
+        margin: "0 auto",
+        padding: "28px 16px 40px",
+        overflowX: "hidden",
+        boxSizing: "border-box",
+      }}
+    >
+      <h1 style={{ margin: "0 0 6px 0", fontSize: 28, fontWeight: 800, color: "var(--color-accent)" }}>
+        Reservar
+      </h1>
+      <p
+        style={{
+          margin: "0 0 22px 0",
+          fontSize: 15,
+          color: "var(--color-text-muted)",
+          lineHeight: 1.55,
+          maxWidth: 560,
+        }}
+      >
+        Elegí camping, fechas y grupo. Después confirmás los datos y el total antes de ir al pago.
+      </p>
 
       {loadingCampings ? <p>Cargando campings…</p> : null}
       {error ? (
@@ -804,413 +887,546 @@ export default function ReservarClient() {
       ) : null}
 
       <Card>
-      <div style={{ display: "grid", gap: 12 }}>
-        <SelectDropdown
-          label="Camping"
-          value={campingId}
-          options={campingOptions}
-          onChange={setCampingId}
-          placeholder="Seleccionar camping…"
-          disabled={submitting || loadingCampings}
-          hasError={fieldError === "camping"}
-          searchable
-        />
+        <div style={{ display: "grid", gap: 28, minWidth: 0 }}>
+          <div style={flowSection}>
+            <p style={stepKicker}>Paso 1 · Tu estadía</p>
+            <h2 style={blockTitle}>Camping, fechas y grupo</h2>
+            <p style={blockHint}>
+              Primero definimos dónde y cuándo viajás. Más abajo vas a ver alojamiento disponible y el total.
+            </p>
 
-        <div className="reservar-grid-top">
-          <div style={{ minWidth: 0 }}>
-            <DateRangePicker
-              label="Fechas"
-              checkInDate={checkInDate}
-              checkOutDate={checkOutDate}
-              onChange={({ checkInDate, checkOutDate }) => {
-                setCheckInDate(checkInDate);
-                setCheckOutDate(checkOutDate);
-              }}
-              disabled={submitting}
-              hasError={fieldError === "fechas"}
-              disablePast
+            <SelectDropdown
+              label="Camping"
+              value={campingId}
+              options={campingOptions}
+              onChange={setCampingId}
+              placeholder="Elegí un camping…"
+              disabled={submitting || loadingCampings}
+              hasError={fieldError === "camping"}
+              searchable
             />
+
+            <div className="reservar-grid-top">
+              <div style={{ minWidth: 0 }}>
+                <DateRangePicker
+                  label="Fechas de estadía"
+                  checkInDate={checkInDate}
+                  checkOutDate={checkOutDate}
+                  onChange={({ checkInDate, checkOutDate }) => {
+                    setCheckInDate(checkInDate);
+                    setCheckOutDate(checkOutDate);
+                  }}
+                  disabled={submitting}
+                  hasError={fieldError === "fechas"}
+                  disablePast
+                />
+              </div>
+
+              {selectedCamping?.inventoryMode !== "unit_based" ? (
+                <SelectDropdown
+                  label="Parcelas"
+                  value={String(parcelas)}
+                  options={parcelasOptions}
+                  onChange={(v) => setParcelas(Number(v))}
+                  disabled={submitting}
+                  searchable={false}
+                />
+              ) : null}
+
+              <SelectDropdown
+                label="Adultos"
+                value={String(adultos)}
+                options={adultosOptions}
+                onChange={(v) => setAdultos(Number(v))}
+                disabled={submitting}
+                searchable={false}
+              />
+
+              <SelectDropdown
+                label="Menores"
+                value={String(menores)}
+                options={menoresOptions}
+                onChange={(v) => setMenores(Number(v))}
+                disabled={submitting}
+                searchable={false}
+              />
+            </div>
+            <p style={{ ...blockHint, marginTop: 10, fontSize: 12 }}>
+              Menores: 3 a 10 años · Mayores: 11 años o más
+            </p>
           </div>
 
-          {selectedCamping?.inventoryMode !== "unit_based" ? (
-            <SelectDropdown
-              label="Parcelas"
-              value={String(parcelas)}
-              options={parcelasOptions}
-              onChange={(v) => setParcelas(Number(v))}
-              disabled={submitting}
-              searchable={false}
-            />
-          ) : null}
-
-          <SelectDropdown
-            label="Adultos"
-            value={String(adultos)}
-            options={adultosOptions}
-            onChange={(v) => setAdultos(Number(v))}
-            disabled={submitting}
-            searchable={false}
-          />
-
-          <SelectDropdown
-            label="Menores"
-            value={String(menores)}
-            options={menoresOptions}
-            onChange={(v) => setMenores(Number(v))}
-            disabled={submitting}
-            searchable={false}
-          />
-        </div>
-        <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: -2 }}>
-          Menores: 3 a 10 años · Mayores: 11 años o más
-        </div>
-
-        {selectedCamping?.inventoryMode === "unit_based" ? (
-          <div style={{ width: "100%", minWidth: 0, display: "grid", gap: 12 }}>
-            <div style={{ width: "100%" }}>
-              <span
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  marginBottom: 6,
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                Unidad
-              </span>
-              <div style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
-                Elegí una unidad. Podés ver capacidad y precio base antes de seleccionar.
-              </div>
-            </div>
-
+          {selectedCamping?.inventoryMode === "unit_based" ? (
             <div
-              role="group"
-              aria-label="Unidades disponibles"
               style={{
                 display: "grid",
-                gap: 10,
-                width: "100%",
+                gap: 20,
+                minWidth: 0,
+                gridTemplateColumns: "minmax(0,1fr)",
               }}
             >
-              {unitReservationRows.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 14, color: "var(--color-text-muted)" }}>
-                  No hay unidades disponibles para estas fechas.
-                </p>
-              ) : (
-                unitReservationGroups.map((group) => {
-                  const expanded = expandedUnitGroups[group.typeName] ?? false;
-                  return (
-                    <div
-                      key={group.typeName}
-                      style={{
-                        border: "1px solid var(--color-border)",
-                        borderRadius: 12,
-                        background: "var(--color-surface, #fff)",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        disabled={submitting}
-                        onClick={() =>
-                          setExpandedUnitGroups((prev) => ({
-                            ...prev,
-                            [group.typeName]: !(prev[group.typeName] ?? false),
-                          }))
-                        }
-                        aria-expanded={expanded}
-                        style={{
-                          width: "100%",
-                          border: "none",
-                          background: "transparent",
-                          textAlign: "left",
-                          font: "inherit",
-                          cursor: submitting ? "default" : "pointer",
-                          padding: "10px 12px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          color: "var(--color-text)",
-                          fontWeight: 700,
-                        }}
-                      >
-                        <span style={{ width: 16, textAlign: "center", color: "var(--color-text-muted)" }}>
-                          {expanded ? "▼" : "▶"}
-                        </span>
-                        <span>
-                          {group.typeName} ({group.rows.length})
-                        </span>
-                      </button>
+              {/* Columna de alojamiento: el mismo contenedor puede ampliarse a dos columnas cuando exista ficha visual (mapa/plano). */}
+              <div style={{ minWidth: 0, display: "grid", gap: 14 }}>
+                <div style={unitsFlowSection}>
+                  <p style={stepKicker}>Paso 2 · Alojamiento</p>
+                  <h2 style={blockTitle}>Elegí tu unidad</h2>
+                  <p style={blockHint}>
+                    Abrí cada tipo para ver las opciones. Tocá una fila para elegirla: vas a ver el resaltado y el
+                    total actualizado abajo.
+                  </p>
 
-                      {expanded ? (
-                        <div style={{ borderTop: "1px solid var(--color-border)" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                            <thead>
-                              <tr style={{ background: "var(--color-bg)" }}>
-                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Unidad</th>
-                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Capacidad</th>
-                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Cobro</th>
-                                <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 12 }}>Precio</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {group.rows.map((row) => {
-                                const selected = row.id === selectedUnitId;
-                                const cobro =
-                                  row.pricingKind === "per_unit"
-                                    ? "Por unidad"
-                                    : row.pricingKind === "per_person"
-                                      ? "Por persona"
-                                      : "No definido";
-                                const precio =
-                                  row.pricingKind === "per_person" &&
-                                  row.priceLinePrimary &&
-                                  row.priceLineSecondary
-                                    ? `${row.priceLinePrimary} / ${row.priceLineSecondary}`
-                                    : row.priceLinePrimary || "Precio no disponible";
+                  <div
+                    role="group"
+                    aria-label="Unidades disponibles"
+                    style={{
+                      display: "grid",
+                      gap: 12,
+                      width: "100%",
+                    }}
+                  >
+                    {unitReservationRows.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: 14, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+                        No hay unidades libres para las fechas elegidas. Probá otras fechas o otro camping.
+                      </p>
+                    ) : (
+                      unitReservationGroups.map((group) => {
+                        const expanded = expandedUnitGroups[group.typeName] ?? false;
+                        return (
+                          <div
+                            key={group.typeName}
+                            style={{
+                              border: "1px solid var(--color-border)",
+                              borderRadius: 12,
+                              background: "var(--color-surface)",
+                              overflow: "hidden",
+                              boxShadow: "var(--shadow-sm)",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              disabled={submitting}
+                              onClick={() =>
+                                setExpandedUnitGroups((prev) => ({
+                                  ...prev,
+                                  [group.typeName]: !(prev[group.typeName] ?? false),
+                                }))
+                              }
+                              aria-expanded={expanded}
+                              style={{
+                                width: "100%",
+                                border: "none",
+                                background: "color-mix(in srgb, var(--color-border) 10%, var(--color-surface))",
+                                textAlign: "left",
+                                font: "inherit",
+                                cursor: submitting ? "default" : "pointer",
+                                padding: "12px 14px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                color: "var(--color-text)",
+                                fontWeight: 700,
+                              }}
+                            >
+                              <span style={{ width: 18, textAlign: "center", color: "var(--color-text-muted)" }}>
+                                {expanded ? "▼" : "▶"}
+                              </span>
+                              <span>
+                                {group.typeName}{" "}
+                                <span style={{ fontWeight: 600, color: "var(--color-text-muted)" }}>
+                                  ({group.rows.length} disponibles)
+                                </span>
+                              </span>
+                            </button>
 
-                                return (
-                                  <tr
-                                    key={row.id}
-                                    onClick={() => setSelectedUnitId(row.id)}
-                                    style={{
-                                      cursor: submitting ? "default" : "pointer",
-                                      background: selected
-                                        ? "rgba(37, 99, 235, 0.12)"
-                                        : "var(--color-surface, #fff)",
-                                      boxShadow: selected
-                                        ? "inset 3px 0 0 var(--color-accent, #2563eb)"
-                                        : "none",
-                                    }}
-                                  >
-                                    <td
+                            {expanded ? (
+                              <div style={{ borderTop: "1px solid var(--color-border)" }}>
+                                <table
+                                  style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}
+                                >
+                                  <thead>
+                                    <tr
                                       style={{
-                                        padding: "10px 12px",
-                                        borderTop: "1px solid var(--color-border)",
-                                        fontWeight: 600,
-                                        color: "var(--color-text)",
+                                        background: "color-mix(in srgb, var(--color-accent) 8%, var(--color-surface))",
                                       }}
                                     >
-                                      {row.displayName}
-                                      {selected ? (
-                                        <span
+                                      <th
+                                        style={{
+                                          textAlign: "left",
+                                          padding: "10px 12px",
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.05em",
+                                          color: "var(--color-text-muted)",
+                                        }}
+                                      >
+                                        Unidad
+                                      </th>
+                                      <th
+                                        style={{
+                                          textAlign: "left",
+                                          padding: "10px 12px",
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.05em",
+                                          color: "var(--color-text-muted)",
+                                        }}
+                                      >
+                                        Capacidad
+                                      </th>
+                                      <th
+                                        style={{
+                                          textAlign: "left",
+                                          padding: "10px 12px",
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.05em",
+                                          color: "var(--color-text-muted)",
+                                        }}
+                                      >
+                                        Tarifa
+                                      </th>
+                                      <th
+                                        style={{
+                                          textAlign: "left",
+                                          padding: "10px 12px",
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.05em",
+                                          color: "var(--color-text-muted)",
+                                        }}
+                                      >
+                                        Precio
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {group.rows.map((row) => {
+                                      const selected = row.id === selectedUnitId;
+                                      const cobro =
+                                        row.pricingKind === "per_unit"
+                                          ? "Por unidad"
+                                          : row.pricingKind === "per_person"
+                                            ? "Por persona"
+                                            : "No definido";
+                                      const precio =
+                                        row.pricingKind === "per_person" &&
+                                        row.priceLinePrimary &&
+                                        row.priceLineSecondary
+                                          ? `${row.priceLinePrimary} / ${row.priceLineSecondary}`
+                                          : row.priceLinePrimary || "Precio no disponible";
+
+                                      return (
+                                        <tr
+                                          key={row.id}
+                                          onClick={() => setSelectedUnitId(row.id)}
                                           style={{
-                                            marginLeft: 8,
-                                            fontSize: 12,
-                                            color: "var(--color-accent, #2563eb)",
-                                            fontWeight: 700,
+                                            cursor: submitting ? "default" : "pointer",
+                                            background: selected
+                                              ? "color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))"
+                                              : "var(--color-surface)",
+                                            boxShadow: selected
+                                              ? "inset 4px 0 0 var(--color-accent)"
+                                              : "none",
+                                            transition: "background 0.12s ease",
                                           }}
                                         >
-                                          Seleccionada
-                                        </span>
-                                      ) : null}
-                                    </td>
-                                    <td
-                                      style={{
-                                        padding: "10px 12px",
-                                        borderTop: "1px solid var(--color-border)",
-                                        color: "var(--color-text-muted)",
-                                      }}
-                                    >
-                                      hasta {row.capacityMax} personas
-                                    </td>
-                                    <td
-                                      style={{
-                                        padding: "10px 12px",
-                                        borderTop: "1px solid var(--color-border)",
-                                        color: "var(--color-text-muted)",
-                                      }}
-                                    >
-                                      {cobro}
-                                    </td>
-                                    <td
-                                      style={{
-                                        padding: "10px 12px",
-                                        borderTop: "1px solid var(--color-border)",
-                                        color: "var(--color-text)",
-                                      }}
-                                    >
-                                      {precio}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })
-              )}
+                                          <td
+                                            style={{
+                                              padding: "12px 12px",
+                                              borderTop: "1px solid var(--color-border)",
+                                              fontWeight: 700,
+                                              color: "var(--color-text)",
+                                            }}
+                                          >
+                                            {row.displayName}
+                                            {selected ? (
+                                              <span
+                                                style={{
+                                                  marginLeft: 8,
+                                                  fontSize: 11,
+                                                  fontWeight: 800,
+                                                  textTransform: "uppercase",
+                                                  letterSpacing: "0.04em",
+                                                  color: "var(--color-accent)",
+                                                }}
+                                              >
+                                                Elegida
+                                              </span>
+                                            ) : null}
+                                          </td>
+                                          <td
+                                            style={{
+                                              padding: "12px 12px",
+                                              borderTop: "1px solid var(--color-border)",
+                                              color: "var(--color-text-muted)",
+                                              fontSize: 14,
+                                            }}
+                                          >
+                                            Hasta {row.capacityMax} personas
+                                          </td>
+                                          <td
+                                            style={{
+                                              padding: "12px 12px",
+                                              borderTop: "1px solid var(--color-border)",
+                                              color: "var(--color-text-muted)",
+                                              fontSize: 14,
+                                            }}
+                                          >
+                                            {cobro}
+                                          </td>
+                                          <td
+                                            style={{
+                                              padding: "12px 12px",
+                                              borderTop: "1px solid var(--color-border)",
+                                              color: "var(--color-text)",
+                                              fontSize: 14,
+                                              fontWeight: 600,
+                                            }}
+                                          >
+                                            {precio}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {selectedCamping?.inventoryMode === "unit_based" && selectedUnitReservationRow ? (
-          <div
-            style={{
-              border: "1px solid rgba(37, 99, 235, 0.35)",
-              borderRadius: 12,
-              background: "rgba(37, 99, 235, 0.08)",
-              padding: "12px 14px",
-              display: "grid",
-              gap: 6,
-            }}
-          >
+          {selectedCamping?.inventoryMode === "unit_based" && selectedUnitReservationRow ? (
             <div
               style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "var(--color-accent, #2563eb)",
-                letterSpacing: "0.01em",
+                border: "1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border))",
+                borderRadius: 16,
+                background: "color-mix(in srgb, var(--color-accent) 12%, var(--color-surface))",
+                padding: "18px 18px 16px",
+                display: "grid",
+                gap: 12,
+                boxShadow: "var(--shadow-sm)",
+                minWidth: 0,
               }}
             >
-              Unidad seleccionada
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-text)" }}>
-                {selectedUnitReservationRow.displayName}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ ...stepKicker, color: "var(--color-accent)" }}>Tu alojamiento</p>
+                  <h2 style={{ ...blockTitle, marginTop: 2, fontSize: 22 }}>{selectedUnitReservationRow.displayName}</h2>
+                </div>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "var(--color-accent)",
+                    border: "1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    background: "color-mix(in srgb, var(--color-accent) 10%, var(--color-surface))",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Tu elección
+                </span>
               </div>
-              <span
+
+              <div
                 style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "var(--color-accent, #2563eb)",
-                  whiteSpace: "nowrap",
+                  display: "grid",
+                  gap: 8,
+                  paddingTop: 4,
+                  borderTop: "1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border))",
                 }}
               >
-                Confirmada
-              </span>
-            </div>
-
-            <div style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
-              {selectedUnitReservationRow.typeName} · hasta {selectedUnitReservationRow.capacityMax} personas
-            </div>
-            <div style={{ fontSize: 13, color: "var(--color-text)", lineHeight: 1.45 }}>
-              {selectedUnitReservationRow.pricingKind === "per_unit" && selectedUnitReservationRow.priceLinePrimary
-                ? `Por unidad · ${selectedUnitReservationRow.priceLinePrimary}`
-                : selectedUnitReservationRow.pricingKind === "per_person" &&
-                    selectedUnitReservationRow.priceLinePrimary &&
-                    selectedUnitReservationRow.priceLineSecondary
-                  ? `Por persona · ${selectedUnitReservationRow.priceLinePrimary} · ${selectedUnitReservationRow.priceLineSecondary}`
-                  : selectedUnitReservationRow.priceLinePrimary || "Precio no disponible"}
-            </div>
-          </div>
-        ) : null}
-
-        <hr />
-
-        <h2>Datos de contacto</h2>
-
-        <div className="reservar-grid-60-40">
-          <label>
-            Nombre y apellido
-            <input
-              value={titularNombre}
-              onChange={(e) => setTitularNombre(e.target.value)}
-              disabled={submitting}
-              style={inputStyle}
-            />
-          </label>
-
-          <label>
-            Email
-            <input
-              type="email"
-              value={titularEmail}
-              onChange={(e) => setTitularEmail(e.target.value)}
-              disabled={submitting}
-              style={{
-                ...inputStyle,
-                border: fieldError === "email" ? errorBorder : inputStyle.border,
-              }}
-            />
-          </label>
-        </div>
-
-        <PhoneFieldSimple
-          label="Teléfono"
-          countryCode={telefonoPais}
-          onCountryCodeChange={setTelefonoPais}
-          number={telefonoNumero}
-          onNumberChange={setTelefonoNumero}
-          manualDialCode={telefonoDialManual}
-          onManualDialCodeChange={setTelefonoDialManual}
-          placeholder="11 1234 5678"
-          required
-          disabled={submitting}
-          hasError={fieldError === "telefono"}
-          layout="compact"
-        />
-
-        <div className="reservar-grid-20-40-40">
-          <div style={{ display: "grid", gap: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
-              Edad
-              <InfoTooltip text="Edad del titular de la reserva (mayor de 18 años)." />
-            </span>
-            <SelectDropdown
-              label=""
-              value={String(titularEdad)}
-              options={edadOptions}
-              onChange={(v) => setTitularEdad(Number(v))}
-              disabled={submitting}
-              searchable={false}
-            />
-          </div>
-        </div>
-
-        <hr />
-
-        <div
-          style={{
-            border: "1px solid var(--color-border)",
-            borderRadius: 12,
-            padding: 12,
-            background: "var(--color-bg)",
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          <div style={{ fontWeight: 800, color: "var(--color-accent)" }}>Resumen</div>
-          {selectedCamping ? (
-            <>
-              <div><strong>Camping:</strong> {selectedCamping.nombre}</div>
-              <div><strong>Fechas:</strong> {checkInDate} → {checkOutDate}</div>
-              <div><strong>Noches:</strong> {noches}</div>
-              {selectedCamping.inventoryMode === "unit_based" ? (
-                <div>
-                  <strong>Unidad:</strong>{" "}
-                  {units.find((u) => u.id === selectedUnitId)?.displayName ?? "—"}
+                <div style={{ fontSize: 14, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+                  <strong style={{ color: "var(--color-text)" }}>{selectedUnitReservationRow.typeName}</strong>
+                  {" · "}
+                  capacidad hasta {selectedUnitReservationRow.capacityMax} personas
                 </div>
-              ) : (
-                <div>
-                  <strong>Parcelas:</strong> {parcelas}
+                <div style={{ fontSize: 14, color: "var(--color-text)", lineHeight: 1.55, fontWeight: 600 }}>
+                  {selectedUnitReservationRow.pricingKind === "per_unit" && selectedUnitReservationRow.priceLinePrimary
+                    ? `Por unidad · ${selectedUnitReservationRow.priceLinePrimary}`
+                    : selectedUnitReservationRow.pricingKind === "per_person" &&
+                        selectedUnitReservationRow.priceLinePrimary &&
+                        selectedUnitReservationRow.priceLineSecondary
+                      ? `Por persona · ${selectedUnitReservationRow.priceLinePrimary} · ${selectedUnitReservationRow.priceLineSecondary}`
+                      : selectedUnitReservationRow.priceLinePrimary || "Precio no disponible"}
                 </div>
-              )}
-              <div><strong>Personas:</strong> {adultos} adultos / {menores} menores</div>
-              <div>
-                <strong>Total:</strong>{" "}
-                {totalArs === null ? "Precio no disponible" : `$${formatArs(totalArs)}`}
               </div>
-              <div style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 4 }}>
-                Tenés 15 minutos para completar el pago. Si no se completa, la disponibilidad se libera automáticamente.
-              </div>
-            </>
+            </div>
           ) : null}
-        </div>
 
-        <Button
-          variant="primary"
-          onClick={onSubmit}
-          disabled={submitting || !selectedCamping}
-        >
-          {submitting ? "Procesando..." : "Confirmar reserva (pago simulado)"}
-        </Button>
-      </div>
+          <div style={flowSection}>
+            <p style={stepKicker}>{contactStepKicker}</p>
+            <h2 style={blockTitle}>Datos del titular</h2>
+            <p style={blockHint}>Los usamos para la confirmación y cualquier aviso sobre tu estadía.</p>
+
+            <div className="reservar-grid-60-40">
+              <label>
+                Nombre y apellido
+                <input
+                  value={titularNombre}
+                  onChange={(e) => setTitularNombre(e.target.value)}
+                  disabled={submitting}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={titularEmail}
+                  onChange={(e) => setTitularEmail(e.target.value)}
+                  disabled={submitting}
+                  style={{
+                    ...inputStyle,
+                    border: fieldError === "email" ? errorBorder : inputStyle.border,
+                  }}
+                />
+              </label>
+            </div>
+
+            <PhoneFieldSimple
+              label="Teléfono"
+              countryCode={telefonoPais}
+              onCountryCodeChange={setTelefonoPais}
+              number={telefonoNumero}
+              onNumberChange={setTelefonoNumero}
+              manualDialCode={telefonoDialManual}
+              onManualDialCodeChange={setTelefonoDialManual}
+              placeholder="11 1234 5678"
+              required
+              disabled={submitting}
+              hasError={fieldError === "telefono"}
+              layout="compact"
+            />
+
+            <div className="reservar-grid-20-40-40">
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+                  Edad del titular
+                  <InfoTooltip text="Edad del titular de la reserva (mayor de 18 años)." />
+                </span>
+                <SelectDropdown
+                  label=""
+                  value={String(titularEdad)}
+                  options={edadOptions}
+                  onChange={(v) => setTitularEdad(Number(v))}
+                  disabled={submitting}
+                  searchable={false}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              ...flowSection,
+              gap: 16,
+              border: "1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border))",
+              background: "color-mix(in srgb, var(--color-accent) 5%, var(--color-surface))",
+            }}
+          >
+            <p style={stepKicker}>{summaryStepKicker}</p>
+            <h2 style={blockTitle}>Resumen de tu reserva</h2>
+            {selectedCamping ? (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 14,
+                    paddingTop: 2,
+                  }}
+                >
+                  <div>
+                    <div style={summaryRowLabel}>Camping</div>
+                    <div style={summaryRowValue}>{selectedCamping.nombre}</div>
+                  </div>
+                  <div>
+                    <div style={summaryRowLabel}>Fechas</div>
+                    <div style={summaryRowValue}>
+                      {formatYmdToDmy(checkInDate)} — {formatYmdToDmy(checkOutDate)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={summaryRowLabel}>Noches</div>
+                    <div style={summaryRowValue}>{noches}</div>
+                  </div>
+                  {selectedCamping.inventoryMode === "unit_based" ? (
+                    <div>
+                      <div style={summaryRowLabel}>Unidad</div>
+                      {units.find((u) => u.id === selectedUnitId)?.displayName ? (
+                        <div style={summaryRowValue}>
+                          {units.find((u) => u.id === selectedUnitId)?.displayName}
+                        </div>
+                      ) : unitReservationRows.length === 0 ? (
+                        <div style={{ ...summaryRowValue, color: "var(--color-text-muted)", fontWeight: 500 }}>
+                          Sin opciones para estas fechas. Probá otras fechas o otro camping.
+                        </div>
+                      ) : (
+                        <div style={{ ...summaryRowValue, color: "var(--color-text-muted)", fontWeight: 500, lineHeight: 1.5 }}>
+                          Todavía no elegiste alojamiento. Volvé al paso 2, abrí un tipo y tocá la fila de la unidad
+                          que prefieras: el nombre y el total se actualizan al instante.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={summaryRowLabel}>Parcelas</div>
+                      <div style={summaryRowValue}>{parcelas}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div style={summaryRowLabel}>Personas</div>
+                    <div style={summaryRowValue}>
+                      {adultos} adulto{adultos === 1 ? "" : "s"} · {menores} menor{menores === 1 ? "" : "es"}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      paddingTop: 10,
+                      marginTop: 4,
+                      borderTop: "1px solid var(--color-border)",
+                      display: "grid",
+                      gap: 4,
+                    }}
+                  >
+                    <div style={summaryRowLabel}>Total</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--color-accent)", letterSpacing: "-0.02em" }}>
+                      {totalArs === null ? "Precio no disponible" : `$${formatArs(totalArs)}`}
+                    </div>
+                  </div>
+                </div>
+                <p style={{ ...blockHint, marginTop: 4, fontSize: 13 }}>
+                  Tenés 15 minutos para completar el pago. Si no se completa, la disponibilidad se libera sola.
+                </p>
+              </>
+            ) : (
+              <p style={blockHint}>Elegí un camping arriba para ver fechas, grupo y el resumen.</p>
+            )}
+          </div>
+
+          <Button
+            variant="primary"
+            onClick={onSubmit}
+            disabled={submitting || !selectedCamping}
+          >
+            {submitting ? "Procesando..." : "Confirmar reserva (pago simulado)"}
+          </Button>
+        </div>
       </Card>
     </main>
   );
