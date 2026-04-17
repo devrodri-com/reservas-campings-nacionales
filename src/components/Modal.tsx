@@ -35,13 +35,26 @@ export default function Modal(props: Props) {
         alignItems: "center",
         justifyContent: "center",
         padding: 16,
+        boxSizing: "border-box",
+        overflow: "hidden",
       }}
       onMouseDown={(e) => {
         // cerrar si clickea overlay
         if (e.target === e.currentTarget) props.onClose();
       }}
     >
-      <div style={{ width: "min(720px, 100%)" }}>
+      <div
+        style={{
+          width: "min(720px, 100%)",
+          maxWidth: "100%",
+          maxHeight: "calc(100dvh - 32px)",
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+        }}
+      >
         <Card title={props.title}>
           <div style={{ display: "grid", gap: 12 }}>
             {props.children}
