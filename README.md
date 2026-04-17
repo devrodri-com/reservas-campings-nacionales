@@ -7,7 +7,7 @@ Aplicación web de demostración para gestionar y tomar reservas en campings. El
 ## Descripción breve
 
 - Flujo público para elegir camping, fechas y completar una reserva (con autenticación de invitado vía Firebase Auth cuando hace falta).
-- Panel `/admin` con roles, listados, disponibilidad agregada, walk-in y —para campings en modo `unit_based`— inventario por unidad, bloqueos y reasignación.
+- Panel `/admin` como vista operativa principal, con roles, disponibilidad agregada, walk-in y —para campings en modo `unit_based`— inventario por unidad, bloqueos y reasignación; además, `/admin/reservas` funciona como vista de consulta, filtro, detalle y exportación según rol.
 - Pagos: flujo **simulado** (sin cobro real); hay rutas API preparatorias hacia Mercado Pago, pero sin integración productiva.
 
 ---
@@ -38,12 +38,16 @@ Aplicación web de demostración para gestionar y tomar reservas en campings. El
 ### Panel admin (`/admin`)
 
 - Login y acceso condicionado a perfil en Firestore (`users/{uid}`: `role`, `activo`, `campingId` cuando aplica).
-- Roles contemplados en UI: `admin_global`, `admin_camping`, `viewer` (lectura restringida en datos sensibles, p. ej. teléfono en detalle de reserva).
-- Selector de camping (según rol), KPIs y tabla de disponibilidad por días en el rango configurado.
-- Listado de reservas del camping: ver detalle, cancelar, expirar pendientes, marcar como pagada (vía cliente Firestore, sujeto a reglas de seguridad).
-- Exportación CSV (por camping y, según rol, alcance global del listado).
-- **Walk-in**: creación manual de reserva con mismas validaciones de fechas; en `unit_based`, elección de unidad y comprobaciones de cupo/personas/unidad.
-- Reserva demo y utilidades de desarrollo acopladas a la página admin actual.
+- Roles contemplados en el sistema: `admin_global`, `admin_camping`, `viewer`, `viewer_global`.
+- Panel operativo principal en `/admin`: selector de camping (según rol), KPIs simples, rango de fechas, listado resumido, exportación CSV según rol, detalle de reserva, cancelación, expiración de pendientes, marcado como pagada y walk-in.
+- Vista de consulta en `/admin/reservas`: filtros por camping / fechas / estado / origen, detalle y exportación CSV según rol.
+- Edición de campings en `/admin/campings`: disponible solo para `admin_global`.
+- Gestión de usuarios administrativos en `/admin/usuarios`: disponible solo para `admin_global`.
+- Roles `viewer` y `viewer_global`: acceso de solo lectura en UI admin, sin acciones operativas y sin exportación CSV. Además, no ven PII sensible de contacto (por ejemplo teléfono y edad en detalle, y email en listados/detalle donde aplica).
+- `admin_camping`: queda acotado a su camping en las vistas operativas.
+- Exportación CSV: disponible para roles operativos; el CSV global queda solo para `admin_global`.
+- **Walk-in**: creación manual de reserva desde `/admin`, con validaciones equivalentes al flujo público; en `unit_based`, elección de unidad concreta y comprobaciones de disponibilidad.
+- Reserva demo y utilidades de desarrollo siguen acopladas a la página admin actual, pero no forman parte del flujo funcional principal.
 
 ### Piloto unit-based (Lago Roca)
 
@@ -138,17 +142,34 @@ npm start
 ## Acceso al panel admin
 
 1. Usuario en **Firebase Authentication**.
-2. Documento en **Firestore** `users/{uid}` con campos coherentes con `UserProfile` (email, `role`, `activo`, y `campingId` si el rol es `admin_camping`).
+2. Documento en **Firestore** `users/{uid}` con campos coherentes con `UserProfile`:
+   - `email`
+   - `role`
+   - `activo`
+   - `campingId` cuando el rol aplica
 3. Navegar a `/admin/login`.
+
+### Roles actuales
+
+- `admin_global`: acceso global, operación completa, edición de campings y alta de usuarios administrativos.
+- `admin_camping`: operación sobre su camping.
+- `viewer`: lectura sobre su camping.
+- `viewer_global`: lectura global.
+
+Las acciones disponibles en la UI dependen del rol y del perfil cargado en `users/{uid}`.
 
 ---
 
 ## Estado actual y notas importantes
 
-- **Mapa interactivo** de unidades sobre un plano: **no está implementado** en la UI de esta demo; queda en pausa hasta contar con mapas base adecuados. Puede haber enlaces/embed a mapas genéricos en ficha de camping (`mapsUrl` / `mapsEmbedUrl`), pero no sustituyen un mapa de ocupación interactivo.
-- **Pagos**: Mercado Pago está **simulado** (preferencia mock y pantalla `/pago/simulado`). No hay cobro ni webhook productivo en este repo tal cual.
-- **Marcar pagada desde admin** se hace con el SDK de cliente de Firestore; no es el mismo camino que el endpoint `mark-paid` usado en el flujo post–pago simulado desde la pantalla de confirmación. La seguridad depende de las reglas de Firestore.
-- **Mejoras futuras razonables** (no exhaustivo): pricing más rico (temporadas, descuentos), UX de calendario (p. ej. límites mínimos en componentes de rango), sincronización amplia de `reservas_public` en operaciones admin avanzadas, mapa de unidades, integración real de MP y notificaciones.
+- **Inventario híbrido**: el sistema soporta campings en modo `capacity` y campings en modo `unit_based`. No todas las funcionalidades aplican a todos los campings.
+- **Mapa interactivo** de unidades sobre un plano: **no está implementado** en la UI de esta demo. Puede haber enlaces o embeds genéricos (`mapsUrl` / `mapsEmbedUrl`), pero no reemplazan un mapa operativo de ocupación.
+- **Pagos**: Mercado Pago está **simulado**. Existe flujo mock (`/pago/simulado`) y rutas API auxiliares, pero no hay integración productiva completa ni cobro real en este repositorio tal como está.
+- **Marcar pagada desde admin**: existe en UI operativa y actualiza el estado de la reserva, pero no equivale a una conciliación de pago real.
+- **Cancelaciones y cambios de unidad**: el sistema calcula ajustes y devoluciones pendientes, pero no procesa dinero automáticamente.
+- **Permisos visibles en UI**: `viewer` y `viewer_global` funcionan como roles de lectura en la interfaz administrativa, sin acciones operativas ni exportación CSV, y con ocultamiento de PII sensible en vistas relevantes.
+- **Seguridad real**: la autorización final depende también de las reglas de Firestore y de la configuración del proyecto Firebase. Ese comportamiento no queda completamente definido solo por este repositorio.
+- **Mejoras futuras razonables**: pricing más rico (temporadas, descuentos), reportes más completos, integración real de pagos, notificaciones y mapa de unidades.
 
 ---
 
