@@ -2,17 +2,13 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
 import type { Camping } from "@/types/camping";
 import type { UserProfile } from "@/types/user";
 import { fetchCampings } from "@/lib/campingsRepo";
-import {
-  fetchUnitTypesByCamping,
-  createUnitType,
-  updateUnitType,
-} from "@/lib/unitTypesRepo";
+import { fetchUnitTypesByCamping, updateUnitType } from "@/lib/unitTypesRepo";
 import { fetchUnitsByCamping, createUnit, updateUnit } from "@/lib/unitsRepo";
 import { fetchUserProfile } from "@/lib/userProfile";
 import type { Unit } from "@/types/unit";
@@ -22,6 +18,7 @@ import type {
   UnitTypePricingModel,
 } from "@/types/unitType";
 import UnitTypeForm from "@/components/admin/UnitTypeForm";
+import AdminCampingUnitsList from "@/components/admin/AdminCampingUnitsList";
 import AdminCollapsibleSection from "@/components/admin/AdminCollapsibleSection";
 import { Button, Card } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
@@ -229,12 +226,6 @@ export default function AdminCampingsPage() {
       })),
     [unitTypes]
   );
-
-  const unitTypeNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    unitTypes.forEach((ut) => m.set(ut.id, ut.name));
-    return m;
-  }, [unitTypes]);
 
   useEffect(() => {
     setUnitTypeName("");
@@ -452,24 +443,38 @@ export default function AdminCampingsPage() {
     setSaving(true);
     setError(null);
     try {
-      const createPayload = {
-        campingId: selectedCamping.id,
-        code,
-        name,
-        pricingModel: unitTypePricingModel,
-        bookingMode: unitTypeBookingMode,
-        capacityMax: unitTypeCapacity,
-        ...(unitTypePricingModel === "per_person"
-          ? {
-              adultPriceArs: Number(unitTypeAdultPrice),
-              childPriceArs: Number(unitTypeChildPrice),
-            }
-          : {
-              unitPriceArs: Number(unitTypePricePerUnit),
-            }),
-        active: true,
-      } as Parameters<typeof createUnitType>[0];
-      await createUnitType(createPayload);
+      const createdAtMs = Date.now();
+      if (unitTypePricingModel === "per_person") {
+        const adultPriceArs = Number(unitTypeAdultPrice);
+        const childPriceArs = Number(unitTypeChildPrice);
+        await addDoc(collection(db, "unitTypes"), {
+          campingId: selectedCamping.id,
+          code,
+          name,
+          pricingModel: "per_person" satisfies UnitTypePricingModel,
+          bookingMode: unitTypeBookingMode,
+          capacityMax: unitTypeCapacity,
+          active: true,
+          adultPriceArs,
+          childPriceArs,
+          basePriceArs: adultPriceArs,
+          createdAtMs,
+        });
+      } else {
+        const unitPriceArs = Number(unitTypePricePerUnit);
+        await addDoc(collection(db, "unitTypes"), {
+          campingId: selectedCamping.id,
+          code,
+          name,
+          pricingModel: "per_unit" satisfies UnitTypePricingModel,
+          bookingMode: unitTypeBookingMode,
+          capacityMax: unitTypeCapacity,
+          active: true,
+          unitPriceArs,
+          basePriceArs: unitPriceArs,
+          createdAtMs,
+        });
+      }
       const list = await fetchUnitTypesByCamping(selectedCamping.id);
       setUnitTypes(list);
       setUnitTypeName("");
@@ -1322,129 +1327,25 @@ export default function AdminCampingsPage() {
                     onToggle={(nextOpen) => setOpenSection(nextOpen ? "units" : null)}
                   >
                     <div style={flowStepPanel}>
-                  {units.length === 0 ? (
-                    <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
-                      Todavía no hay unidades cargadas.
-                    </p>
-                  ) : (
-                    <ul
-                      style={{
-                        margin: 0,
-                        paddingLeft: 0,
-                        listStyle: "none",
-                        color: "var(--color-text)",
-                        display: "grid",
-                        gap: 12,
-                      }}
-                    >
-                      {units.map((u) => (
-                        <li
-                          key={u.id}
-                          style={{
-                            paddingBottom: 12,
-                            borderBottom: "1px solid var(--color-border)",
-                          }}
-                        >
-                          {editingUnitId === u.id ? (
-                            <div style={{ display: "grid", gap: 10 }}>
-                              <div style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
-                                Tipo (no editable):{" "}
-                                <strong>
-                                  {unitTypeNameById.get(u.unitTypeId) ?? u.unitTypeId}
-                                </strong>
-                                {" · "}
-                                Estado operativo:{" "}
-                                <strong>{operationalStatusLabel(u.operationalStatus)}</strong>
-                              </div>
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontWeight: 700 }}>Nombre visible</span>
-                                <input
-                                  value={editUnitDisplayName}
-                                  onChange={(e) => setEditUnitDisplayName(e.target.value)}
-                                  style={inputStyle}
-                                  disabled={saving}
-                                />
-                              </label>
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontWeight: 700 }}>Número / código</span>
-                                <input
-                                  value={editUnitNumber}
-                                  onChange={(e) => setEditUnitNumber(e.target.value)}
-                                  style={inputStyle}
-                                  disabled={saving}
-                                />
-                              </label>
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontWeight: 700 }}>Sector</span>
-                                <input
-                                  value={editUnitSector}
-                                  onChange={(e) => setEditUnitSector(e.target.value)}
-                                  style={inputStyle}
-                                  disabled={saving}
-                                  placeholder="Opcional"
-                                />
-                              </label>
-                              <label style={{ display: "grid", gap: 6 }}>
-                                <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
-                                <input
-                                  value={editUnitPriceOverride}
-                                  onChange={(e) => setEditUnitPriceOverride(e.target.value)}
-                                  style={inputStyle}
-                                  disabled={saving}
-                                  placeholder="Vacío = usa precio del tipo"
-                                  inputMode="decimal"
-                                />
-                              </label>
-                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                <Button
-                                  variant="primary"
-                                  onClick={handleSaveEditUnit}
-                                  disabled={saving}
-                                >
-                                  {saving ? "Guardando…" : "Guardar"}
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  onClick={handleCancelEditUnit}
-                                  disabled={saving}
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                alignItems: "flex-start",
-                                justifyContent: "space-between",
-                                gap: 10,
-                              }}
-                            >
-                              <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                                <strong>{u.displayName}</strong> · n.º {u.number} · tipo:{" "}
-                                {unitTypeNameById.get(u.unitTypeId) ?? u.unitTypeId}
-                                {u.sector ? ` · sector: ${u.sector}` : ""}
-                                {u.priceOverrideArs !== undefined
-                                  ? ` · precio propio: $${u.priceOverrideArs.toLocaleString("es-AR")} ARS`
-                                  : ""}
-                                · estado: {operationalStatusLabel(u.operationalStatus)}
-                              </div>
-                              <Button
-                                variant="secondary"
-                                type="button"
-                                onClick={() => handleStartEditUnit(u)}
-                                disabled={saving || editingUnitId !== ""}
-                              >
-                                Editar
-                              </Button>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <AdminCampingUnitsList
+                    units={units}
+                    unitTypes={unitTypes}
+                    editingUnitId={editingUnitId}
+                    saving={saving}
+                    editUnitDisplayName={editUnitDisplayName}
+                    onEditUnitDisplayNameChange={setEditUnitDisplayName}
+                    editUnitNumber={editUnitNumber}
+                    onEditUnitNumberChange={setEditUnitNumber}
+                    editUnitSector={editUnitSector}
+                    onEditUnitSectorChange={setEditUnitSector}
+                    editUnitPriceOverride={editUnitPriceOverride}
+                    onEditUnitPriceOverrideChange={setEditUnitPriceOverride}
+                    onStartEditUnit={handleStartEditUnit}
+                    onSaveEditUnit={handleSaveEditUnit}
+                    onCancelEditUnit={handleCancelEditUnit}
+                    operationalStatusLabel={operationalStatusLabel}
+                    inputStyle={inputStyle}
+                  />
 
                   <div style={flowSubPanelSolo}>
                     <span style={{ fontWeight: 800, fontSize: 15 }}>Crear una unidad</span>

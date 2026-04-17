@@ -5,6 +5,13 @@ export type BookingKind = "overnight" | "day_use";
 export type CheckInStatus = "pending" | "checked_in" | "checked_out";
 export type AssignedBy = "user" | "operator" | "system";
 
+/** Ajuste económico tras cambio de unidad (admin); pagos/reembolsos fuera de alcance por ahora. */
+export type UnitChangeAdjustmentStatus =
+  | "none"
+  | "pending_charge"
+  | "pending_refund"
+  | "resolved";
+
 export type Reserva = {
   id: string;
   campingId: string;
@@ -44,4 +51,12 @@ export type Reserva = {
   assignedBy?: AssignedBy;
   reassignedFromUnitId?: string;
   notes?: string;
+
+  /** Trazabilidad mínima del último cambio de unidad con impacto en monto. */
+  unitChangePreviousUnitId?: string;
+  unitChangePreviousMontoArs?: number;
+  unitChangeDeltaArs?: number;
+  unitChangeAdjustmentStatus?: UnitChangeAdjustmentStatus;
+  unitChangeAtMs?: number;
+  unitChangeByUid?: string;
 };

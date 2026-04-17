@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/useAuth";
 import { fetchUserProfile } from "@/lib/userProfile";
 import type { Camping } from "@/types/camping";
 import type { UserProfile } from "@/types/user";
-import type { Reserva, ReservaEstado, CreatedByMode } from "@/types/reserva";
+import type { Reserva, ReservaEstado, CreatedByMode, UnitChangeAdjustmentStatus } from "@/types/reserva";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
 import { toCsv, downloadCsv } from "@/lib/csv";
@@ -30,6 +30,13 @@ import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
 import ReservaDetailModal from "@/components/admin/ReservaDetailModal";
+import type { UnitChangePreview } from "@/components/admin/AdminReservationUnitChangePanel";
+import { computeUnitBasedPricePerNight } from "@/lib/computeUnitBasedPricePerNight";
+import {
+  unitAvailableForReservaRange,
+  computeReservaUnitBasedMontoTotalArs,
+  formatWalkInUnitOptionLabel,
+} from "@/lib/adminUnitReassignSupport";
 import { SunIcon, MoonIcon } from "@/components/icons";
 import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
 import { fetchUnitsByCamping, updateUnit, createUnit } from "@/lib/unitsRepo";
@@ -136,79 +143,6 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
   );
 }
 
-function unitAvailableForReservaRange(
-  unit: Unit,
-  reservas: Reserva[],
-  unitBlocks: UnitBlock[],
-  checkInDate: string,
-  checkOutDate: string,
-  ignoreReservaId?: string
-): boolean {
-  if (!unit.active) return false;
-  if (unit.operationalStatus !== "available") return false;
-
-  const blockedInRange = unitBlocks.some(
-    (b) => b.unitId === unit.id && b.fromDate < checkOutDate && b.toDate > checkInDate
-  );
-  if (blockedInRange) return false;
-
-  const nowMs = Date.now();
-  const otherReservaBlocks = reservas.some(
-    (r) =>
-      r.id !== ignoreReservaId &&
-      r.unitId === unit.id &&
-      (r.estado === "pagada" ||
-        (r.estado === "pendiente_pago" &&
-          typeof r.expiresAtMs === "number" &&
-          r.expiresAtMs > nowMs)) &&
-      r.checkInDate < checkOutDate &&
-      r.checkOutDate > checkInDate
-  );
-  if (otherReservaBlocks) return false;
-
-  return true;
-}
-
-/** Precio por noche walk-in en unit_based según pricingModel; mismo criterio conceptual que /reservar. */
-function walkInUnitBasedPricePerNight(
-  unitType: UnitType,
-  adultos: number,
-  menores: number
-): number | null {
-  if (unitType.pricingModel === "per_unit") {
-    if (typeof unitType.unitPriceArs === "number") return unitType.unitPriceArs;
-    return null;
-  }
-
-  if (
-    typeof unitType.adultPriceArs === "number" &&
-    typeof unitType.childPriceArs === "number"
-  ) {
-    return adultos * unitType.adultPriceArs + menores * unitType.childPriceArs;
-  }
-  return null;
-}
-
-function formatWalkInUnitOptionLabel(unit: Unit, unitType: UnitType | undefined): string {
-  const typeName = unitType?.name ?? "Tipo";
-  const capacity = unitType?.capacityMax ?? 0;
-  const pricingText = (() => {
-    if (!unitType) return "Precio no disponible";
-    if (unitType.pricingModel === "per_unit") {
-      if (typeof unitType.unitPriceArs !== "number") return "Precio no disponible";
-      return `Por unidad · $${unitType.unitPriceArs.toLocaleString("es-AR")}/noche`;
-    }
-    if (
-      typeof unitType.adultPriceArs !== "number" ||
-      typeof unitType.childPriceArs !== "number"
-    ) {
-      return "Precio no disponible";
-    }
-    return `Por persona · Adulto $${unitType.adultPriceArs.toLocaleString("es-AR")} / Menor $${unitType.childPriceArs.toLocaleString("es-AR")}`;
-  })();
-  return `${unit.displayName} (${typeName}) · ${capacity} personas · ${pricingText}`;
-}
-
 function computeWalkInMontoTotalArs(
   camping: Camping,
   isUnitBased: boolean,
@@ -227,9 +161,7 @@ function computeWalkInMontoTotalArs(
   const selectedUnit = isUnitBased ? units.find((u) => u.id === walkInUnitId) : undefined;
   const walkInUnitType = selectedUnit ? unitTypeById.get(selectedUnit.unitTypeId) : undefined;
   const pricePerNight = isUnitBased
-    ? walkInUnitType
-      ? walkInUnitBasedPricePerNight(walkInUnitType, walkInAdultos, walkInMenores)
-      : null
+    ? computeUnitBasedPricePerNight(walkInUnitType, walkInAdultos, walkInMenores)
     : camping.precioNocheArs;
   if (pricePerNight === null) return null;
   return noches * parcelasNeeded * pricePerNight;
@@ -490,26 +422,59 @@ export default function AdminHomePage() {
     if (!current) return [];
 
     const { checkInDate, checkOutDate } = detailReserva;
+    const headcount = detailReserva.adultos + detailReserva.menores;
+    const maxPerParcela = camping.maxPersonasPorParcela;
+
     return units
-      .filter(
-        (u) =>
-          u.campingId === camping.id &&
-          u.unitTypeId === current.unitTypeId &&
-          u.id !== current.id &&
-          unitAvailableForReservaRange(
-            u,
-            reservas,
-            unitBlocks,
-            checkInDate,
-            checkOutDate,
-            detailReserva.id
-          )
-      )
+      .filter((u) => {
+        if (u.campingId !== camping.id || u.id === current.id) return false;
+        const cap = unitTypeById.get(u.unitTypeId)?.capacityMax ?? maxPerParcela;
+        if (cap < headcount) return false;
+        return unitAvailableForReservaRange(
+          u,
+          reservas,
+          unitBlocks,
+          checkInDate,
+          checkOutDate,
+          detailReserva.id
+        );
+      })
       .map((unit) => ({
         value: unit.id,
-        label: `${unit.displayName} (${unitTypeById.get(unit.unitTypeId)?.name ?? "Tipo"})`,
+        label: formatWalkInUnitOptionLabel(unit, unitTypeById.get(unit.unitTypeId)),
       }));
   }, [detailReserva, camping, units, reservas, unitBlocks, unitTypeById]);
+
+  const currentUnitChangeSummary = useMemo(() => {
+    if (!detailReserva?.unitId) return "—";
+    const u = units.find((x) => x.id === detailReserva.unitId);
+    const t =
+      (u ? unitTypeById.get(u.unitTypeId) : undefined) ??
+      (detailReserva.unitTypeId ? unitTypeById.get(detailReserva.unitTypeId) : undefined);
+    return `${u?.displayName ?? detailReserva.unitId} (${t?.name ?? "Tipo"})`;
+  }, [detailReserva, units, unitTypeById]);
+
+  const unitChangePreview: UnitChangePreview | null = useMemo(() => {
+    if (!detailReserva?.unitId || !camping || camping.inventoryMode !== "unit_based") return null;
+    if (!reassignTargetUnitId.trim()) return null;
+    const newUnit = units.find((u) => u.id === reassignTargetUnitId);
+    if (!newUnit) return null;
+
+    const newUt = unitTypeById.get(newUnit.unitTypeId);
+    const newTotal = computeReservaUnitBasedMontoTotalArs(detailReserva, newUnit, unitTypeById);
+    const priceCalculable = newTotal !== null;
+    const currentTotalArs = detailReserva.montoTotalArs;
+    const newTotalArs = newTotal ?? 0;
+    const deltaArs = priceCalculable && newTotal !== null ? newTotal - currentTotalArs : 0;
+
+    return {
+      currentTotalArs,
+      newTotalArs,
+      deltaArs,
+      newUnitSummary: `${newUnit.displayName} (${newUt?.name ?? "Tipo"})`,
+      priceCalculable,
+    };
+  }, [detailReserva, camping, reassignTargetUnitId, units, unitTypeById]);
 
   const reservasQueBloquean = useMemo(
     () =>
@@ -1075,8 +1040,11 @@ export default function AdminHomePage() {
       setError("No se pudo reasignar la reserva.");
       return;
     }
-    if (newUnit.unitTypeId !== oldUnit.unitTypeId) {
-      setError("No se pudo reasignar la reserva.");
+    const headcount = detailReserva.adultos + detailReserva.menores;
+    const newCap =
+      unitTypeById.get(newUnit.unitTypeId)?.capacityMax ?? camping.maxPersonasPorParcela;
+    if (newCap < headcount) {
+      setError("La unidad elegida no admite la cantidad de personas de esta reserva.");
       return;
     }
 
@@ -1094,6 +1062,21 @@ export default function AdminHomePage() {
       return;
     }
 
+    const newMontoTotal = computeReservaUnitBasedMontoTotalArs(
+      detailReserva,
+      newUnit,
+      unitTypeById
+    );
+    if (newMontoTotal === null) {
+      setError("No se pudo calcular el precio para la unidad elegida.");
+      return;
+    }
+
+    const previousMonto = detailReserva.montoTotalArs;
+    const delta = newMontoTotal - previousMonto;
+    const unitChangeAdjustmentStatus: UnitChangeAdjustmentStatus =
+      delta > 0 ? "pending_charge" : delta < 0 ? "pending_refund" : "none";
+
     setBusy(true);
     try {
       const batch = writeBatch(db);
@@ -1101,6 +1084,13 @@ export default function AdminHomePage() {
         unitId: newUnit.id,
         unitTypeId: newUnit.unitTypeId,
         reassignedFromUnitId: oldUnit.id,
+        montoTotalArs: newMontoTotal,
+        unitChangePreviousUnitId: oldUnit.id,
+        unitChangePreviousMontoArs: previousMonto,
+        unitChangeDeltaArs: delta,
+        unitChangeAdjustmentStatus,
+        unitChangeAtMs: Date.now(),
+        ...(user?.uid ? { unitChangeByUid: user.uid } : {}),
       });
       batch.update(doc(db, "units", oldUnit.id), {
         operationalStatus: oldUnitNextStatus,
@@ -1596,6 +1586,9 @@ export default function AdminHomePage() {
             CSV global
           </Button>
         ) : null}
+        <Button variant="secondary" onClick={() => router.push("/admin/reservas")}>
+          Reservas
+        </Button>
         {profile.role === "admin_global" ? (
           <Button variant="secondary" onClick={() => router.push("/admin/campings")}>
             Campings
@@ -2011,6 +2004,8 @@ export default function AdminHomePage() {
         oldUnitNextStatus={oldUnitNextStatus}
         reassignUnitOptions={reassignUnitOptions}
         oldUnitNextStatusOptions={OLD_UNIT_NEXT_STATUS_OPTIONS}
+        unitChangePreview={unitChangePreview}
+        currentUnitChangeSummary={currentUnitChangeSummary}
         formatEstadoLabel={(estado) => estadoBadge(estado).text}
         formatOrigenLabel={(origen) => origenBadge(origen).text}
         onClose={closeDetail}

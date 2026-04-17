@@ -8,6 +8,9 @@ import Modal from "@/components/Modal";
 import { Button, Card } from "@/components/ui";
 import SelectDropdown, { type SelectOption } from "@/components/SelectDropdown";
 import { enumerateNights, formatYmdToDmy } from "@/lib/dates";
+import AdminReservationUnitChangePanel, {
+  type UnitChangePreview,
+} from "@/components/admin/AdminReservationUnitChangePanel";
 
 export type ReservaDetailModalProps = {
   open: boolean;
@@ -28,6 +31,9 @@ export type ReservaDetailModalProps = {
   reassignUnitOptions: SelectOption[];
   oldUnitNextStatusOptions: SelectOption[];
 
+  unitChangePreview: UnitChangePreview | null;
+  currentUnitChangeSummary: string;
+
   formatEstadoLabel: (estado: string) => string;
   formatOrigenLabel: (origen: string) => string;
 
@@ -38,6 +44,21 @@ export type ReservaDetailModalProps = {
   onChangeReassignTargetUnitId: (value: string) => void;
   onChangeOldUnitNextStatus: (value: "available" | "blocked" | "maintenance") => void;
 };
+
+function unitChangeStatusLabel(s: NonNullable<Reserva["unitChangeAdjustmentStatus"]>): string {
+  switch (s) {
+    case "none":
+      return "Sin ajuste pendiente";
+    case "pending_charge":
+      return "Cobro pendiente";
+    case "pending_refund":
+      return "Devolución pendiente";
+    case "resolved":
+      return "Ajuste resuelto";
+    default:
+      return s;
+  }
+}
 
 export default function ReservaDetailModal({
   open,
@@ -54,6 +75,8 @@ export default function ReservaDetailModal({
   oldUnitNextStatus,
   reassignUnitOptions,
   oldUnitNextStatusOptions,
+  unitChangePreview,
+  currentUnitChangeSummary,
   formatEstadoLabel,
   formatOrigenLabel,
   onClose,
@@ -89,9 +112,11 @@ export default function ReservaDetailModal({
               <strong>Noches:</strong>{" "}
               {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}
             </div>
-            <div>
-              <strong>Parcelas:</strong> {detailReserva.parcelas}
-            </div>
+            {campingInventoryMode !== "unit_based" ? (
+              <div>
+                <strong>Parcelas:</strong> {detailReserva.parcelas}
+              </div>
+            ) : null}
             {detailReservaUnitRows}
             {canCreateOrCancel && campingInventoryMode === "unit_based" && detailReserva.unitId ? (
               <div style={{ marginTop: 4 }}>
@@ -102,7 +127,7 @@ export default function ReservaDetailModal({
                     onStartReassign(detailReserva.id);
                   }}
                 >
-                  Reasignar unidad
+                  Cambiar unidad
                 </Button>
               </div>
             ) : null}
@@ -112,6 +137,36 @@ export default function ReservaDetailModal({
             <div>
               <strong>Total:</strong> ${detailReserva.montoTotalArs.toLocaleString("es-AR")}
             </div>
+
+            {detailReserva.unitChangeAtMs &&
+            detailReserva.unitChangeAdjustmentStatus &&
+            typeof detailReserva.unitChangeDeltaArs === "number" ? (
+              <div
+                style={{
+                  marginTop: 6,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px dashed var(--color-border)",
+                  fontSize: 13,
+                  color: "var(--color-text-muted)",
+                  lineHeight: 1.45,
+                }}
+              >
+                <strong style={{ color: "var(--color-text)" }}>Último cambio de unidad:</strong>{" "}
+                {new Date(detailReserva.unitChangeAtMs).toLocaleString("es-AR")}
+                {" · "}
+                {unitChangeStatusLabel(detailReserva.unitChangeAdjustmentStatus)}
+                {typeof detailReserva.unitChangePreviousMontoArs === "number" ? (
+                  <>
+                    {" · "}
+                    Monto anterior: $
+                    {detailReserva.unitChangePreviousMontoArs.toLocaleString("es-AR")}
+                  </>
+                ) : null}
+                {" · "}
+                Diferencia: ${detailReserva.unitChangeDeltaArs.toLocaleString("es-AR")}
+              </div>
+            ) : null}
 
             {/* PII: ocultar a viewer */}
             {profileRole === "viewer" ? (
@@ -197,39 +252,19 @@ export default function ReservaDetailModal({
 
           {reassigningReservaId === detailReserva.id ? (
             <div style={{ marginTop: 14 }}>
-              <Card title="Reasignación de unidad">
-                <div style={{ display: "grid", gap: 12 }}>
-                  <SelectDropdown
-                    label="Nueva unidad"
-                    value={reassignTargetUnitId}
-                    options={reassignUnitOptions}
-                    onChange={onChangeReassignTargetUnitId}
-                    placeholder={
-                      reassignUnitOptions.length ? "Seleccionar…" : "No hay unidades libres en ese rango"
-                    }
-                    disabled={busy}
-                  />
-                  <SelectDropdown
-                    label="Estado de la unidad anterior"
-                    value={oldUnitNextStatus}
-                    options={oldUnitNextStatusOptions}
-                    onChange={(v) => {
-                      if (v === "available" || v === "blocked" || v === "maintenance") {
-                        onChangeOldUnitNextStatus(v);
-                      }
-                    }}
-                    disabled={busy}
-                  />
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <Button variant="secondary" disabled={busy} onClick={() => onConfirmReassign()}>
-                      Confirmar reasignación
-                    </Button>
-                    <Button variant="ghost" disabled={busy} onClick={onCancelReassign}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <AdminReservationUnitChangePanel
+                busy={busy}
+                currentUnitSummary={currentUnitChangeSummary}
+                reassignTargetUnitId={reassignTargetUnitId}
+                onChangeReassignTargetUnitId={onChangeReassignTargetUnitId}
+                reassignUnitOptions={reassignUnitOptions}
+                oldUnitNextStatus={oldUnitNextStatus}
+                onChangeOldUnitNextStatus={onChangeOldUnitNextStatus}
+                oldUnitNextStatusOptions={oldUnitNextStatusOptions}
+                preview={unitChangePreview}
+                onConfirm={onConfirmReassign}
+                onCancel={onCancelReassign}
+              />
             </div>
           ) : null}
         </div>
