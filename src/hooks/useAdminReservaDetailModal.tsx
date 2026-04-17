@@ -18,6 +18,7 @@ import {
   computeReservaUnitBasedMontoTotalArs,
   formatWalkInUnitOptionLabel,
 } from "@/lib/adminUnitReassignSupport";
+import { isReservationViewerRole } from "@/lib/adminReservationRoleUi";
 
 const OLD_UNIT_NEXT_STATUS_OPTIONS: SelectOption[] = [
   { value: "available", label: "Disponible" },
@@ -154,7 +155,7 @@ export function useAdminReservaDetailModal({
   }, []);
 
   const handleReassignReserva = async () => {
-    if (profile?.role === "viewer" || profile?.role === "viewer_global") return;
+    if (!profile || isReservationViewerRole(profile.role)) return;
     if (!detailReserva || !detailCamping) return;
 
     setError(null);

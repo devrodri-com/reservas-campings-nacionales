@@ -132,9 +132,16 @@ type Props = {
   rows: AdminReservationTableRow[];
   busy: boolean;
   onOpenDetail: (r: Reserva) => void;
+  /** Si es falso, no se muestra email del titular (roles viewer / viewer_global). */
+  showTitularContact?: boolean;
 };
 
-export default function AdminReservationsTable({ rows, busy, onOpenDetail }: Props) {
+export default function AdminReservationsTable({
+  rows,
+  busy,
+  onOpenDetail,
+  showTitularContact = true,
+}: Props) {
   return (
     <div style={tableScroller}>
       <table
@@ -196,9 +203,11 @@ export default function AdminReservationsTable({ rows, busy, onOpenDetail }: Pro
                   </td>
                   <td style={{ ...tdBase, padding: padAir }}>
                     <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{r.titularNombre}</div>
-                    <div style={{ ...secondaryText, wordBreak: "break-word", lineHeight: 1.4 }}>
-                      {r.titularEmail}
-                    </div>
+                    {showTitularContact ? (
+                      <div style={{ ...secondaryText, wordBreak: "break-word", lineHeight: 1.4 }}>
+                        {r.titularEmail}
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ ...tdBase, padding: padAir }}>
                     <div style={{ fontWeight: 600, fontSize: 14, color: "var(--color-text)", lineHeight: 1.35 }}>

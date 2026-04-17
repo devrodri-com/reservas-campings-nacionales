@@ -15,6 +15,11 @@ import type { UnitType } from "@/types/unitType";
 import type { UnitBlock } from "@/types/unitBlock";
 import { Button, Card } from "@/components/ui";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import {
+  canExportReservationsCsv,
+  canOperateReservations,
+  isReservationViewerRole,
+} from "@/lib/adminReservationRoleUi";
 import { enumerateNights } from "@/lib/dates";
 import ReservaDetailModal from "@/components/admin/ReservaDetailModal";
 import AdminReservationsFilters, {
@@ -489,7 +494,7 @@ export default function AdminReservasPage() {
     resetReassignUi();
   };
 
-  const canCreateOrCancel = profile ? profile.role !== "viewer" : false;
+  const canCreateOrCancel = profile ? canOperateReservations(profile.role) : false;
 
   const exportCsv = () => {
     setExportBusy(true);
@@ -654,14 +659,21 @@ export default function AdminReservasPage() {
       <div style={{ width: "100%", minWidth: 0 }}>
         <Card title="Listado">
           <div style={{ marginBottom: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <Button variant="secondary" onClick={exportCsv} disabled={exportBusy || dataLoading}>
-              Exportar CSV
-            </Button>
+            {profile && canExportReservationsCsv(profile.role) ? (
+              <Button variant="secondary" onClick={exportCsv} disabled={exportBusy || dataLoading}>
+                Exportar CSV
+              </Button>
+            ) : null}
           </div>
           {dataLoading ? (
             <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 14 }}>Cargando reservas…</p>
           ) : (
-            <AdminReservationsTable rows={tableRows} busy={detailBusy} onOpenDetail={openDetail} />
+            <AdminReservationsTable
+              rows={tableRows}
+              busy={detailBusy}
+              onOpenDetail={openDetail}
+              showTitularContact={profile ? !isReservationViewerRole(profile.role) : false}
+            />
           )}
         </Card>
       </div>

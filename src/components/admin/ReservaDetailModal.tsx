@@ -2,6 +2,8 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import type { Reserva } from "@/types/reserva";
+import type { UserRole } from "@/types/user";
+import { isReservationViewerRole } from "@/lib/adminReservationRoleUi";
 import type { Unit } from "@/types/unit";
 import type { UnitType } from "@/types/unitType";
 import Modal from "@/components/Modal";
@@ -17,7 +19,7 @@ export type ReservaDetailModalProps = {
   detailReserva: Reserva | null;
   canCreateOrCancel: boolean;
   campingInventoryMode?: "capacity" | "unit_based";
-  profileRole?: string;
+  profileRole?: UserRole;
   busy: boolean;
 
   units: Unit[];
@@ -96,6 +98,8 @@ export default function ReservaDetailModal({
 }: ReservaDetailModalProps) {
   void _units;
   void _unitTypeById;
+
+  const hideGuestPii = profileRole ? isReservationViewerRole(profileRole) : false;
 
   return (
     <Modal open={open} title="Detalle de reserva" onClose={onClose}>
@@ -312,13 +316,15 @@ export default function ReservaDetailModal({
                 <div style={{ fontWeight: 800, color: "var(--color-accent)", fontSize: 16 }}>
                   {detailReserva.titularNombre}
                 </div>
-                <div style={{ color: "var(--color-text-muted)", marginTop: 4, fontSize: 14 }}>
-                  {detailReserva.titularEmail}
-                </div>
+                {!hideGuestPii ? (
+                  <div style={{ color: "var(--color-text-muted)", marginTop: 4, fontSize: 14 }}>
+                    {detailReserva.titularEmail}
+                  </div>
+                ) : null}
               </div>
 
-              {/* PII: ocultar a viewer */}
-              {profileRole === "viewer" || profileRole === "viewer_global" ? (
+              {/* PII: ocultar a viewer / viewer_global */}
+              {hideGuestPii ? (
                 <>
                   <div>
                     <strong>Teléfono:</strong> —

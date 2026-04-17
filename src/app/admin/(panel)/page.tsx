@@ -31,6 +31,12 @@ import { computeCancellationRefund } from "@/lib/cancellationPolicy";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import {
+  canExportReservationsCsv,
+  canExportReservationsCsvGlobal,
+  canOperateReservations,
+  isReservationViewerRole,
+} from "@/lib/adminReservationRoleUi";
 import { Button, Card, Table, Th, Td } from "@/components/ui";
 import { composePhone } from "@/components/PhoneFieldSimple";
 import SelectDropdown from "@/components/SelectDropdown";
@@ -1047,7 +1053,7 @@ export default function AdminHomePage() {
   };
 
   const handleReassignReserva = async () => {
-    if (profile?.role === "viewer" || profile?.role === "viewer_global") return;
+    if (!profile || isReservationViewerRole(profile.role)) return;
     if (!detailReserva || !camping) return;
 
     setError(null);
@@ -1563,12 +1569,10 @@ export default function AdminHomePage() {
     );
   }
 
-  const canCreateOrCancel = profile.role !== "viewer" && profile.role !== "viewer_global";
+  const canCreateOrCancel = canOperateReservations(profile.role);
   const showCampingSelector = profile.role !== "admin_camping";
-  const canExportGlobal =
-    profile.role === "viewer" ||
-    profile.role === "viewer_global" ||
-    profile.role === "admin_global";
+  const canExportCsvCamping = canExportReservationsCsv(profile.role);
+  const canExportGlobal = canExportReservationsCsvGlobal(profile.role);
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
@@ -1594,9 +1598,11 @@ export default function AdminHomePage() {
             </Button>
           </>
         ) : null}
-        <Button variant="secondary" onClick={exportCsv} disabled={!camping}>
-          Exportar CSV
-        </Button>
+        {canExportCsvCamping ? (
+          <Button variant="secondary" onClick={exportCsv} disabled={!camping}>
+            Exportar CSV
+          </Button>
+        ) : null}
         {canExportGlobal ? (
           <Button
             variant="secondary"
@@ -1915,7 +1921,9 @@ export default function AdminHomePage() {
                       </Td>
                       <Td>
                         <div>
-                          {r.titularNombre} ({r.titularEmail})
+                          {isReservationViewerRole(profile.role)
+                            ? r.titularNombre
+                            : `${r.titularNombre} (${r.titularEmail})`}
                         </div>
                         {rowReservaUnit?.displayName ? (
                           <div
