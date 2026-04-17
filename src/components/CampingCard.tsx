@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import type { Camping } from "@/types/camping";
 import { Card, Button } from "@/components/ui";
-import { formatArs } from "@/lib/money";
+import {
+  getCampingCapacityLabel,
+  getCampingDisplayAddress,
+  getCampingPriceLabel,
+} from "@/lib/campingPresentation";
 import { UsersIcon, TagIcon, MapPinIcon, InstagramIcon } from "@/components/icons";
 
 const DESCRIPCION_DEFAULT =
@@ -12,9 +16,17 @@ const DESCRIPCION_DEFAULT =
 
 function IconRow({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--color-text-muted)" }}>
-      <span style={{ color: "var(--color-accent)" }}>{icon}</span>
-      <span>{text}</span>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, color: "var(--color-text-muted)" }}>
+      <span style={{ flex: "0 0 auto", color: "var(--color-accent)" }}>{icon}</span>
+      <span
+        style={{
+          minWidth: 0,
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+        }}
+      >
+        {text}
+      </span>
     </div>
   );
 }
@@ -24,6 +36,8 @@ export default function CampingCard({ camping }: { camping: Camping }) {
   const [imgSrc, setImgSrc] = useState<string>(
     (camping.coverImageUrl?.trim() || "") || `/campings/${camping.id}.jpg` || "/campings/placeholder.jpg"
   );
+
+  const displayAddress = getCampingDisplayAddress(camping) ?? "Ubicación a confirmar";
 
   return (
     <Card>
@@ -60,21 +74,20 @@ export default function CampingCard({ camping }: { camping: Camping }) {
         </div>
 
         <div style={{ display: "grid", gap: 6, marginTop: 6, fontSize: 14 }}>
-          <IconRow
-            icon={<UsersIcon title="Capacidad" />}
-            text={`${camping.capacidadParcelas} parcelas`}
-          />
-          <IconRow
-            icon={<TagIcon title="Precio" />}
-            text={`$${formatArs(camping.precioNocheArs)} / noche / parcela`}
-          />
-          <IconRow
-            icon={<MapPinIcon title="Ubicación" />}
-            text={camping.ubicacionTexto}
-          />
+          <IconRow icon={<UsersIcon title="Capacidad" />} text={getCampingCapacityLabel(camping)} />
+          <IconRow icon={<TagIcon title="Precio" />} text={getCampingPriceLabel(camping)} />
+          <IconRow icon={<MapPinIcon title="Ubicación" />} text={displayAddress} />
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 12,
+            marginTop: 10,
+          }}
+        >
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link href={`/reservar?campingId=${encodeURIComponent(camping.id)}`} style={{ textDecoration: "none" }}>
               <Button variant="primary">Reservar</Button>
@@ -84,7 +97,7 @@ export default function CampingCard({ camping }: { camping: Camping }) {
             </Link>
           </div>
           {camping.igUrl ? (
-            <div style={{ marginLeft: "auto" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <a
                 href={camping.igUrl}
                 target="_blank"

@@ -7,7 +7,7 @@ import type { Camping } from "@/types/camping";
 import { fetchCampings } from "@/lib/campingsRepo";
 import CampingCard from "@/components/CampingCard";
 import FAQ from "@/components/FAQ";
-import { Button, Card } from "@/components/ui";
+import { Button } from "@/components/ui";
 
 const COMO_FUNCIONA = [
   "Elegí tu camping y fechas",
@@ -210,8 +210,8 @@ export default function Home() {
                   fontStyle: "italic",
                 }}
               >
-                "Reservar un camping en Parques Nacionales es más que una estadía: es contribuir a la conservación y
-                disfrutar de la naturaleza de manera responsable."
+                «Reservar un camping en Parques Nacionales es más que una estadía: es contribuir a la conservación y
+                disfrutar de la naturaleza de manera responsable.»
               </p>
             </div>
           </div>

@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Camping } from "@/types/camping";
 import { fetchCampingById } from "@/lib/campingsRepo";
-import { formatArs } from "@/lib/money";
+import {
+  getCampingCapacityLabel,
+  getCampingContextLocation,
+  getCampingDisplayAddress,
+  getCampingPriceLabel,
+} from "@/lib/campingPresentation";
 import { Button, Card } from "@/components/ui";
 import { InstagramIcon, ExternalLinkIcon } from "@/components/icons";
 
@@ -52,6 +57,8 @@ export default function CampingDetailPage() {
   if (error) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}><p style={{ color: "red" }}>{error}</p></main>;
   if (!camping) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}><p>Camping no encontrado.</p></main>;
 
+  const contextLocation = getCampingContextLocation(camping);
+
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
       <img
@@ -74,16 +81,17 @@ export default function CampingDetailPage() {
               {camping.nombre}
             </h1>
             <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 16 }}>
-              {camping.areaProtegida} · {camping.ubicacionTexto}
+              {camping.areaProtegida}
+              {contextLocation ? ` · ${contextLocation}` : ""}
             </p>
           </div>
 
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ color: "var(--color-text-muted)" }}>
-              <strong style={{ color: "var(--color-text)" }}>{camping.capacidadParcelas}</strong> parcelas
+              <strong style={{ color: "var(--color-text)" }}>{getCampingCapacityLabel(camping)}</strong>
             </span>
             <span style={{ color: "var(--color-text-muted)" }}>
-              <strong style={{ color: "var(--color-text)" }}>${formatArs(camping.precioNocheArs)}</strong> / noche / parcela
+              <strong style={{ color: "var(--color-text)" }}>{getCampingPriceLabel(camping)}</strong>
             </span>
           </div>
 
@@ -187,18 +195,14 @@ export default function CampingDetailPage() {
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--color-accent)" }}>
               Ubicación
             </h2>
-            <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-              {camping.ubicacionTexto}
+            {contextLocation ? (
+              <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+                {contextLocation}
+              </p>
+            ) : null}
+            <p style={{ margin: 0, color: "var(--color-text)", lineHeight: 1.6, fontWeight: 600 }}>
+              {getCampingDisplayAddress(camping) ?? "Dirección a confirmar"}
             </p>
-            {camping.direccion ? (
-              <p style={{ margin: 0, color: "var(--color-text)" }}>
-                {camping.direccion}
-              </p>
-            ) : (
-              <p style={{ margin: 0, color: "var(--color-text-muted)", fontStyle: "italic" }}>
-                (Placeholder) Dirección pendiente de carga.
-              </p>
-            )}
             {camping.mapsEmbedUrl ? (
               <div style={{ marginTop: 12 }}>
                 <iframe

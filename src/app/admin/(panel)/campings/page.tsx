@@ -26,10 +26,18 @@ import AdminCampingUnitsSection from "@/components/admin/AdminCampingUnitsSectio
 import { Button, Card } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
+import { getCampingContextLocation, looksLikeMapsOrLinkNoise } from "@/lib/campingPresentation";
 
 type EditableFields = Pick<
   Camping,
-  "descripcionCorta" | "igUrl" | "webUrl" | "coverImageUrl" | "direccion" | "mapsUrl" | "mapsEmbedUrl"
+  | "descripcionCorta"
+  | "igUrl"
+  | "webUrl"
+  | "coverImageUrl"
+  | "ubicacionTexto"
+  | "direccion"
+  | "mapsUrl"
+  | "mapsEmbedUrl"
 >;
 
 function sanitizeUrl(url: string): string {
@@ -69,36 +77,6 @@ function campingInventoryModeLabel(mode: Camping["inventoryMode"]): string {
   return "Modo: no indicado";
 }
 
-function looksLikeHttpUrl(s: string): boolean {
-  const t = s.trim();
-  if (/^https?:\/\//i.test(t) || /^\/\//.test(t)) return true;
-  if (/^www\.google\./i.test(t) && t.toLowerCase().includes("maps")) return true;
-  return false;
-}
-
-/** Ubicación que no conviene mostrar en el lateral (links Maps, embeds, acortadores, etc.). */
-function looksLikeMapsOrLinkNoise(s: string): boolean {
-  const t = s.trim();
-  if (!t) return false;
-  if (looksLikeHttpUrl(t)) return true;
-  const lower = t.toLowerCase();
-  if (/^maps\.app\.goo\.gl\//i.test(t)) return true;
-  if (lower.includes("google.com/maps") || lower.includes("maps.google")) return true;
-  if (lower.includes("maps/embed") || lower.includes("/embed?")) return true;
-  if (lower.includes("goo.gl/maps") || lower.includes("maps.app.goo.gl")) return true;
-  return false;
-}
-
-/** Texto de ubicación para el resumen lateral: sin URLs ni cadenas enormes. */
-function campingContextUbicacionLine(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const t = raw.trim();
-  if (!t) return null;
-  if (looksLikeMapsOrLinkNoise(t)) return null;
-  if (t.length > 120) return `${t.slice(0, 117)}…`;
-  return t;
-}
-
 export default function AdminCampingsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -116,6 +94,7 @@ export default function AdminCampingsPage() {
     igUrl: "",
     webUrl: "",
     coverImageUrl: "",
+    ubicacionTexto: "",
     direccion: "",
     mapsUrl: "",
     mapsEmbedUrl: "",
@@ -344,6 +323,7 @@ export default function AdminCampingsPage() {
       igUrl: selectedCamping.igUrl ?? "",
       webUrl: selectedCamping.webUrl ?? "",
       coverImageUrl: selectedCamping.coverImageUrl ?? "",
+      ubicacionTexto: selectedCamping.ubicacionTexto ?? "",
       direccion: selectedCamping.direccion ?? "",
       mapsUrl: selectedCamping.mapsUrl ?? "",
       mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",
@@ -372,6 +352,16 @@ export default function AdminCampingsPage() {
   const onSave = async () => {
     if (!selectedCamping) return;
 
+    const ubicacionTrim = form.ubicacionTexto?.trim() ?? "";
+    if (!ubicacionTrim) {
+      setError("La ubicación breve es obligatoria.");
+      return;
+    }
+    if (looksLikeMapsOrLinkNoise(ubicacionTrim)) {
+      setError("La ubicación breve debe ser un texto corto y humano, no un link de Google Maps.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -386,6 +376,7 @@ export default function AdminCampingsPage() {
         igUrl: sanitizeUrl(form.igUrl || ""),
         webUrl: sanitizeUrl(form.webUrl || ""),
         coverImageUrl: sanitizeUrl(form.coverImageUrl || ""),
+        ubicacionTexto: ubicacionTrim,
         direccion: form.direccion?.trim() || "",
         mapsUrl: sanitizeUrl(form.mapsUrl || ""),
         mapsEmbedUrl: sanitizeUrl(extractIframeSrc(form.mapsEmbedUrl || "")),
@@ -443,6 +434,12 @@ export default function AdminCampingsPage() {
     }
     if (!newNombre.trim() || !newArea.trim() || !newUbicacion.trim()) {
       setError("Nombre, Área protegida y Ubicación son obligatorios.");
+      return;
+    }
+    if (looksLikeMapsOrLinkNoise(newUbicacion.trim())) {
+      setError(
+        "La ubicación debe ser un texto breve (ej: ciudad/provincia), no un link de Google Maps."
+      );
       return;
     }
 
@@ -1022,7 +1019,7 @@ export default function AdminCampingsPage() {
   }
 
   const campingSidebarUbicacionLine = selectedCamping
-    ? campingContextUbicacionLine(selectedCamping.ubicacionTexto)
+    ? getCampingContextLocation(selectedCamping)
     : null;
 
   return (
@@ -1260,6 +1257,7 @@ export default function AdminCampingsPage() {
                         igUrl: selectedCamping.igUrl ?? "",
                         webUrl: selectedCamping.webUrl ?? "",
                         coverImageUrl: selectedCamping.coverImageUrl ?? "",
+                        ubicacionTexto: selectedCamping.ubicacionTexto ?? "",
                         direccion: selectedCamping.direccion ?? "",
                         mapsUrl: selectedCamping.mapsUrl ?? "",
                         mapsEmbedUrl: selectedCamping.mapsEmbedUrl ?? "",

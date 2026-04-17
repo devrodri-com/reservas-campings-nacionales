@@ -6,7 +6,14 @@ import { Button } from "@/components/ui";
 
 type EditableFields = Pick<
   Camping,
-  "descripcionCorta" | "igUrl" | "webUrl" | "coverImageUrl" | "direccion" | "mapsUrl" | "mapsEmbedUrl"
+  | "descripcionCorta"
+  | "igUrl"
+  | "webUrl"
+  | "coverImageUrl"
+  | "ubicacionTexto"
+  | "direccion"
+  | "mapsUrl"
+  | "mapsEmbedUrl"
 >;
 
 export type AdminCampingDataSectionProps = {
@@ -47,6 +54,11 @@ export default function AdminCampingDataSection({
   textAreaStyle,
 }: AdminCampingDataSectionProps) {
   const field: CSSProperties = { display: "grid", gap: 6, minWidth: 0, width: "100%", maxWidth: "100%" };
+  const fieldHint: CSSProperties = {
+    fontSize: 12,
+    color: "var(--color-text-muted)",
+    lineHeight: 1.45,
+  };
 
   const coverInput: CSSProperties = {
     width: "100%",
@@ -96,7 +108,10 @@ export default function AdminCampingDataSection({
             wordBreak: "break-word",
           }}
         >
-          {selectedCamping.areaProtegida} · {selectedCamping.ubicacionTexto}
+          {selectedCamping.areaProtegida}
+          {((form.ubicacionTexto ?? "").trim() || (selectedCamping.ubicacionTexto ?? "").trim())
+            ? ` · ${(form.ubicacionTexto ?? "").trim() || (selectedCamping.ubicacionTexto ?? "").trim()}`
+            : ""}
         </div>
       </div>
 
@@ -145,6 +160,17 @@ export default function AdminCampingDataSection({
       </label>
 
       <label style={field}>
+        <span style={{ fontWeight: 700 }}>Ubicación breve</span>
+        <input
+          value={form.ubicacionTexto ?? ""}
+          onChange={(e) => setForm((p) => ({ ...p, ubicacionTexto: e.target.value }))}
+          placeholder="Ej: El Calafate, Santa Cruz"
+          style={inputStyle}
+        />
+        <span style={fieldHint}>Usar un texto corto. No pegar links de Google Maps acá.</span>
+      </label>
+
+      <label style={field}>
         <span style={{ fontWeight: 700 }}>Dirección</span>
         <input
           value={form.direccion ?? ""}
@@ -152,6 +178,7 @@ export default function AdminCampingDataSection({
           placeholder="Dirección del camping"
           style={inputStyle}
         />
+        <span style={fieldHint}>Dirección postal o de acceso visible.</span>
       </label>
 
       <label style={field}>
@@ -164,6 +191,7 @@ export default function AdminCampingDataSection({
           style={textAreaStyle}
           spellCheck={false}
         />
+        <span style={fieldHint}>Link externo.</span>
       </label>
 
       <label style={field}>
@@ -176,6 +204,7 @@ export default function AdminCampingDataSection({
           style={textAreaStyle}
           spellCheck={false}
         />
+        <span style={fieldHint}>Solo embed src / iframe.</span>
       </label>
 
       <div

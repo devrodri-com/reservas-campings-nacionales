@@ -18,6 +18,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- sincronizar perfil con sesión Firebase */
     if (!user) {
       setProfile(null);
       setProfileLoading(false);
@@ -32,12 +33,14 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
         setProfileLoading(false);
       }
     })();
+    /* eslint-enable react-hooks/set-state-in-effect */
     return () => {
       cancelled = true;
     };
   }, [user]);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- hidratar tema desde localStorage / prefers-color-scheme */
     const stored = window.localStorage.getItem("theme");
     if (stored === "dark" || stored === "light") {
       setTheme(stored);
@@ -49,6 +52,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
       setTheme("dark");
       document.documentElement.setAttribute("data-theme", "dark");
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const toggleTheme = useCallback(() => {

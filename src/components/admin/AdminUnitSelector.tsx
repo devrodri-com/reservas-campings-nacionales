@@ -97,6 +97,7 @@ export default function AdminUnitSelector({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- alinear claves de acordeón con grupos recibidos */
     setExpandedGroups((prev) => {
       const next: Record<string, boolean> = {};
       for (const group of groups) {
@@ -104,6 +105,7 @@ export default function AdminUnitSelector({
       }
       return next;
     });
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [groups]);
 
   return (
