@@ -12,6 +12,9 @@ export type UnitChangeAdjustmentStatus =
   | "pending_refund"
   | "resolved";
 
+/** Estado de devolución por cancelación; integración de pagos fuera de alcance. */
+export type RefundStatus = "none" | "pending_refund" | "resolved";
+
 export type Reserva = {
   id: string;
   campingId: string;
@@ -59,4 +62,10 @@ export type Reserva = {
   unitChangeAdjustmentStatus?: UnitChangeAdjustmentStatus;
   unitChangeAtMs?: number;
   unitChangeByUid?: string;
+
+  /** Trazabilidad y ajuste económico por cancelación. */
+  cancelledAtMs?: number;
+  cancelledByUid?: string;
+  refundDeltaArs?: number;
+  refundStatus?: RefundStatus;
 };

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { doc, setDoc, collection } from "firebase/firestore";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { doc, collection, writeBatch } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { Camping } from "@/types/camping";
 import type { Reserva } from "@/types/reserva";
@@ -134,6 +134,7 @@ export default function ReservarClient() {
   const [titularEdad, setTitularEdad] = useState<number>(30);
 
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -545,6 +546,8 @@ export default function ReservarClient() {
   };
 
   const onSubmit = async () => {
+    if (submittingRef.current) return;
+
     const v = validate();
     if (v) {
       setError(v);
@@ -552,6 +555,7 @@ export default function ReservarClient() {
     }
     if (!selectedCamping) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     setFieldError(null);
@@ -752,11 +756,14 @@ export default function ReservarClient() {
       const docRefPub = doc(db, "reservas_public", docRef.id);
 
       try {
-        await setDoc(docRef, docReserva);
-        await setDoc(docRefPub, docReservaPublic);
-        console.log("OK setDoc reservas + reservas_public");
+        // Commit atómico para evitar reservas privadas huérfanas.
+        const batch = writeBatch(db);
+        batch.set(docRef, docReserva);
+        batch.set(docRefPub, docReservaPublic);
+        await batch.commit();
+        console.log("OK batch reservas + reservas_public");
       } catch (e) {
-        console.log("FAIL setDoc reservas/reservas_public", e);
+        console.log("FAIL batch reservas/reservas_public", e);
         throw e;
       }
 
@@ -769,6 +776,7 @@ export default function ReservarClient() {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 

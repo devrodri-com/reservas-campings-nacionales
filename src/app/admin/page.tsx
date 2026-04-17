@@ -950,22 +950,41 @@ export default function AdminHomePage() {
     }
   };
 
-  const cancelReserva = async (reservaId: string) => {
-    const motivo = window.prompt("Motivo de cancelación (opcional):") ?? "";
+  const cancelReserva = async (reserva: Reserva) => {
+    if (reserva.estado === "cancelada") {
+      setError("La reserva ya está cancelada.");
+      return;
+    }
+
+    const wasPaid = reserva.estado === "pagada";
+    const confirmMsg = [
+      "Confirmar cancelación de la reserva.",
+      `Total: $${reserva.montoTotalArs.toLocaleString("es-AR")}`,
+      wasPaid
+        ? "Se marcará devolución pendiente por el total pagado."
+        : "No se generará devolución pendiente.",
+    ].join("\n");
+    const accepted = window.confirm(confirmMsg);
+    if (!accepted) return;
 
     setBusy(true);
     setError(null);
 
     try {
-      await updateDoc(doc(db, "reservas", reservaId), {
+      await updateDoc(doc(db, "reservas", reserva.id), {
         estado: "cancelada",
-        cancelMotivo: motivo.trim(),
+        cancelledAtMs: Date.now(),
+        ...(user?.uid ? { cancelledByUid: user.uid } : {}),
+        refundDeltaArs: wasPaid ? reserva.montoTotalArs : 0,
+        refundStatus: wasPaid ? "pending_refund" : "none",
       });
-      await setDoc(doc(db, "reservas_public", reservaId), { estado: "cancelada" }, { merge: true });
+      await setDoc(doc(db, "reservas_public", reserva.id), { estado: "cancelada" }, { merge: true });
 
       if (camping) {
         const items = await loadReservasForCamping(camping.id);
         setReservas(items);
+        const updated = items.find((r) => r.id === reserva.id);
+        if (updated) setDetailReserva(updated);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
@@ -1978,7 +1997,7 @@ export default function AdminHomePage() {
                           <Button
                             variant="ghost"
                             disabled={busy}
-                            onClick={() => cancelReserva(r.id)}
+                            onClick={() => cancelReserva(r)}
                             style={{ padding: "6px 10px" }}
                           >
                             Cancelar
@@ -2030,6 +2049,7 @@ export default function AdminHomePage() {
         onConfirmReassign={() => void handleReassignReserva()}
         onChangeReassignTargetUnitId={setReassignTargetUnitId}
         onChangeOldUnitNextStatus={setOldUnitNextStatus}
+        onCancelReserva={(r) => void cancelReserva(r)}
       />
     </main>
   );

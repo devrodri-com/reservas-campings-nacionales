@@ -43,6 +43,7 @@ export type ReservaDetailModalProps = {
   onConfirmReassign: () => void;
   onChangeReassignTargetUnitId: (value: string) => void;
   onChangeOldUnitNextStatus: (value: "available" | "blocked" | "maintenance") => void;
+  onCancelReserva?: (reserva: Reserva) => void;
 };
 
 function unitChangeStatusLabel(s: NonNullable<Reserva["unitChangeAdjustmentStatus"]>): string {
@@ -85,6 +86,7 @@ export default function ReservaDetailModal({
   onConfirmReassign,
   onChangeReassignTargetUnitId,
   onChangeOldUnitNextStatus,
+  onCancelReserva,
 }: ReservaDetailModalProps) {
   void _units;
   void _unitTypeById;
@@ -128,6 +130,19 @@ export default function ReservaDetailModal({
                   }}
                 >
                   Cambiar unidad
+                </Button>
+              </div>
+            ) : null}
+            {canCreateOrCancel && detailReserva.estado !== "cancelada" && onCancelReserva ? (
+              <div style={{ marginTop: 4 }}>
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    onCancelReserva(detailReserva);
+                  }}
+                >
+                  Cancelar reserva
                 </Button>
               </div>
             ) : null}
@@ -228,6 +243,14 @@ export default function ReservaDetailModal({
             {detailReserva.cancelMotivo ? (
               <div>
                 <strong>Motivo cancelación:</strong> {detailReserva.cancelMotivo}
+              </div>
+            ) : null}
+            {detailReserva.estado === "cancelada" ? (
+              <div>
+                <strong>Devolución:</strong>{" "}
+                {detailReserva.refundStatus === "pending_refund"
+                  ? `Pendiente: $${(detailReserva.refundDeltaArs ?? 0).toLocaleString("es-AR")}`
+                  : "Sin devolución pendiente"}
               </div>
             ) : null}
 
