@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import { useEffect, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import type {
   UnitType,
   UnitTypeBookingMode,
@@ -9,6 +9,24 @@ import type {
 import UnitTypeForm from "@/components/admin/UnitTypeForm";
 import { Button } from "@/components/ui";
 import type { SelectOption } from "@/components/SelectDropdown";
+
+const UNIT_TYPE_CODE_HELP =
+  "Identificador interno corto (sin espacios). Sirve para distinguir tipos aunque el nombre visible sea parecido.";
+
+const UNIT_TYPE_BOOKING_MODE_HELP =
+  "Indica si este tipo aplica a estadías nocturnas, visitas de día o ambos. Es referencia para el operador; la experiencia pública puede depender de otras configuraciones del camping.";
+
+const mutedMeta: CSSProperties = {
+  fontSize: 12,
+  color: "var(--color-text-muted)",
+  lineHeight: 1.45,
+};
+
+const metaLabel: CSSProperties = {
+  color: "var(--color-text-muted)",
+  fontWeight: 600,
+  marginRight: 4,
+};
 
 export type AdminCampingUnitTypesSectionProps = {
   panelStyle: CSSProperties;
@@ -21,31 +39,31 @@ export type AdminCampingUnitTypesSectionProps = {
   setUnitTypeName: Dispatch<SetStateAction<string>>;
   unitTypeCode: string;
   setUnitTypeCode: Dispatch<SetStateAction<string>>;
-  unitTypeCapacity: number;
-  setUnitTypeCapacity: Dispatch<SetStateAction<number>>;
+  unitTypeCapacity: string;
+  setUnitTypeCapacity: Dispatch<SetStateAction<string>>;
   unitTypePricingModel: UnitTypePricingModel;
   setUnitTypePricingModel: Dispatch<SetStateAction<UnitTypePricingModel>>;
-  unitTypeAdultPrice: number;
-  setUnitTypeAdultPrice: Dispatch<SetStateAction<number>>;
-  unitTypeChildPrice: number;
-  setUnitTypeChildPrice: Dispatch<SetStateAction<number>>;
-  unitTypePricePerUnit: number;
-  setUnitTypePricePerUnit: Dispatch<SetStateAction<number>>;
+  unitTypeAdultPrice: string;
+  setUnitTypeAdultPrice: Dispatch<SetStateAction<string>>;
+  unitTypeChildPrice: string;
+  setUnitTypeChildPrice: Dispatch<SetStateAction<string>>;
+  unitTypePricePerUnit: string;
+  setUnitTypePricePerUnit: Dispatch<SetStateAction<string>>;
   unitTypeBookingMode: UnitTypeBookingMode;
   setUnitTypeBookingMode: Dispatch<SetStateAction<UnitTypeBookingMode>>;
   editingUnitTypeId: string;
   editUnitTypeName: string;
   setEditUnitTypeName: Dispatch<SetStateAction<string>>;
-  editUnitTypeCapacity: number;
-  setEditUnitTypeCapacity: Dispatch<SetStateAction<number>>;
+  editUnitTypeCapacity: string;
+  setEditUnitTypeCapacity: Dispatch<SetStateAction<string>>;
   editUnitTypePricingModel: UnitTypePricingModel;
   setEditUnitTypePricingModel: Dispatch<SetStateAction<UnitTypePricingModel>>;
-  editUnitTypeAdultPrice: number;
-  setEditUnitTypeAdultPrice: Dispatch<SetStateAction<number>>;
-  editUnitTypeChildPrice: number;
-  setEditUnitTypeChildPrice: Dispatch<SetStateAction<number>>;
-  editUnitTypePricePerUnit: number;
-  setEditUnitTypePricePerUnit: Dispatch<SetStateAction<number>>;
+  editUnitTypeAdultPrice: string;
+  setEditUnitTypeAdultPrice: Dispatch<SetStateAction<string>>;
+  editUnitTypeChildPrice: string;
+  setEditUnitTypeChildPrice: Dispatch<SetStateAction<string>>;
+  editUnitTypePricePerUnit: string;
+  setEditUnitTypePricePerUnit: Dispatch<SetStateAction<string>>;
   editUnitTypeBookingMode: UnitTypeBookingMode;
   setEditUnitTypeBookingMode: Dispatch<SetStateAction<UnitTypeBookingMode>>;
   onCreateUnitType: () => void;
@@ -97,6 +115,12 @@ export default function AdminCampingUnitTypesSection({
   onCancelEditUnitType,
   onSaveEditUnitType,
 }: AdminCampingUnitTypesSectionProps) {
+  useEffect(() => {
+    if (!editingUnitTypeId) return;
+    const el = document.getElementById(`admin-unit-type-edit-${editingUnitTypeId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [editingUnitTypeId]);
+
   return (
     <div style={panelStyle}>
       <p style={{ margin: 0, fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
@@ -119,6 +143,7 @@ export default function AdminCampingUnitTypesSection({
           {unitTypes.map((ut) => (
             <li
               key={ut.id}
+              id={editingUnitTypeId === ut.id ? `admin-unit-type-edit-${ut.id}` : undefined}
               style={{
                 paddingBottom: 12,
                 borderBottom: "1px solid var(--color-border)",
@@ -143,6 +168,7 @@ export default function AdminCampingUnitTypesSection({
                   bookingMode={editUnitTypeBookingMode}
                   onBookingModeChange={setEditUnitTypeBookingMode}
                   bookingModeOptions={unitTypeBookingModeOptions}
+                  bookingModeHelp={UNIT_TYPE_BOOKING_MODE_HELP}
                   saving={saving}
                   submitLabel="Guardar"
                   onSubmit={onSaveEditUnitType}
@@ -159,21 +185,49 @@ export default function AdminCampingUnitTypesSection({
                     gap: 10,
                   }}
                 >
-                  <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                    <strong>{ut.name}</strong> · código <code>{ut.code}</code> · capacidad {ut.capacityMax} ·{" "}
-                    {ut.pricingModel === "per_unit"
-                      ? typeof ut.unitPriceArs === "number"
-                        ? `Por unidad · $${ut.unitPriceArs.toLocaleString("es-AR")} ARS`
-                        : "Precio no disponible"
-                      : typeof ut.adultPriceArs === "number" && typeof ut.childPriceArs === "number"
-                        ? `Por persona · adulto $${ut.adultPriceArs.toLocaleString("es-AR")} ARS · menor $${ut.childPriceArs.toLocaleString("es-AR")} ARS`
-                        : "Precio no disponible"}
+                  <div style={{ flex: "1 1 200px", minWidth: 0, display: "grid", gap: 6 }}>
+                    <div style={{ color: "var(--color-text)" }}>
+                      <strong style={{ fontSize: 15 }}>{ut.name}</strong>
+                      <span style={{ ...mutedMeta, marginLeft: 8, fontSize: 13 }}>
+                        · código <code style={{ fontSize: 12 }}>{ut.code}</code>
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        columnGap: 14,
+                        rowGap: 4,
+                        alignItems: "baseline",
+                        fontSize: 13,
+                        color: "var(--color-text)",
+                      }}
+                    >
+                      <span>
+                        <span style={metaLabel}>Capacidad</span>
+                        {ut.capacityMax}
+                      </span>
+                      <span>
+                        <span style={metaLabel}>Cobro</span>
+                        {ut.pricingModel === "per_unit" ? "Por unidad" : "Por persona"}
+                      </span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={metaLabel}>Precio</span>
+                        {ut.pricingModel === "per_unit"
+                          ? typeof ut.unitPriceArs === "number"
+                            ? `$${ut.unitPriceArs.toLocaleString("es-AR")}`
+                            : "—"
+                          : typeof ut.adultPriceArs === "number" && typeof ut.childPriceArs === "number"
+                            ? `adulto $${ut.adultPriceArs.toLocaleString("es-AR")} · menor $${ut.childPriceArs.toLocaleString("es-AR")}`
+                            : "—"}
+                      </span>
+                    </div>
                   </div>
                   <Button
                     variant="secondary"
                     type="button"
                     onClick={() => onStartEditUnitType(ut)}
-                    disabled={saving || editingUnitTypeId !== ""}
+                    disabled={saving}
                   >
                     Editar
                   </Button>
@@ -187,17 +241,31 @@ export default function AdminCampingUnitTypesSection({
         style={{
           display: "grid",
           gap: 10,
-          paddingTop: 12,
+          paddingTop: 20,
+          marginTop: 4,
           borderTop: "1px dashed var(--color-border)",
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 14 }}>Nuevo tipo</span>
+        <h3
+          style={{
+            margin: 0,
+            fontWeight: 800,
+            fontSize: 15,
+            lineHeight: 1.3,
+            letterSpacing: "-0.01em",
+            color: "var(--color-text)",
+          }}
+        >
+          Nuevo tipo
+        </h3>
         <UnitTypeForm
           name={unitTypeName}
           onNameChange={setUnitTypeName}
           code={unitTypeCode}
           onCodeChange={setUnitTypeCode}
           codePlaceholder="ej: cabaña-4p"
+          codeHelp={UNIT_TYPE_CODE_HELP}
+          bookingModeHelp={UNIT_TYPE_BOOKING_MODE_HELP}
           capacityMax={unitTypeCapacity}
           onCapacityMaxChange={setUnitTypeCapacity}
           pricingModel={unitTypePricingModel}

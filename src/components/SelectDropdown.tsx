@@ -78,6 +78,7 @@ export default function SelectDropdown(props: Props) {
         <button
           type="button"
           disabled={props.disabled}
+          aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           style={{
             width: "100%",
@@ -117,16 +118,28 @@ export default function SelectDropdown(props: Props) {
           >
             {selected ? selected.label : props.placeholder ?? "Seleccionar…"}
           </span>
-          <span
+          <svg
+            className="select-dropdown__chevron"
+            width={minimal ? 11 : compact ? 12 : 12}
+            height={minimal ? 11 : compact ? 12 : 12}
+            viewBox="0 0 12 12"
+            aria-hidden
             style={{
-              color: "var(--color-text-muted)",
               flexShrink: 0,
-              fontSize: minimal ? 9 : undefined,
-              lineHeight: 1,
+              color: "var(--color-text-muted)",
+              transform: open ? "rotate(180deg)" : undefined,
+              transition: "transform 0.15s ease",
             }}
           >
-            ▼
-          </span>
+            <path
+              d="M2.35 4.35L6 7.85L9.65 4.35"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
 
         {open ? (

@@ -10,6 +10,12 @@ Aplicación web de demostración para gestionar y tomar reservas en campings. El
 - Panel `/admin` como vista operativa principal, con roles, disponibilidad agregada, walk-in y —para campings en modo `unit_based`— inventario por unidad, bloqueos y reasignación; además, `/admin/reservas` funciona como vista de consulta, filtro, detalle y exportación según rol.
 - Pagos: flujo **simulado** (sin cobro real); hay rutas API preparatorias hacia Mercado Pago, pero sin integración productiva.
 
+### Documentación en `docs/`
+
+- [Manual funcional](docs/manual-funcional.md)
+- [Manual técnico](docs/manual-tecnico.md)
+- [Alcance del MVP de demo](docs/mvp-demo-alcance.md)
+
 ---
 
 ## Stack principal
@@ -27,13 +33,17 @@ Aplicación web de demostración para gestionar y tomar reservas en campings. El
 
 ### Flujo público general
 
-- Listado y ficha de campings (`/`, `/campings/[id]`).
-- Formulario de reserva (`/reservar`): selección de camping, rango de fechas, datos del titular y teléfono.
+Rutas públicas principales:
+
+- `/` — home (orientación y preview hacia el catálogo).
+- `/campings` — listado completo de campings.
+- `/campings/[id]` — ficha de detalle por camping.
+- `/reservar` — formulario de reserva: selección de camping, rango de fechas, datos del titular y teléfono.
 - Validación en envío: fechas no anteriores a hoy y salida posterior al ingreso.
 - Modo **capacity**: disponibilidad por número de parcelas y capacidad del camping (sin unidades individuales).
 - Modo **unit_based**: selección de unidad concreta cuando el camping está configurado así; comprobación de disponibilidad contra reservas públicas relevantes, bloqueos y estado operativo de la unidad.
 - Tras crear la reserva: redirección a página de confirmación; flujo de pago simulado y endpoint servidor para reflejar “pagada” en documentos privado y público donde corresponde.
-- Consulta de reserva (`/consultar`): el usuario ingresa el **ID del documento** en `reservas/{id}`; la app lee Firestore y muestra estado y datos básicos si el documento existe y valida el esquema esperado.
+- `/consultar` — consulta de reserva: el usuario ingresa el **ID del documento** en `reservas/{id}`; la app lee Firestore y muestra estado y datos básicos si el documento existe y valida el esquema esperado.
 
 ### Panel admin (`/admin`)
 
@@ -61,7 +71,7 @@ En la demo, un camping configurado con `inventoryMode: "unit_based"` (p. ej. Lag
 - **Reserva pública** con elección de unidad y validación de solapes en el cliente con datos refrescados.
 - **Reasignación** de una reserva a otra unidad del mismo tipo, desde el detalle de reserva (solo con `unitId` y camping `unit_based`), dejando la unidad anterior en un estado operativo elegido.
 
-Lo **no** cubierto como mapa interactivo de parcelas en UI: los campos opcionales de unidad (`mapX`, `mapY`, etc.) existen en el modelo de datos; la experiencia de mapa clickeable **no está activa** en esta demo (ver notas al final).
+En UI de reserva pública (`/reservar`, modo `unit_based`): el plano del camping es **referencia visual**; la selección principal va por grilla/lista. Los campos opcionales de unidad (`mapX`, `mapY`, etc.) existen en el modelo; la selección **clickeable** sobre el plano queda preparada pero **no activa** en esta demo (ver `docs/mvp-demo-alcance.md`).
 
 ---
 
@@ -163,7 +173,7 @@ Las acciones disponibles en la UI dependen del rol y del perfil cargado en `user
 ## Estado actual y notas importantes
 
 - **Inventario híbrido**: el sistema soporta campings en modo `capacity` y campings en modo `unit_based`. No todas las funcionalidades aplican a todos los campings.
-- **Mapa interactivo** de unidades sobre un plano: **no está implementado** en la UI de esta demo. Puede haber enlaces o embeds genéricos (`mapsUrl` / `mapsEmbedUrl`), pero no reemplazan un mapa operativo de ocupación.
+- **Plano de unidades en `/reservar`**: referencia visual en modo `unit_based`; no es el mecanismo principal de selección. Puede haber enlaces o embeds genéricos (`mapsUrl` / `mapsEmbedUrl`) en ficha pública, pero no sustituyen un mapa operativo final.
 - **Pagos**: Mercado Pago está **simulado**. Existe flujo mock (`/pago/simulado`) y rutas API auxiliares, pero no hay integración productiva completa ni cobro real en este repositorio tal como está.
 - **Marcar pagada desde admin**: existe en UI operativa y actualiza el estado de la reserva, pero no equivale a una conciliación de pago real.
 - **Cancelaciones y cambios de unidad**: el sistema calcula ajustes y devoluciones pendientes, pero no procesa dinero automáticamente.

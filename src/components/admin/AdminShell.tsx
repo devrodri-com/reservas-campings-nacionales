@@ -28,6 +28,7 @@ export default function AdminShell({ sidebar, children }: AdminShellProps) {
     >
       {sidebar}
       <div
+        className="admin-shell-content"
         style={{
           flex: 1,
           minWidth: 0,

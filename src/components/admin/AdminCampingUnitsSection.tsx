@@ -7,6 +7,7 @@ import AdminCampingUnitsList from "@/components/admin/AdminCampingUnitsList";
 import { Button } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
+import { adminDigitsOnlyNonNegative } from "@/lib/adminFormNumbers";
 
 export type AdminCampingUnitsSectionProps = {
   panelStyle: CSSProperties;
@@ -45,10 +46,10 @@ export type AdminCampingUnitsSectionProps = {
   setBulkUnitTypeId: Dispatch<SetStateAction<string>>;
   bulkPrefix: string;
   setBulkPrefix: Dispatch<SetStateAction<string>>;
-  bulkFromNumber: number;
-  setBulkFromNumber: Dispatch<SetStateAction<number>>;
-  bulkToNumber: number;
-  setBulkToNumber: Dispatch<SetStateAction<number>>;
+  bulkFrom: string;
+  setBulkFrom: Dispatch<SetStateAction<string>>;
+  bulkTo: string;
+  setBulkTo: Dispatch<SetStateAction<string>>;
   bulkSector: string;
   setBulkSector: Dispatch<SetStateAction<string>>;
   bulkPriceOverride: string;
@@ -93,10 +94,10 @@ export default function AdminCampingUnitsSection({
   setBulkUnitTypeId,
   bulkPrefix,
   setBulkPrefix,
-  bulkFromNumber,
-  setBulkFromNumber,
-  bulkToNumber,
-  setBulkToNumber,
+  bulkFrom,
+  setBulkFrom,
+  bulkTo,
+  setBulkTo,
   bulkSector,
   setBulkSector,
   bulkPriceOverride,
@@ -104,163 +105,212 @@ export default function AdminCampingUnitsSection({
   onCreateUnitsBulk,
 }: AdminCampingUnitsSectionProps) {
   return (
-    <div style={panelStyle}>
+    <div style={panelStyle} className="admin-units-section">
       <p style={{ margin: 0, fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
-        Gestioná las unidades reales del camping: listado, alta individual y creación en lote.
+        Tres bloques: revisá el inventario, creá una unidad puntual o generá varias de una vez. Los datos y reglas de
+        guardado no cambian.
       </p>
-      <AdminCampingUnitsList
-        units={units}
-        unitTypes={unitTypes}
-        editingUnitId={editingUnitId}
-        saving={saving}
-        editUnitDisplayName={editUnitDisplayName}
-        onEditUnitDisplayNameChange={onEditUnitDisplayNameChange}
-        editUnitNumber={editUnitNumber}
-        onEditUnitNumberChange={onEditUnitNumberChange}
-        editUnitSector={editUnitSector}
-        onEditUnitSectorChange={onEditUnitSectorChange}
-        editUnitPriceOverride={editUnitPriceOverride}
-        onEditUnitPriceOverrideChange={onEditUnitPriceOverrideChange}
-        onStartEditUnit={onStartEditUnit}
-        onSaveEditUnit={onSaveEditUnit}
-        onCancelEditUnit={onCancelEditUnit}
-        operationalStatusLabel={operationalStatusLabel}
-        inputStyle={inputStyle}
-      />
 
-      <div style={flowSubPanelSolo}>
-        <span style={{ fontWeight: 800, fontSize: 15 }}>Crear una unidad</span>
-        <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.45 }}>
-          Usá este formulario si querés crear una unidad puntual.
+      <div className="admin-units-list-block">
+        <h3 className="admin-units-block-heading">1 · Unidades actuales</h3>
+        <p className="admin-units-block-lead">
+          Por tipo, ordenado por código interno. Tocá cada tipo para desplegar u ocultar; los grupos grandes inician
+          cerrados para reducir scroll. Al editar, el grupo se abre solo.
         </p>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Nombre visible</span>
-          <input
-            value={unitDisplayName}
-            onChange={(e) => setUnitDisplayName(e.target.value)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-          />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Número / código</span>
-          <input
-            value={unitNumber}
-            onChange={(e) => setUnitNumber(e.target.value)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-            placeholder="ej: A-12"
-          />
-        </label>
-        <SelectDropdown
-          label="Tipo de unidad"
-          value={unitTypeIdToCreate}
-          options={unitTypeSelectOptions}
-          onChange={setUnitTypeIdToCreate}
-          placeholder="Seleccionar tipo…"
-          disabled={saving || unitTypes.length === 0}
+        <AdminCampingUnitsList
+          units={units}
+          unitTypes={unitTypes}
+          editingUnitId={editingUnitId}
+          saving={saving}
+          editUnitDisplayName={editUnitDisplayName}
+          onEditUnitDisplayNameChange={onEditUnitDisplayNameChange}
+          editUnitNumber={editUnitNumber}
+          onEditUnitNumberChange={onEditUnitNumberChange}
+          editUnitSector={editUnitSector}
+          onEditUnitSectorChange={onEditUnitSectorChange}
+          editUnitPriceOverride={editUnitPriceOverride}
+          onEditUnitPriceOverrideChange={onEditUnitPriceOverrideChange}
+          onStartEditUnit={onStartEditUnit}
+          onSaveEditUnit={onSaveEditUnit}
+          onCancelEditUnit={onCancelEditUnit}
+          operationalStatusLabel={operationalStatusLabel}
+          inputStyle={inputStyle}
         />
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
-          <input
-            value={unitSector}
-            onChange={(e) => setUnitSector(e.target.value)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-          />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
-          <input
-            value={unitPriceOverride}
-            onChange={(e) => setUnitPriceOverride(e.target.value)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-            placeholder="Vacío = usa precio del tipo"
-            inputMode="decimal"
-          />
-        </label>
-        <div>
-          <Button variant="secondary" onClick={onCreateUnit} disabled={saving || unitTypes.length === 0}>
-            {saving ? "Guardando…" : "Crear unidad"}
-          </Button>
-        </div>
       </div>
 
-      <div style={flowSubPanelBulk}>
-        <span style={{ fontWeight: 800, fontSize: 15 }}>Crear unidades en lote</span>
-        <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.45 }}>
-          Usá este bloque si querés crear muchas unidades parecidas de una sola vez.
-        </p>
-        <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
-          Ejemplo: prefijo <strong>Parcela</strong>, desde <strong>1</strong>, hasta <strong>55</strong> → se crean
-          “Parcela 1” … “Parcela 55” con número <code>1</code> … <code>55</code>.
-        </p>
-        <SelectDropdown
-          label="Tipo de unidad"
-          value={bulkUnitTypeId}
-          options={unitTypeSelectOptions}
-          onChange={setBulkUnitTypeId}
-          placeholder="Seleccionar tipo…"
-          disabled={saving || unitTypes.length === 0}
-        />
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Prefijo visible</span>
-          <input
-            value={bulkPrefix}
-            onChange={(e) => setBulkPrefix(e.target.value)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-            placeholder="ej: Parcela"
-          />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Desde número</span>
-          <input
-            type="number"
-            min={1}
-            value={bulkFromNumber}
-            onChange={(e) => setBulkFromNumber(Number(e.target.value) || 0)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-          />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Hasta número</span>
-          <input
-            type="number"
-            min={1}
-            value={bulkToNumber}
-            onChange={(e) => setBulkToNumber(Number(e.target.value) || 0)}
-            style={inputStyle}
-            disabled={saving || unitTypes.length === 0}
-            placeholder="ej: 55"
-          />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
-          <input
-            value={bulkSector}
-            onChange={(e) => setBulkSector(e.target.value)}
-            style={inputStyle}
+      <div className="admin-units-create-row">
+        <div style={flowSubPanelSolo} className="admin-units-create-col">
+          <span className="admin-units-subpanel-kicker">Alta puntual</span>
+          <span className="admin-units-subpanel-title">2 · Crear una unidad</span>
+          <p className="admin-units-subpanel-lead">
+            Para una sola parcela, cabaña u otro espacio. Completá nombre visible y código interno distintos: el
+            primero es lo que ve el huésped; el segundo es tu referencia interna única.
+          </p>
+          <aside className="admin-units-help-callout" aria-label="Ejemplo ilustrativo, no editable">
+            <div className="admin-units-help-callout__title">Ejemplo</div>
+            <dl className="admin-units-help-callout__dl">
+              <dt>Nombre visible</dt>
+              <dd>Parcela 12</dd>
+              <dt>Código interno</dt>
+              <dd>P-12</dd>
+            </dl>
+          </aside>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Nombre visible</span>
+            <p className="admin-field-hint">
+              Nombre legible para el huésped. Ejemplos: Parcela 1, Sendero, Camarote A.
+            </p>
+            <input
+              value={unitDisplayName}
+              onChange={(e) => setUnitDisplayName(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+              placeholder="ej: Parcela 12"
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Código interno</span>
+            <p className="admin-field-hint">
+              Identificador operativo único en tu sistema; no sustituye al nombre visible.
+            </p>
+            <input
+              value={unitNumber}
+              onChange={(e) => setUnitNumber(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+              placeholder="ej: P-12"
+            />
+          </label>
+          <SelectDropdown
+            label="Tipo de unidad"
+            value={unitTypeIdToCreate}
+            options={unitTypeSelectOptions}
+            onChange={setUnitTypeIdToCreate}
+            placeholder="Seleccionar tipo…"
             disabled={saving || unitTypes.length === 0}
           />
-        </label>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
-          <input
-            value={bulkPriceOverride}
-            onChange={(e) => setBulkPriceOverride(e.target.value)}
-            style={inputStyle}
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
+            <input
+              value={unitSector}
+              onChange={(e) => setUnitSector(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Precio especial (opcional)</span>
+            <p className="admin-field-hint">
+              Solo usalo si esta unidad tiene un precio distinto al del tipo de unidad. Si lo dejás vacío, se usa el
+              precio del tipo.
+            </p>
+            <input
+              value={unitPriceOverride}
+              onChange={(e) => setUnitPriceOverride(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+              placeholder="Vacío = precio del tipo"
+              inputMode="decimal"
+            />
+          </label>
+          <div>
+            <Button variant="secondary" onClick={onCreateUnit} disabled={saving || unitTypes.length === 0}>
+              {saving ? "Guardando…" : "Crear unidad"}
+            </Button>
+          </div>
+        </div>
+
+        <div style={flowSubPanelBulk} className="admin-units-create-col">
+          <span className="admin-units-subpanel-kicker">Varias a la vez</span>
+          <span className="admin-units-subpanel-title">3 · Crear unidades en lote</span>
+          <p className="admin-units-subpanel-lead">
+            Usá este bloque para cargar muchas unidades parecidas de una sola vez, por ejemplo parcelas.
+          </p>
+          <p className="admin-field-hint" style={{ margin: 0 }}>
+            El sistema crea una unidad por cada número del rango.
+          </p>
+          <p className="admin-field-hint" style={{ margin: "8px 0 0 0" }}>
+            Ejemplo: si escribís prefijo &quot;Parcela&quot;, desde 1 hasta 55, se crean &quot;Parcela 1&quot; a
+            &quot;Parcela 55&quot;.
+          </p>
+          <p className="admin-field-hint" style={{ margin: "8px 0 0 0" }}>
+            Recomendado para unidades numeradas.
+          </p>
+          <SelectDropdown
+            label="Tipo de unidad"
+            value={bulkUnitTypeId}
+            options={unitTypeSelectOptions}
+            onChange={setBulkUnitTypeId}
+            placeholder="Seleccionar tipo…"
             disabled={saving || unitTypes.length === 0}
-            placeholder="Vacío = usa precio del tipo"
-            inputMode="decimal"
           />
-        </label>
-        <div>
-          <Button variant="secondary" onClick={onCreateUnitsBulk} disabled={saving || unitTypes.length === 0}>
-            {saving ? "Guardando…" : "Crear en lote"}
-          </Button>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Prefijo visible</span>
+            <p className="admin-field-hint">Parte fija del nombre visible antes del número.</p>
+            <input
+              value={bulkPrefix}
+              onChange={(e) => setBulkPrefix(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+              placeholder="ej: Parcela"
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Desde número</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              className="admin-input-num-compact"
+              value={bulkFrom}
+              onChange={(e) => setBulkFrom(adminDigitsOnlyNonNegative(e.target.value))}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Hasta número</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              className="admin-input-num-compact"
+              value={bulkTo}
+              onChange={(e) => setBulkTo(adminDigitsOnlyNonNegative(e.target.value))}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+              placeholder="ej: 55"
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Sector (opcional)</span>
+            <input
+              value={bulkSector}
+              onChange={(e) => setBulkSector(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+            />
+          </label>
+          <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ fontWeight: 700 }}>Precio especial (opcional)</span>
+            <p className="admin-field-hint">
+              Solo usalo si todas las unidades del lote comparten el mismo precio distinto al del tipo. Si lo dejás
+              vacío, se usa el precio del tipo.
+            </p>
+            <input
+              value={bulkPriceOverride}
+              onChange={(e) => setBulkPriceOverride(e.target.value)}
+              style={inputStyle}
+              disabled={saving || unitTypes.length === 0}
+              placeholder="Vacío = precio del tipo"
+              inputMode="decimal"
+            />
+          </label>
+          <div>
+            <Button variant="secondary" onClick={onCreateUnitsBulk} disabled={saving || unitTypes.length === 0}>
+              {saving ? "Guardando…" : "Crear en lote"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

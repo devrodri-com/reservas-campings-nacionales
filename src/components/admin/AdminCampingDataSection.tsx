@@ -3,6 +3,7 @@
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
 import type { Camping } from "@/types/camping";
 import { Button } from "@/components/ui";
+import { adminDigitsOnlyNonNegative } from "@/lib/adminFormNumbers";
 
 type EditableFields = Pick<
   Camping,
@@ -22,12 +23,12 @@ export type AdminCampingDataSectionProps = {
   setForm: Dispatch<SetStateAction<EditableFields>>;
   cancellationPolicyEnabled: boolean;
   setCancellationPolicyEnabled: Dispatch<SetStateAction<boolean>>;
-  cancellationRefundDaysThreshold: number;
-  setCancellationRefundDaysThreshold: Dispatch<SetStateAction<number>>;
-  cancellationRefundPercentBeforeThreshold: number;
-  setCancellationRefundPercentBeforeThreshold: Dispatch<SetStateAction<number>>;
-  cancellationRefundPercentAfterThreshold: number;
-  setCancellationRefundPercentAfterThreshold: Dispatch<SetStateAction<number>>;
+  cancellationRefundDaysThreshold: string;
+  setCancellationRefundDaysThreshold: Dispatch<SetStateAction<string>>;
+  cancellationRefundPercentBeforeThreshold: string;
+  setCancellationRefundPercentBeforeThreshold: Dispatch<SetStateAction<string>>;
+  cancellationRefundPercentAfterThreshold: string;
+  setCancellationRefundPercentAfterThreshold: Dispatch<SetStateAction<string>>;
   onSave: () => void;
   onRevert: () => void;
   saving: boolean;
@@ -115,111 +116,122 @@ export default function AdminCampingDataSection({
         </div>
       </div>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Descripción corta</span>
-        <textarea
-          value={form.descripcionCorta ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, descripcionCorta: e.target.value }))}
-          rows={3}
-          style={textAreaStyle}
-        />
-      </label>
+      <div className="admin-camping-data-group">
+        <h3 className="admin-camping-data-group__title">Contenido público</h3>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Instagram (URL)</span>
-        <textarea
-          value={form.igUrl ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, igUrl: e.target.value }))}
-          placeholder="https://instagram.com/..."
-          rows={2}
-          style={textAreaStyle}
-          spellCheck={false}
-        />
-      </label>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Descripción corta</span>
+          <textarea
+            value={form.descripcionCorta ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, descripcionCorta: e.target.value }))}
+            rows={3}
+            style={textAreaStyle}
+          />
+        </label>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Sitio oficial (URL)</span>
-        <textarea
-          value={form.webUrl ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, webUrl: e.target.value }))}
-          placeholder="https://..."
-          rows={2}
-          style={textAreaStyle}
-          spellCheck={false}
-        />
-      </label>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Instagram</span>
+          <span className="admin-field-hint" style={{ display: "block" }}>
+            Link a tu perfil o a una publicación (con https://).
+          </span>
+          <textarea
+            value={form.igUrl ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, igUrl: e.target.value }))}
+            placeholder="https://instagram.com/..."
+            rows={2}
+            style={textAreaStyle}
+            spellCheck={false}
+          />
+        </label>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Imagen de portada (URL opcional)</span>
-        <input
-          value={form.coverImageUrl ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, coverImageUrl: e.target.value }))}
-          placeholder="Dejar vacío para usar el placeholder"
-          style={coverInput}
-        />
-      </label>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Sitio oficial</span>
+          <span className="admin-field-hint" style={{ display: "block" }}>
+            Página web del camping (con https://).
+          </span>
+          <textarea
+            value={form.webUrl ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, webUrl: e.target.value }))}
+            placeholder="https://..."
+            rows={2}
+            style={textAreaStyle}
+            spellCheck={false}
+          />
+        </label>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Ubicación breve</span>
-        <input
-          value={form.ubicacionTexto ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, ubicacionTexto: e.target.value }))}
-          placeholder="Ej: El Calafate, Santa Cruz"
-          style={inputStyle}
-        />
-        <span style={fieldHint}>Usar un texto corto. No pegar links de Google Maps acá.</span>
-      </label>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Imagen de portada</span>
+          <span className="admin-field-hint" style={{ display: "block" }}>
+            Opcional. Link directo a la imagen; si queda vacío se usa el placeholder del sistema.
+          </span>
+          <input
+            value={form.coverImageUrl ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, coverImageUrl: e.target.value }))}
+            placeholder="Dejar vacío para usar el placeholder"
+            style={coverInput}
+          />
+        </label>
+      </div>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Dirección</span>
-        <input
-          value={form.direccion ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, direccion: e.target.value }))}
-          placeholder="Dirección del camping"
-          style={inputStyle}
-        />
-        <span style={fieldHint}>Dirección postal o de acceso visible.</span>
-      </label>
+      <div className="admin-camping-data-group admin-camping-data-group--ruled">
+        <h3 className="admin-camping-data-group__title">Ubicación y mapas</h3>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Google Maps (URL)</span>
-        <textarea
-          value={form.mapsUrl ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, mapsUrl: e.target.value }))}
-          placeholder="https://maps.google.com/..."
-          rows={2}
-          style={textAreaStyle}
-          spellCheck={false}
-        />
-        <span style={fieldHint}>Link externo.</span>
-      </label>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Ubicación breve</span>
+          <input
+            value={form.ubicacionTexto ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, ubicacionTexto: e.target.value }))}
+            placeholder="Ej: El Calafate, Santa Cruz"
+            style={inputStyle}
+          />
+          <span style={fieldHint}>Texto corto para la ficha pública. No pegues acá el link de Google Maps.</span>
+        </label>
 
-      <label style={field}>
-        <span style={{ fontWeight: 700 }}>Google Maps (Embed URL)</span>
-        <textarea
-          value={form.mapsEmbedUrl ?? ""}
-          onChange={(e) => setForm((p) => ({ ...p, mapsEmbedUrl: e.target.value }))}
-          placeholder="Pegá el iframe completo o el src https://www.google.com/maps/embed?pb=..."
-          rows={2}
-          style={textAreaStyle}
-          spellCheck={false}
-        />
-        <span style={fieldHint}>Solo embed src / iframe.</span>
-      </label>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Dirección</span>
+          <input
+            value={form.direccion ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, direccion: e.target.value }))}
+            placeholder="Dirección del camping"
+            style={inputStyle}
+          />
+          <span style={fieldHint}>Dirección postal o de acceso, si querés mostrarla.</span>
+        </label>
 
-      <div
-        style={{
-          marginTop: 8,
-          paddingTop: 14,
-          borderTop: "1px solid var(--color-border)",
-          display: "grid",
-          gap: 12,
-          minWidth: 0,
-          width: "100%",
-          maxWidth: "100%",
-        }}
-      >
-        <div style={{ fontWeight: 800, color: "var(--color-text)" }}>Política de cancelación (V1)</div>
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Link de Google Maps</span>
+          <span className="admin-field-hint" style={{ display: "block" }}>
+            Abrí el mapa en Google Maps y copiá el link que aparece en la barra del navegador.
+          </span>
+          <textarea
+            value={form.mapsUrl ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, mapsUrl: e.target.value }))}
+            placeholder="https://maps.google.com/..."
+            rows={2}
+            style={textAreaStyle}
+            spellCheck={false}
+          />
+        </label>
+
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Mapa embebido (iframe)</span>
+          <span className="admin-field-hint" style={{ display: "block" }}>
+            Pegá acá el <strong>src</strong> del iframe de Google Maps. También podés pegar el iframe completo: el
+            sistema extrae el link interno.
+          </span>
+          <textarea
+            value={form.mapsEmbedUrl ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, mapsEmbedUrl: e.target.value }))}
+            placeholder="https://www.google.com/maps/embed?pb=… o el iframe completo"
+            rows={2}
+            style={textAreaStyle}
+            spellCheck={false}
+          />
+        </label>
+      </div>
+
+      <div className="admin-camping-data-group admin-camping-data-group--policy">
+        <h3 className="admin-camping-data-policy-title">Política de cancelación (V1)</h3>
         <p
           style={{
             margin: 0,
@@ -245,25 +257,33 @@ export default function AdminCampingDataSection({
         <label style={field}>
           <span style={{ fontWeight: 700 }}>Umbral (días de anticipación)</span>
           <input
-            type="number"
-            min={0}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            className="admin-input-num-compact"
             value={cancellationRefundDaysThreshold}
-            onChange={(e) => setCancellationRefundDaysThreshold(Number(e.target.value))}
+            onChange={(e) =>
+              setCancellationRefundDaysThreshold(adminDigitsOnlyNonNegative(e.target.value))
+            }
             style={inputStyle}
             disabled={!cancellationPolicyEnabled}
           />
-          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Con esta cantidad de días o más hasta el check-in original → % “antes”; con menos → % “después”.
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
+            Si quedan esta cantidad de días o más hasta el check-in original, aplica el % “antes”; con menos días de
+            anticipación, el % “después”.
           </span>
         </label>
         <label style={field}>
           <span style={{ fontWeight: 700 }}>Devolución antes del umbral (%)</span>
           <input
-            type="number"
-            min={0}
-            max={100}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            className="admin-input-num-compact"
             value={cancellationRefundPercentBeforeThreshold}
-            onChange={(e) => setCancellationRefundPercentBeforeThreshold(Number(e.target.value))}
+            onChange={(e) =>
+              setCancellationRefundPercentBeforeThreshold(adminDigitsOnlyNonNegative(e.target.value))
+            }
             style={inputStyle}
             disabled={!cancellationPolicyEnabled}
           />
@@ -271,11 +291,14 @@ export default function AdminCampingDataSection({
         <label style={field}>
           <span style={{ fontWeight: 700 }}>Devolución después del umbral (%)</span>
           <input
-            type="number"
-            min={0}
-            max={100}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            className="admin-input-num-compact"
             value={cancellationRefundPercentAfterThreshold}
-            onChange={(e) => setCancellationRefundPercentAfterThreshold(Number(e.target.value))}
+            onChange={(e) =>
+              setCancellationRefundPercentAfterThreshold(adminDigitsOnlyNonNegative(e.target.value))
+            }
             style={inputStyle}
             disabled={!cancellationPolicyEnabled}
           />

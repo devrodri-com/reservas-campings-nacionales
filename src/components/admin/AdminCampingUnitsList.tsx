@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui";
 import type { Unit } from "@/types/unit";
 import type { UnitType } from "@/types/unitType";
@@ -33,6 +33,15 @@ type UnitGroup = {
   units: Unit[];
 };
 
+function compareUnitsByNumberNatural(a: Unit, b: Unit): number {
+  const byNum = a.number.localeCompare(b.number, "es", { numeric: true, sensitivity: "base" });
+  if (byNum !== 0) return byNum;
+  return a.displayName.localeCompare(b.displayName, "es", { numeric: true, sensitivity: "base" });
+}
+
+/** Grupos con más unidades que esto inician colapsados; el resto abiertos. */
+const ADMIN_UNITS_GROUP_EXPAND_FEW_THRESHOLD = 12;
+
 export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps) {
   const unitTypeNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -51,10 +60,27 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
     return Array.from(map.entries())
       .map(([typeName, list]) => ({
         typeName,
-        units: [...list].sort((a, b) => a.displayName.localeCompare(b.displayName, "es")),
+        units: [...list].sort(compareUnitsByNumberNatural),
       }))
       .sort((a, b) => a.typeName.localeCompare(b.typeName, "es"));
   }, [props.units, unitTypeNameById]);
+
+  /** Si existe clave, reemplaza el default (pocas = abierto, muchas = cerrado). */
+  const [expandedOverrideByType, setExpandedOverrideByType] = useState<Record<string, boolean>>({});
+
+  const handleStartEditUnit = (u: Unit) => {
+    const typeName = unitTypeNameById.get(u.unitTypeId) ?? "Tipo desconocido";
+    setExpandedOverrideByType((prev) =>
+      prev[typeName] === true ? prev : { ...prev, [typeName]: true }
+    );
+    props.onStartEditUnit(u);
+  };
+
+  useEffect(() => {
+    if (!props.editingUnitId) return;
+    const el = document.getElementById(`admin-unit-edit-${props.editingUnitId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [props.editingUnitId]);
 
   if (props.units.length === 0) {
     return (
@@ -63,23 +89,33 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      {groups.map((group) => (
-        <div
-          key={group.typeName}
-          style={{
-            border: "1px solid var(--color-border)",
-            borderRadius: 12,
-            padding: "10px 12px 12px",
-            background: "var(--color-surface)",
-          }}
-        >
-          <div style={{ fontWeight: 800, marginBottom: 10, color: "var(--color-accent)" }}>
-            {group.typeName}{" "}
-            <span style={{ fontWeight: 600, color: "var(--color-text-muted)" }}>({group.units.length})</span>
-          </div>
+    <div className="admin-units-groups-root">
+      {groups.map((group) => {
+        const defaultExpanded = group.units.length <= ADMIN_UNITS_GROUP_EXPAND_FEW_THRESHOLD;
+        const expanded = expandedOverrideByType[group.typeName] ?? defaultExpanded;
+        return (
+        <div key={group.typeName} className="admin-units-group">
+          <button
+            type="button"
+            className="admin-units-group__header"
+            aria-expanded={expanded}
+            onClick={() =>
+              setExpandedOverrideByType((prev) => {
+                const cur = prev[group.typeName] ?? defaultExpanded;
+                return { ...prev, [group.typeName]: !cur };
+              })
+            }
+          >
+            <span className="admin-units-group__chevron" aria-hidden>
+              {expanded ? "▼" : "▶"}
+            </span>
+            <span className="admin-units-group__title">{group.typeName}</span>
+            <span className="admin-units-group__count">{group.units.length} unidades</span>
+          </button>
 
+          {expanded ? (
           <ul
+            className="admin-units-group__list"
             style={{
               margin: 0,
               paddingLeft: 0,
@@ -92,6 +128,7 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
             {group.units.map((u) => (
               <li
                 key={u.id}
+                id={props.editingUnitId === u.id ? `admin-unit-edit-${u.id}` : undefined}
                 style={{
                   paddingBottom: 10,
                   borderBottom: "1px solid var(--color-border)",
@@ -107,6 +144,9 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
                     </div>
                     <label style={{ display: "grid", gap: 6 }}>
                       <span style={{ fontWeight: 700 }}>Nombre visible</span>
+                      <p className="admin-field-hint">
+                        Es el nombre que ve el huésped (legible). Ejemplos: Parcela 12, Sendero, Camarote A.
+                      </p>
                       <input
                         value={props.editUnitDisplayName}
                         onChange={(e) => props.onEditUnitDisplayNameChange(e.target.value)}
@@ -115,7 +155,10 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
                       />
                     </label>
                     <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Número / código</span>
+                      <span style={{ fontWeight: 700 }}>Código interno</span>
+                      <p className="admin-field-hint">
+                        Identificador operativo único (no reemplaza al nombre visible). Ej.: P-12, CAB-01.
+                      </p>
                       <input
                         value={props.editUnitNumber}
                         onChange={(e) => props.onEditUnitNumberChange(e.target.value)}
@@ -134,13 +177,17 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
                       />
                     </label>
                     <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontWeight: 700 }}>Precio propio (opcional, ARS)</span>
+                      <span style={{ fontWeight: 700 }}>Precio especial (opcional)</span>
+                      <p className="admin-field-hint">
+                        Solo usalo si esta unidad tiene un precio distinto al del tipo de unidad. Si lo dejás vacío, se
+                        usa el precio del tipo.
+                      </p>
                       <input
                         value={props.editUnitPriceOverride}
                         onChange={(e) => props.onEditUnitPriceOverrideChange(e.target.value)}
                         style={props.inputStyle}
                         disabled={props.saving}
-                        placeholder="Vacío = usa precio del tipo"
+                        placeholder="Vacío = precio del tipo"
                         inputMode="decimal"
                       />
                     </label>
@@ -166,20 +213,20 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
                     <div style={{ flex: "1 1 220px", minWidth: 0, display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 800, fontSize: 15 }}>{u.displayName}</div>
                       <div style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
-                        n.º {u.number}
+                        Código interno: {u.number}
                         {" · "}
                         {props.operationalStatusLabel(u.operationalStatus)}
                         {u.sector ? ` · sector: ${u.sector}` : ""}
                         {u.priceOverrideArs !== undefined
-                          ? ` · precio propio: $${u.priceOverrideArs.toLocaleString("es-AR")} ARS`
+                          ? ` · precio especial: $${u.priceOverrideArs.toLocaleString("es-AR")}`
                           : ""}
                       </div>
                     </div>
                     <Button
                       variant="secondary"
                       type="button"
-                      onClick={() => props.onStartEditUnit(u)}
-                      disabled={props.saving || props.editingUnitId !== ""}
+                      onClick={() => handleStartEditUnit(u)}
+                      disabled={props.saving}
                     >
                       Editar
                     </Button>
@@ -188,8 +235,10 @@ export default function AdminCampingUnitsList(props: AdminCampingUnitsListProps)
               </li>
             ))}
           </ul>
+          ) : null}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

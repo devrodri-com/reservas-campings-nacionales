@@ -5,6 +5,7 @@ import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import { Button } from "@/components/ui";
 import type { UnitTypeBookingMode, UnitTypePricingModel } from "@/types/unitType";
+import { adminDigitsOnlyNonNegative } from "@/lib/adminFormNumbers";
 
 type Props = {
   name: string;
@@ -12,17 +13,21 @@ type Props = {
   code?: string;
   onCodeChange?: (value: string) => void;
   codePlaceholder?: string;
-  capacityMax: number;
-  onCapacityMaxChange: (value: number) => void;
+  /** Texto breve bajo el campo Código (solo creación, cuando hay `onCodeChange`). */
+  codeHelp?: string;
+  /** Texto breve bajo el selector de modo de reserva. */
+  bookingModeHelp?: string;
+  capacityMax: string;
+  onCapacityMaxChange: (value: string) => void;
   pricingModel: UnitTypePricingModel;
   onPricingModelChange: (value: UnitTypePricingModel) => void;
   pricingModelOptions: SelectOption[];
-  adultPriceArs: number;
-  onAdultPriceArsChange: (value: number) => void;
-  childPriceArs: number;
-  onChildPriceArsChange: (value: number) => void;
-  unitPriceArs: number;
-  onUnitPriceArsChange: (value: number) => void;
+  adultPriceArs: string;
+  onAdultPriceArsChange: (value: string) => void;
+  childPriceArs: string;
+  onChildPriceArsChange: (value: string) => void;
+  unitPriceArs: string;
+  onUnitPriceArsChange: (value: string) => void;
   bookingMode: UnitTypeBookingMode;
   onBookingModeChange: (value: UnitTypeBookingMode) => void;
   bookingModeOptions: SelectOption[];
@@ -55,6 +60,11 @@ export default function UnitTypeForm(props: Props) {
             disabled={props.saving}
             placeholder={props.codePlaceholder}
           />
+          {props.codeHelp ? (
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+              {props.codeHelp}
+            </span>
+          ) : null}
         </label>
       ) : props.code ? (
         <div style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
@@ -64,10 +74,12 @@ export default function UnitTypeForm(props: Props) {
       <label style={{ display: "grid", gap: 6 }}>
         <span style={{ fontWeight: 700 }}>Capacidad máxima</span>
         <input
-          type="number"
-          min={1}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          className="admin-input-num-compact"
           value={props.capacityMax}
-          onChange={(e) => props.onCapacityMaxChange(Number(e.target.value) || 0)}
+          onChange={(e) => props.onCapacityMaxChange(adminDigitsOnlyNonNegative(e.target.value))}
           style={props.inputStyle}
           disabled={props.saving}
         />
@@ -86,25 +98,25 @@ export default function UnitTypeForm(props: Props) {
       {props.pricingModel === "per_person" ? (
         <>
       <label style={{ display: "grid", gap: 6 }}>
-        <span style={{ fontWeight: 700 }}>Tarifa adulto (ARS)</span>
+        <span style={{ fontWeight: 700 }}>Tarifa adulto ($)</span>
         <input
-          type="number"
-          min={0}
-          step={1}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
           value={props.adultPriceArs}
-          onChange={(e) => props.onAdultPriceArsChange(Number(e.target.value) || 0)}
+          onChange={(e) => props.onAdultPriceArsChange(adminDigitsOnlyNonNegative(e.target.value))}
           style={props.inputStyle}
           disabled={props.saving}
         />
       </label>
       <label style={{ display: "grid", gap: 6 }}>
-        <span style={{ fontWeight: 700 }}>Tarifa menor (ARS)</span>
+        <span style={{ fontWeight: 700 }}>Tarifa menor ($)</span>
         <input
-          type="number"
-          min={0}
-          step={1}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
           value={props.childPriceArs}
-          onChange={(e) => props.onChildPriceArsChange(Number(e.target.value) || 0)}
+          onChange={(e) => props.onChildPriceArsChange(adminDigitsOnlyNonNegative(e.target.value))}
           style={props.inputStyle}
           disabled={props.saving}
         />
@@ -112,29 +124,36 @@ export default function UnitTypeForm(props: Props) {
         </>
       ) : (
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Precio por unidad (ARS)</span>
+          <span style={{ fontWeight: 700 }}>Precio por unidad ($)</span>
           <input
-            type="number"
-            min={0}
-            step={1}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
             value={props.unitPriceArs}
-            onChange={(e) => props.onUnitPriceArsChange(Number(e.target.value) || 0)}
+            onChange={(e) => props.onUnitPriceArsChange(adminDigitsOnlyNonNegative(e.target.value))}
             style={props.inputStyle}
             disabled={props.saving}
           />
         </label>
       )}
-      <SelectDropdown
-        label="Modo de reserva"
-        value={props.bookingMode}
-        options={props.bookingModeOptions}
-        onChange={(v) => {
-          if (v === "overnight_only" || v === "day_use_only" || v === "both") {
-            props.onBookingModeChange(v);
-          }
-        }}
-        disabled={props.saving}
-      />
+      <div style={{ display: "grid", gap: 6 }}>
+        <SelectDropdown
+          label="Modo de reserva"
+          value={props.bookingMode}
+          options={props.bookingModeOptions}
+          onChange={(v) => {
+            if (v === "overnight_only" || v === "day_use_only" || v === "both") {
+              props.onBookingModeChange(v);
+            }
+          }}
+          disabled={props.saving}
+        />
+        {props.bookingModeHelp ? (
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+            {props.bookingModeHelp}
+          </span>
+        ) : null}
+      </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Button variant="primary" onClick={props.onSubmit} disabled={props.saving}>
           {props.saving ? "Guardando…" : props.submitLabel}

@@ -27,6 +27,7 @@ import { Button, Card } from "@/components/ui";
 import SelectDropdown from "@/components/SelectDropdown";
 import type { SelectOption } from "@/components/SelectDropdown";
 import { getCampingContextLocation, looksLikeMapsOrLinkNoise } from "@/lib/campingPresentation";
+import { adminParseOptionalUint } from "@/lib/adminFormNumbers";
 
 type EditableFields = Pick<
   Camping,
@@ -77,6 +78,12 @@ function campingInventoryModeLabel(mode: Camping["inventoryMode"]): string {
   return "Modo: no indicado";
 }
 
+function campingInventoryModeShort(mode: Camping["inventoryMode"]): string {
+  if (mode === "unit_based") return "Por unidad";
+  if (mode === "capacity") return "Por capacidad";
+  return "Sin indicar";
+}
+
 export default function AdminCampingsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -101,11 +108,11 @@ export default function AdminCampingsPage() {
   });
 
   const [cancellationPolicyEnabled, setCancellationPolicyEnabled] = useState(false);
-  const [cancellationRefundDaysThreshold, setCancellationRefundDaysThreshold] = useState(7);
+  const [cancellationRefundDaysThreshold, setCancellationRefundDaysThreshold] = useState("7");
   const [cancellationRefundPercentBeforeThreshold, setCancellationRefundPercentBeforeThreshold] =
-    useState(100);
+    useState("100");
   const [cancellationRefundPercentAfterThreshold, setCancellationRefundPercentAfterThreshold] =
-    useState(0);
+    useState("0");
 
   const [saving, setSaving] = useState(false);
   const [showNewCamping, setShowNewCamping] = useState(false);
@@ -117,23 +124,23 @@ export default function AdminCampingsPage() {
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
   const [unitTypeName, setUnitTypeName] = useState("");
   const [unitTypeCode, setUnitTypeCode] = useState("");
-  const [unitTypeCapacity, setUnitTypeCapacity] = useState(1);
+  const [unitTypeCapacity, setUnitTypeCapacity] = useState("");
   const [unitTypePricingModel, setUnitTypePricingModel] =
     useState<UnitTypePricingModel>("per_person");
-  const [unitTypeAdultPrice, setUnitTypeAdultPrice] = useState(0);
-  const [unitTypeChildPrice, setUnitTypeChildPrice] = useState(0);
-  const [unitTypePricePerUnit, setUnitTypePricePerUnit] = useState(0);
+  const [unitTypeAdultPrice, setUnitTypeAdultPrice] = useState("");
+  const [unitTypeChildPrice, setUnitTypeChildPrice] = useState("");
+  const [unitTypePricePerUnit, setUnitTypePricePerUnit] = useState("");
   const [unitTypeBookingMode, setUnitTypeBookingMode] =
     useState<UnitTypeBookingMode>("overnight_only");
 
   const [editingUnitTypeId, setEditingUnitTypeId] = useState("");
   const [editUnitTypeName, setEditUnitTypeName] = useState("");
-  const [editUnitTypeCapacity, setEditUnitTypeCapacity] = useState(1);
+  const [editUnitTypeCapacity, setEditUnitTypeCapacity] = useState("");
   const [editUnitTypePricingModel, setEditUnitTypePricingModel] =
     useState<UnitTypePricingModel>("per_person");
-  const [editUnitTypeAdultPrice, setEditUnitTypeAdultPrice] = useState(0);
-  const [editUnitTypeChildPrice, setEditUnitTypeChildPrice] = useState(0);
-  const [editUnitTypePricePerUnit, setEditUnitTypePricePerUnit] = useState(0);
+  const [editUnitTypeAdultPrice, setEditUnitTypeAdultPrice] = useState("");
+  const [editUnitTypeChildPrice, setEditUnitTypeChildPrice] = useState("");
+  const [editUnitTypePricePerUnit, setEditUnitTypePricePerUnit] = useState("");
   const [editUnitTypeBookingMode, setEditUnitTypeBookingMode] =
     useState<UnitTypeBookingMode>("overnight_only");
 
@@ -146,8 +153,8 @@ export default function AdminCampingsPage() {
 
   const [bulkUnitTypeId, setBulkUnitTypeId] = useState("");
   const [bulkPrefix, setBulkPrefix] = useState("");
-  const [bulkFromNumber, setBulkFromNumber] = useState(1);
-  const [bulkToNumber, setBulkToNumber] = useState(1);
+  const [bulkFrom, setBulkFrom] = useState("1");
+  const [bulkTo, setBulkTo] = useState("1");
   const [bulkSector, setBulkSector] = useState("");
   const [bulkPriceOverride, setBulkPriceOverride] = useState("");
 
@@ -246,11 +253,11 @@ export default function AdminCampingsPage() {
   useEffect(() => {
     setUnitTypeName("");
     setUnitTypeCode("");
-    setUnitTypeCapacity(1);
+    setUnitTypeCapacity("");
     setUnitTypePricingModel("per_person");
-    setUnitTypeAdultPrice(0);
-    setUnitTypeChildPrice(0);
-    setUnitTypePricePerUnit(0);
+    setUnitTypeAdultPrice("");
+    setUnitTypeChildPrice("");
+    setUnitTypePricePerUnit("");
     setUnitTypeBookingMode("overnight_only");
 
     setUnitDisplayName("");
@@ -261,18 +268,18 @@ export default function AdminCampingsPage() {
 
     setBulkUnitTypeId("");
     setBulkPrefix("");
-    setBulkFromNumber(1);
-    setBulkToNumber(1);
+    setBulkFrom("1");
+    setBulkTo("1");
     setBulkSector("");
     setBulkPriceOverride("");
 
     setEditingUnitTypeId("");
     setEditUnitTypeName("");
-    setEditUnitTypeCapacity(1);
+    setEditUnitTypeCapacity("");
     setEditUnitTypePricingModel("per_person");
-    setEditUnitTypeAdultPrice(0);
-    setEditUnitTypeChildPrice(0);
-    setEditUnitTypePricePerUnit(0);
+    setEditUnitTypeAdultPrice("");
+    setEditUnitTypeChildPrice("");
+    setEditUnitTypePricePerUnit("");
     setEditUnitTypeBookingMode("overnight_only");
 
     setEditingUnitId("");
@@ -332,20 +339,30 @@ export default function AdminCampingsPage() {
     setCancellationRefundDaysThreshold(
       typeof selectedCamping.cancellationRefundDaysThreshold === "number" &&
         Number.isFinite(selectedCamping.cancellationRefundDaysThreshold)
-        ? Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold))
-        : 7
+        ? String(Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold)))
+        : "7"
     );
     setCancellationRefundPercentBeforeThreshold(
       typeof selectedCamping.cancellationRefundPercentBeforeThreshold === "number" &&
         Number.isFinite(selectedCamping.cancellationRefundPercentBeforeThreshold)
-        ? Math.min(100, Math.max(0, Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)))
-        : 100
+        ? String(
+            Math.min(
+              100,
+              Math.max(0, Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold))
+            )
+          )
+        : "100"
     );
     setCancellationRefundPercentAfterThreshold(
       typeof selectedCamping.cancellationRefundPercentAfterThreshold === "number" &&
         Number.isFinite(selectedCamping.cancellationRefundPercentAfterThreshold)
-        ? Math.min(100, Math.max(0, Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)))
-        : 0
+        ? String(
+            Math.min(
+              100,
+              Math.max(0, Math.round(selectedCamping.cancellationRefundPercentAfterThreshold))
+            )
+          )
+        : "0"
     );
   }, [selectedCamping]);
 
@@ -358,9 +375,32 @@ export default function AdminCampingsPage() {
       return;
     }
     if (looksLikeMapsOrLinkNoise(ubicacionTrim)) {
-      setError("La ubicación breve debe ser un texto corto y humano, no un link de Google Maps.");
+      setError("La ubicación breve debe ser un texto corto, no un link de Google Maps.");
       return;
     }
+
+    const daysVal = adminParseOptionalUint(cancellationRefundDaysThreshold);
+    const beforeVal = adminParseOptionalUint(cancellationRefundPercentBeforeThreshold);
+    const afterVal = adminParseOptionalUint(cancellationRefundPercentAfterThreshold);
+
+    if (cancellationPolicyEnabled) {
+      if (daysVal === null) {
+        setError("Completá el umbral de días de anticipación (número entero).");
+        return;
+      }
+      if (beforeVal === null) {
+        setError("Completá la devolución antes del umbral (%).");
+        return;
+      }
+      if (afterVal === null) {
+        setError("Completá la devolución después del umbral (%).");
+        return;
+      }
+    }
+
+    const days = Math.max(0, Math.round(daysVal ?? 0));
+    const before = Math.min(100, Math.max(0, Math.round(beforeVal ?? 0)));
+    const after = Math.min(100, Math.max(0, Math.round(afterVal ?? 0)));
 
     setSaving(true);
     setError(null);
@@ -381,36 +421,9 @@ export default function AdminCampingsPage() {
         mapsUrl: sanitizeUrl(form.mapsUrl || ""),
         mapsEmbedUrl: sanitizeUrl(extractIframeSrc(form.mapsEmbedUrl || "")),
         cancellationPolicyEnabled,
-        cancellationRefundDaysThreshold: Math.max(
-          0,
-          Math.round(
-            Number.isFinite(cancellationRefundDaysThreshold)
-              ? cancellationRefundDaysThreshold
-              : 0
-          )
-        ),
-        cancellationRefundPercentBeforeThreshold: Math.min(
-          100,
-          Math.max(
-            0,
-            Math.round(
-              Number.isFinite(cancellationRefundPercentBeforeThreshold)
-                ? cancellationRefundPercentBeforeThreshold
-                : 0
-            )
-          )
-        ),
-        cancellationRefundPercentAfterThreshold: Math.min(
-          100,
-          Math.max(
-            0,
-            Math.round(
-              Number.isFinite(cancellationRefundPercentAfterThreshold)
-                ? cancellationRefundPercentAfterThreshold
-                : 0
-            )
-          )
-        ),
+        cancellationRefundDaysThreshold: days,
+        cancellationRefundPercentBeforeThreshold: before,
+        cancellationRefundPercentAfterThreshold: after,
       };
 
       await updateDoc(doc(db, "campings", selectedCamping.id), payload);
@@ -507,22 +520,26 @@ export default function AdminCampingsPage() {
       setError("El código del tipo de unidad es obligatorio.");
       return;
     }
-    if (unitTypeCapacity <= 0) {
-      setError("La capacidad máxima debe ser mayor a 0.");
+    const cap = adminParseOptionalUint(unitTypeCapacity);
+    if (cap === null || cap <= 0) {
+      setError("La capacidad máxima debe ser un número entero mayor a 0.");
       return;
     }
     if (unitTypePricingModel === "per_person") {
-      if (!Number.isFinite(unitTypeAdultPrice) || unitTypeAdultPrice < 0) {
-        setError("La tarifa de adulto debe ser numérica y mayor o igual a 0.");
+      const adult = adminParseOptionalUint(unitTypeAdultPrice);
+      const child = adminParseOptionalUint(unitTypeChildPrice);
+      if (adult === null) {
+        setError("Ingresá la tarifa de adulto (número entero, puede ser 0).");
         return;
       }
-      if (!Number.isFinite(unitTypeChildPrice) || unitTypeChildPrice < 0) {
-        setError("La tarifa de menor debe ser numérica y mayor o igual a 0.");
+      if (child === null) {
+        setError("Ingresá la tarifa de menor (número entero, puede ser 0).");
         return;
       }
     } else {
-      if (!Number.isFinite(unitTypePricePerUnit) || unitTypePricePerUnit < 0) {
-        setError("El precio por unidad debe ser numérico y mayor o igual a 0.");
+      const unitP = adminParseOptionalUint(unitTypePricePerUnit);
+      if (unitP === null) {
+        setError("Ingresá el precio por unidad (número entero, puede ser 0).");
         return;
       }
     }
@@ -538,15 +555,15 @@ export default function AdminCampingsPage() {
     try {
       const createdAtMs = Date.now();
       if (unitTypePricingModel === "per_person") {
-        const adultPriceArs = Number(unitTypeAdultPrice);
-        const childPriceArs = Number(unitTypeChildPrice);
+        const adultPriceArs = adminParseOptionalUint(unitTypeAdultPrice) ?? 0;
+        const childPriceArs = adminParseOptionalUint(unitTypeChildPrice) ?? 0;
         await addDoc(collection(db, "unitTypes"), {
           campingId: selectedCamping.id,
           code,
           name,
           pricingModel: "per_person" satisfies UnitTypePricingModel,
           bookingMode: unitTypeBookingMode,
-          capacityMax: unitTypeCapacity,
+          capacityMax: cap,
           active: true,
           adultPriceArs,
           childPriceArs,
@@ -554,14 +571,14 @@ export default function AdminCampingsPage() {
           createdAtMs,
         });
       } else {
-        const unitPriceArs = Number(unitTypePricePerUnit);
+        const unitPriceArs = adminParseOptionalUint(unitTypePricePerUnit) ?? 0;
         await addDoc(collection(db, "unitTypes"), {
           campingId: selectedCamping.id,
           code,
           name,
           pricingModel: "per_unit" satisfies UnitTypePricingModel,
           bookingMode: unitTypeBookingMode,
-          capacityMax: unitTypeCapacity,
+          capacityMax: cap,
           active: true,
           unitPriceArs,
           basePriceArs: unitPriceArs,
@@ -572,11 +589,11 @@ export default function AdminCampingsPage() {
       setUnitTypes(list);
       setUnitTypeName("");
       setUnitTypeCode("");
-      setUnitTypeCapacity(1);
+      setUnitTypeCapacity("");
       setUnitTypePricingModel("per_person");
-      setUnitTypeAdultPrice(0);
-      setUnitTypeChildPrice(0);
-      setUnitTypePricePerUnit(0);
+      setUnitTypeAdultPrice("");
+      setUnitTypeChildPrice("");
+      setUnitTypePricePerUnit("");
       setUnitTypeBookingMode("overnight_only");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al crear el tipo de unidad.");
@@ -588,11 +605,17 @@ export default function AdminCampingsPage() {
   const handleStartEditUnitType = (ut: UnitType) => {
     setEditingUnitTypeId(ut.id);
     setEditUnitTypeName(ut.name);
-    setEditUnitTypeCapacity(ut.capacityMax);
+    setEditUnitTypeCapacity(String(ut.capacityMax));
     setEditUnitTypePricingModel(ut.pricingModel);
-    setEditUnitTypeAdultPrice(ut.adultPriceArs ?? 0);
-    setEditUnitTypeChildPrice(ut.childPriceArs ?? 0);
-    setEditUnitTypePricePerUnit(ut.unitPriceArs ?? ut.basePriceArs ?? 0);
+    setEditUnitTypeAdultPrice(ut.adultPriceArs != null ? String(ut.adultPriceArs) : "");
+    setEditUnitTypeChildPrice(ut.childPriceArs != null ? String(ut.childPriceArs) : "");
+    setEditUnitTypePricePerUnit(
+      ut.unitPriceArs != null
+        ? String(ut.unitPriceArs)
+        : ut.basePriceArs != null
+          ? String(ut.basePriceArs)
+          : ""
+    );
     setEditUnitTypeBookingMode(ut.bookingMode);
     setError(null);
   };
@@ -600,11 +623,11 @@ export default function AdminCampingsPage() {
   const handleCancelEditUnitType = () => {
     setEditingUnitTypeId("");
     setEditUnitTypeName("");
-    setEditUnitTypeCapacity(1);
+    setEditUnitTypeCapacity("");
     setEditUnitTypePricingModel("per_person");
-    setEditUnitTypeAdultPrice(0);
-    setEditUnitTypeChildPrice(0);
-    setEditUnitTypePricePerUnit(0);
+    setEditUnitTypeAdultPrice("");
+    setEditUnitTypeChildPrice("");
+    setEditUnitTypePricePerUnit("");
     setEditUnitTypeBookingMode("overnight_only");
   };
 
@@ -626,22 +649,26 @@ export default function AdminCampingsPage() {
       setError("El nombre del tipo de unidad es obligatorio.");
       return;
     }
-    if (editUnitTypeCapacity <= 0) {
-      setError("La capacidad máxima debe ser mayor a 0.");
+    const editCap = adminParseOptionalUint(editUnitTypeCapacity);
+    if (editCap === null || editCap <= 0) {
+      setError("La capacidad máxima debe ser un número entero mayor a 0.");
       return;
     }
     if (editUnitTypePricingModel === "per_person") {
-      if (!Number.isFinite(editUnitTypeAdultPrice) || editUnitTypeAdultPrice < 0) {
-        setError("La tarifa de adulto debe ser numérica y mayor o igual a 0.");
+      const adult = adminParseOptionalUint(editUnitTypeAdultPrice);
+      const child = adminParseOptionalUint(editUnitTypeChildPrice);
+      if (adult === null) {
+        setError("Ingresá la tarifa de adulto (número entero, puede ser 0).");
         return;
       }
-      if (!Number.isFinite(editUnitTypeChildPrice) || editUnitTypeChildPrice < 0) {
-        setError("La tarifa de menor debe ser numérica y mayor o igual a 0.");
+      if (child === null) {
+        setError("Ingresá la tarifa de menor (número entero, puede ser 0).");
         return;
       }
     } else {
-      if (!Number.isFinite(editUnitTypePricePerUnit) || editUnitTypePricePerUnit < 0) {
-        setError("El precio por unidad debe ser numérico y mayor o igual a 0.");
+      const unitP = adminParseOptionalUint(editUnitTypePricePerUnit);
+      if (unitP === null) {
+        setError("Ingresá el precio por unidad (número entero, puede ser 0).");
         return;
       }
     }
@@ -651,15 +678,15 @@ export default function AdminCampingsPage() {
     try {
       await updateUnitType(editingUnitTypeId, {
         name,
-        capacityMax: editUnitTypeCapacity,
+        capacityMax: editCap,
         pricingModel: editUnitTypePricingModel,
         ...(editUnitTypePricingModel === "per_person"
           ? {
-              adultPriceArs: Number(editUnitTypeAdultPrice),
-              childPriceArs: Number(editUnitTypeChildPrice),
+              adultPriceArs: adminParseOptionalUint(editUnitTypeAdultPrice) ?? 0,
+              childPriceArs: adminParseOptionalUint(editUnitTypeChildPrice) ?? 0,
             }
           : {
-              unitPriceArs: Number(editUnitTypePricePerUnit),
+              unitPriceArs: adminParseOptionalUint(editUnitTypePricePerUnit) ?? 0,
             }),
         bookingMode: editUnitTypeBookingMode,
       });
@@ -761,11 +788,13 @@ export default function AdminCampingsPage() {
       setError("El prefijo visible es obligatorio.");
       return;
     }
-    if (bulkFromNumber <= 0 || bulkToNumber <= 0) {
-      setError("Los números desde y hasta deben ser mayores a 0.");
+    const fromN = adminParseOptionalUint(bulkFrom);
+    const toN = adminParseOptionalUint(bulkTo);
+    if (fromN === null || fromN <= 0 || toN === null || toN <= 0) {
+      setError("Los números desde y hasta deben ser enteros mayores a 0.");
       return;
     }
-    if (bulkToNumber < bulkFromNumber) {
+    if (toN < fromN) {
       setError("“Hasta” debe ser mayor o igual que “Desde”.");
       return;
     }
@@ -784,7 +813,7 @@ export default function AdminCampingsPage() {
 
     const existingNumberNorm = new Set(units.map((u) => u.number.trim().toLowerCase()));
     const conflictingNumbers: string[] = [];
-    for (let n = bulkFromNumber; n <= bulkToNumber; n++) {
+    for (let n = fromN; n <= toN; n++) {
       const key = String(n).toLowerCase();
       if (existingNumberNorm.has(key)) {
         conflictingNumbers.push(String(n));
@@ -806,7 +835,7 @@ export default function AdminCampingsPage() {
       const optionalPrice =
         priceOverrideArs !== undefined ? { priceOverrideArs } : {};
 
-      for (let n = bulkFromNumber; n <= bulkToNumber; n++) {
+      for (let n = fromN; n <= toN; n++) {
         await createUnit({
           campingId: selectedCamping.id,
           unitTypeId: typeId,
@@ -823,8 +852,8 @@ export default function AdminCampingsPage() {
       setUnits(list);
       setBulkUnitTypeId("");
       setBulkPrefix("");
-      setBulkFromNumber(1);
-      setBulkToNumber(1);
+      setBulkFrom("1");
+      setBulkTo("1");
       setBulkSector("");
       setBulkPriceOverride("");
     } catch (e) {
@@ -962,7 +991,7 @@ export default function AdminCampingsPage() {
   const flowSubPanelSolo: CSSProperties = {
     display: "grid",
     gap: 10,
-    marginTop: 4,
+    marginTop: 0,
     padding: "16px 14px",
     borderRadius: 10,
     border: "1px solid var(--color-border)",
@@ -977,7 +1006,7 @@ export default function AdminCampingsPage() {
   const flowSubPanelBulk: CSSProperties = {
     display: "grid",
     gap: 10,
-    marginTop: 16,
+    marginTop: 0,
     padding: "16px 14px",
     borderRadius: 10,
     border: "2px dashed var(--color-border)",
@@ -1065,7 +1094,7 @@ export default function AdminCampingsPage() {
         }}
         className="admin-campings-grid"
       >
-        <Card title="Listado">
+        <Card title={showNewCamping ? "Nuevo camping" : "Seleccionar camping"}>
           {loadingData ? (
             <p>Cargando…</p>
           ) : showNewCamping ? (
@@ -1113,107 +1142,81 @@ export default function AdminCampingsPage() {
               </div>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowNewCamping(true)}
-                  style={{ width: "auto", flex: "0 0 auto" }}
-                >
-                  Crear nuevo camping
-                </Button>
-              </div>
-              {campings.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
-                  No hay campings cargados.
-                </p>
-              ) : (
-                <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                  <div
-                    style={{
-                      width: "100%",
-                      maxWidth: "min(100%, 200px)",
-                      minWidth: 0,
-                    }}
-                  >
-                    <SelectDropdown
-                      label="Elegí camping"
-                      value={selectedId}
-                      options={campingOptions}
-                      onChange={setSelectedId}
-                      placeholder="Seleccionar…"
-                      disabled={loadingData || campings.length === 0 || saving}
-                      searchable
-                      size="compact"
-                      compactDensity="minimal"
-                    />
-                  </div>
-                  {selectedCamping ? (
-                    <div
-                      style={{
-                        margin: 0,
-                        padding: "7px 9px",
-                        display: "grid",
-                        gap: 4,
-                        minWidth: 0,
-                        borderRadius: 8,
-                        border: "1px solid color-mix(in srgb, var(--color-border) 75%, transparent)",
-                        background: "color-mix(in srgb, var(--color-border) 4%, var(--color-surface))",
-                      }}
-                    >
-                      <div
+            <div className="admin-campings-top-inner">
+              <div className="admin-campings-top-inner__col-main">
+                {campings.length === 0 ? (
+                  <>
+                    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 13 }}>
+                      No hay campings cargados.
+                    </p>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setShowNewCamping(true)}
+                        disabled={saving}
                         style={{
-                          fontWeight: 800,
-                          fontSize: 13,
-                          color: "var(--color-text)",
-                          lineHeight: 1.35,
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {selectedCamping.nombre}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: "var(--color-text-muted)",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {selectedCamping.areaProtegida}
-                      </div>
-                      {campingSidebarUbicacionLine ? (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--color-text-muted)",
-                            lineHeight: 1.45,
-                            overflowWrap: "anywhere",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {campingSidebarUbicacionLine}
-                        </div>
-                      ) : null}
-                      <div
-                        style={{
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: 600,
-                          color: "var(--color-text)",
-                          paddingTop: 2,
-                          borderTop: "1px solid var(--color-border)",
+                          padding: "5px 8px",
+                          width: "auto",
                         }}
                       >
-                        {campingInventoryModeLabel(selectedCamping.inventoryMode)}
-                      </div>
+                        Crear nuevo camping
+                      </Button>
                     </div>
-                  ) : null}
+                  </>
+                ) : (
+                  <>
+                    <div className="admin-campings-top-inner__selector">
+                      <SelectDropdown
+                        label="Camping activo"
+                        value={selectedId}
+                        options={campingOptions}
+                        onChange={setSelectedId}
+                        placeholder="Seleccionar…"
+                        disabled={loadingData || campings.length === 0 || saving}
+                        searchable
+                        size="compact"
+                        compactDensity="minimal"
+                      />
+                    </div>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setShowNewCamping(true)}
+                        disabled={saving}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          padding: "5px 8px",
+                          width: "auto",
+                        }}
+                      >
+                        Crear nuevo camping
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+              {campings.length > 0 && selectedCamping ? (
+                <div className="admin-campings-top-inner__col-aside" aria-label="Resumen del camping activo">
+                  <div className="admin-campings-top-summary">
+                    <div className="admin-campings-top-summary__name">{selectedCamping.nombre}</div>
+                    <div className="admin-campings-top-summary__area">{selectedCamping.areaProtegida}</div>
+                    {campingSidebarUbicacionLine ? (
+                      <div className="admin-campings-top-summary__loc">{campingSidebarUbicacionLine}</div>
+                    ) : null}
+                    <span
+                      className="admin-campings-top-inventory-badge"
+                      title={campingInventoryModeLabel(selectedCamping.inventoryMode)}
+                    >
+                      {campingInventoryModeShort(selectedCamping.inventoryMode)}
+                    </span>
+                  </div>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </Card>
@@ -1266,32 +1269,36 @@ export default function AdminCampingsPage() {
                       setCancellationRefundDaysThreshold(
                         typeof selectedCamping.cancellationRefundDaysThreshold === "number" &&
                           Number.isFinite(selectedCamping.cancellationRefundDaysThreshold)
-                          ? Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold))
-                          : 7
+                          ? String(Math.max(0, Math.round(selectedCamping.cancellationRefundDaysThreshold)))
+                          : "7"
                       );
                       setCancellationRefundPercentBeforeThreshold(
                         typeof selectedCamping.cancellationRefundPercentBeforeThreshold === "number" &&
                           Number.isFinite(selectedCamping.cancellationRefundPercentBeforeThreshold)
-                          ? Math.min(
-                              100,
-                              Math.max(
-                                0,
-                                Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)
+                          ? String(
+                              Math.min(
+                                100,
+                                Math.max(
+                                  0,
+                                  Math.round(selectedCamping.cancellationRefundPercentBeforeThreshold)
+                                )
                               )
                             )
-                          : 100
+                          : "100"
                       );
                       setCancellationRefundPercentAfterThreshold(
                         typeof selectedCamping.cancellationRefundPercentAfterThreshold === "number" &&
                           Number.isFinite(selectedCamping.cancellationRefundPercentAfterThreshold)
-                          ? Math.min(
-                              100,
-                              Math.max(
-                                0,
-                                Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)
+                          ? String(
+                              Math.min(
+                                100,
+                                Math.max(
+                                  0,
+                                  Math.round(selectedCamping.cancellationRefundPercentAfterThreshold)
+                                )
                               )
                             )
-                          : 0
+                          : "0"
                       );
                     }}
                     saving={saving}
@@ -1382,10 +1389,10 @@ export default function AdminCampingsPage() {
                     setBulkUnitTypeId={setBulkUnitTypeId}
                     bulkPrefix={bulkPrefix}
                     setBulkPrefix={setBulkPrefix}
-                    bulkFromNumber={bulkFromNumber}
-                    setBulkFromNumber={setBulkFromNumber}
-                    bulkToNumber={bulkToNumber}
-                    setBulkToNumber={setBulkToNumber}
+                    bulkFrom={bulkFrom}
+                    setBulkFrom={setBulkFrom}
+                    bulkTo={bulkTo}
+                    setBulkTo={setBulkTo}
                     bulkSector={bulkSector}
                     setBulkSector={setBulkSector}
                     bulkPriceOverride={bulkPriceOverride}
