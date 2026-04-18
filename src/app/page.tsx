@@ -104,6 +104,20 @@ export default function Home() {
             color: "white",
           }}
         >
+          <p
+            style={{
+              margin: "0 0 10px 0",
+              fontSize: "clamp(12px, 2vw, 14px)",
+              fontWeight: 600,
+              lineHeight: 1.35,
+              letterSpacing: "0.02em",
+              textShadow: "0 1px 4px rgba(0,0,0,0.45)",
+              maxWidth: 800,
+              opacity: 0.9,
+            }}
+          >
+            Sistema oficial de reservas de campings
+          </p>
           <h1
             style={{
               margin: "0 0 16px 0",
@@ -124,7 +138,7 @@ export default function Home() {
               maxWidth: 800,
             }}
           >
-            Conservación, turismo sostenible y experiencias en la naturaleza protegida.
+            Reservá campings oficiales dentro de áreas protegidas a través de la plataforma de Parques Nacionales.
           </p>
           <p
             style={{
@@ -136,15 +150,14 @@ export default function Home() {
               opacity: 0.95,
             }}
           >
-            Reservá campings oficiales dentro de áreas protegidas, promoviendo el cuidado del patrimonio natural y
-            cultural.
+            Consultá campings habilitados, elegí fechas y completá tu reserva online en un único lugar.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <Link href="/reservar" style={{ textDecoration: "none" }}>
               <Button variant="primary">Reservar camping</Button>
             </Link>
             <span className="hero-secondary-cta">
-              <Link href="#institucional" style={{ textDecoration: "none" }}>
+              <Link href="#como-funciona" style={{ textDecoration: "none" }}>
                 <Button
                   variant="ghost"
                   style={{
@@ -153,7 +166,7 @@ export default function Home() {
                     color: "white",
                   }}
                 >
-                  Conocer APN
+                  Cómo funciona
                 </Button>
               </Link>
             </span>
@@ -231,7 +244,7 @@ export default function Home() {
         </section>
 
         {/* Cómo funciona */}
-        <section className="home-section">
+        <section id="como-funciona" className="home-section">
           <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
             Cómo funciona
           </h2>
