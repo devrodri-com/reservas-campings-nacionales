@@ -1,5 +1,3 @@
-import { Card } from "@/components/ui";
-
 type FAQItem = { q: string; a: string };
 
 const ITEMS: FAQItem[] = [
@@ -27,17 +25,15 @@ const ITEMS: FAQItem[] = [
 
 export default function FAQ() {
   return (
-    <section style={{ marginTop: 24 }}>
-      <h2 style={{ margin: "0 0 12px 0", color: "var(--color-accent)" }}>Preguntas frecuentes</h2>
+    <section className="home-faq">
+      <h2 className="home-faq-title">Preguntas frecuentes</h2>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="home-faq-list">
         {ITEMS.map((it) => (
-          <Card key={it.q}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={{ fontWeight: 800 }}>{it.q}</div>
-              <div style={{ color: "var(--color-text-muted)", lineHeight: 1.5 }}>{it.a}</div>
-            </div>
-          </Card>
+          <article className="home-faq-item" key={it.q}>
+            <h3 className="home-faq-q">{it.q}</h3>
+            <p className="home-faq-a">{it.a}</p>
+          </article>
         ))}
       </div>
     </section>

@@ -100,7 +100,7 @@ select, input, textarea, button {
 .footer-content {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: 28px;
   align-items: start;
   padding-top: 8px;
 }
@@ -119,8 +119,17 @@ select, input, textarea, button {
 
 .footer-institutional-lead {
   display: flex;
-  gap: 14px;
+  flex-direction: column;
   align-items: flex-start;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .footer-institutional-lead {
+    flex-direction: row;
+    gap: 14px;
+    align-items: flex-start;
+  }
 }
 
 .footer-institutional-body {
@@ -149,6 +158,21 @@ select, input, textarea, button {
     border-left: 1px solid var(--color-border);
   }
 }
+
+@media (max-width: 767px) {
+  .footer-content {
+    padding-bottom: 12px;
+  }
+  .footer-operador {
+    width: 100%;
+    padding-top: 4px;
+  }
+  .footer-operador-cta {
+    padding: 6px 12px;
+    margin-top: 4px;
+  }
+}
+
 .footer-operador-kicker {
   margin: 0;
   font-size: 11px;
@@ -325,15 +349,57 @@ select, input, textarea, button {
   margin-bottom: 0;
 }
 
+/* Preview de campings en home: grilla habitual; 1 card acotada y centrada */
+.home-campings-preview-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  .home-campings-preview-grid:not(.home-campings-preview-grid--single) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+@media (min-width: 1100px) {
+  .home-campings-preview-grid:not(.home-campings-preview-grid--single) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+.home-campings-preview-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: min(400px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.home-campings-preview-cta {
+  margin-top: 20px;
+}
+.home-campings-preview-section--single .home-campings-preview-cta {
+  display: flex;
+  justify-content: center;
+}
+
+/* Aire entre cierre de campings (CTA) y Nuestros pilares en mobile/tablet */
+@media (max-width: 1099px) {
+  .home-main .home-section:has(.home-campings-preview-cta) {
+    padding-bottom: 20px;
+  }
+}
+
 /* Bloque editorial institucional APN (manifiesto) */
 .apn-editorial-block {
   max-width: 720px;
-  margin: 0 auto;
+  margin-top: 48px;
+  margin-bottom: 56px;
+  margin-left: 0;
+  margin-right: 0;
   text-align: left;
   display: grid;
   gap: 16px;
-  margin-top: 48px;
-  margin-bottom: 56px;
 }
 
 /* Reserva confirmada: centrar en desktop */
@@ -384,9 +450,14 @@ select, input, textarea, button {
   gap: 16px;
   align-items: stretch;
 }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .home-como-funciona {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+@media (min-width: 900px) {
+  .home-como-funciona {
     gap: 24px;
   }
 }
@@ -439,17 +510,20 @@ select, input, textarea, button {
   color: var(--color-text-muted);
 }
 
-/* Nuestros pilares: editorial, no catálogo */
+/* Nuestros pilares: apoyo editorial compacto */
+.home-main .home-section.home-pilares {
+  margin-bottom: 56px;
+}
+.home-pilares-title {
+  margin: 0 0 10px 0;
+  font-size: clamp(17px, 2.2vw, 20px);
+  color: var(--color-accent);
+  font-weight: 700;
+}
 .home-editorial {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 40px;
-}
-@media (min-width: 900px) {
-  .home-editorial {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 48px;
-  }
+  gap: 28px;
 }
 .home-editorial-item {
   border: none;
@@ -460,27 +534,100 @@ select, input, textarea, button {
 .home-editorial-item .home-editorial-img {
   position: relative;
   width: 100%;
-  height: 120px;
-  margin-bottom: 12px;
+  height: 88px;
+  margin-bottom: 8px;
   border-radius: 6px;
   overflow: hidden;
+}
+/* Tablet: una columna editorial, imágenes con más presencia */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .home-editorial {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    max-width: min(520px, 100%);
+  }
+  .home-editorial-item .home-editorial-img {
+    height: 160px;
+  }
+}
+@media (min-width: 1100px) {
+  .home-editorial {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 32px;
+    max-width: none;
+  }
+  .home-editorial-item .home-editorial-img {
+    height: 88px;
+  }
 }
 .home-editorial-item .home-editorial-img img {
   object-fit: cover;
 }
 .home-editorial-item h3 {
-  margin: 0 0 6px 0;
-  font-size: 17px;
+  margin: 0 0 4px 0;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-accent);
 }
 .home-editorial-item p {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--color-text-muted);
 }
 
+/* Preguntas frecuentes (home): jerarquía y lectura */
+.home-main .home-faq {
+  margin-top: 24px;
+}
+.home-faq-title {
+  margin: 0 0 14px 0;
+  font-size: clamp(18px, 2.5vw, 22px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-accent);
+}
+.home-faq-list {
+  display: grid;
+  gap: 14px;
+  max-width: min(42rem, 100%);
+}
+.home-faq-item {
+  margin: 0;
+  padding: 16px 18px 17px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.home-faq-q {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+.home-faq-a {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+@media (min-width: 768px) {
+  .home-main .home-faq {
+    margin-top: 32px;
+  }
+  .home-faq-title {
+    margin-bottom: 18px;
+  }
+  .home-faq-list {
+    gap: 18px;
+  }
+  .home-faq-item {
+    padding: 18px 20px 19px;
+  }
+}
 
 /* Admin login: base layout (desktop/tablet) */
 .admin-login-page {

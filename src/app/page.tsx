@@ -50,6 +50,8 @@ export default function Home() {
     load();
   }, []);
 
+  const campingsPreview = campings.slice(0, 3);
+
   return (
     <>
       {/* Hero */}
@@ -198,6 +200,23 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Cómo funciona */}
+        <section id="como-funciona" className="home-section">
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
+            Cómo funciona
+          </h2>
+          <p className="home-como-lead">Reservá tu lugar en tres pasos simples.</p>
+          <div className="home-como-funciona">
+            {COMO_FUNCIONA.map((item) => (
+              <article key={item.step} className="home-como-card">
+                <span className="home-como-eyebrow">Paso {item.step}</span>
+                <h3 className="home-como-card-title">{item.title}</h3>
+                <p className="home-como-card-desc">{item.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         {/* Bloque institucional */}
         <section id="institucional" className="home-section">
           <div className="apn-editorial-block">
@@ -216,55 +235,67 @@ export default function Home() {
               Promovemos la preservación del patrimonio natural y cultural, el turismo sostenible, la educación
               ambiental y el uso responsable de los espacios naturales.
             </p>
-            <div
-              style={{
-                padding: "12px 16px",
-                borderRadius: 8,
-                background: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                marginLeft: "auto",
-                marginRight: "auto",
-                maxWidth: "100%",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 15,
-                  lineHeight: 1.5,
-                  color: "var(--color-text-muted)",
-                  fontStyle: "italic",
-                }}
-              >
-                «Reservar un camping en Parques Nacionales es más que una estadía: es contribuir a la conservación y
-                disfrutar de la naturaleza de manera responsable.»
-              </p>
-            </div>
           </div>
         </section>
 
-        {/* Cómo funciona */}
-        <section id="como-funciona" className="home-section">
-          <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
-            Cómo funciona
+        {/* Campings habilitados (vista previa del catálogo; listado completo en /reservar) */}
+        <section
+          className={
+            !loading && !error && campings.length > 0 && campingsPreview.length === 1
+              ? "home-section home-campings-preview-section--single"
+              : "home-section"
+          }
+        >
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(20px, 3vw, 24px)", color: "var(--color-accent)" }}>
+            Campings habilitados
           </h2>
-          <p className="home-como-lead">Reservá tu lugar en tres pasos simples.</p>
-          <div className="home-como-funciona">
-            {COMO_FUNCIONA.map((item) => (
-              <article key={item.step} className="home-como-card">
-                <span className="home-como-eyebrow">Paso {item.step}</span>
-                <h3 className="home-como-card-title">{item.title}</h3>
-                <p className="home-como-card-desc">{item.description}</p>
-              </article>
-            ))}
-          </div>
+          <p
+            style={{
+              margin: "0 0 20px 0",
+              fontSize: 15,
+              lineHeight: 1.55,
+              color: "var(--color-text-muted)",
+              maxWidth: "42em",
+            }}
+          >
+            Explorá una vista previa de los campings oficiales habilitados y accedé al catálogo completo para iniciar tu reserva.
+          </p>
+          {loading ? <p style={{ color: "var(--color-text-muted)" }}>Cargando campings…</p> : null}
+          {error ? (
+            <p style={{ color: "rgba(239,68,68,0.9)", padding: 12, borderRadius: 8, background: "rgba(239,68,68,0.1)" }}>
+              {error}
+            </p>
+          ) : null}
+
+          {!loading && !error && campings.length === 0 ? (
+            <p style={{ color: "var(--color-text-muted)" }}>No hay campings disponibles.</p>
+          ) : null}
+
+          {!loading && !error && campings.length > 0 ? (
+            <>
+              <div
+                className={
+                  campingsPreview.length === 1
+                    ? "home-campings-preview-grid home-campings-preview-grid--single"
+                    : "home-campings-preview-grid"
+                }
+              >
+                {campingsPreview.map((c) => (
+                  <CampingCard key={c.id} camping={c} />
+                ))}
+              </div>
+              <div className="home-campings-preview-cta">
+                <Link href="/reservar" style={{ textDecoration: "none" }}>
+                  <Button variant="secondary">Ver todos los campings</Button>
+                </Link>
+              </div>
+            </>
+          ) : null}
         </section>
 
         {/* Sección editorial */}
-        <section className="home-section">
-          <h2 style={{ margin: "0 0 16px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
-            Nuestros pilares
-          </h2>
+        <section className="home-section home-pilares">
+          <h2 className="home-pilares-title">Nuestros pilares</h2>
           <div className="home-editorial">
             <div className="home-editorial-item">
               <div className="home-editorial-img">
@@ -303,35 +334,6 @@ export default function Home() {
               <p>Explorá áreas protegidas con servicios oficiales y planificación.</p>
             </div>
           </div>
-        </section>
-
-        {/* Campings disponibles */}
-        <section className="home-section">
-          <h2 style={{ margin: "0 0 20px 0", fontSize: "clamp(20px, 3vw, 24px)", color: "var(--color-accent)" }}>
-            Campings disponibles
-          </h2>
-          {loading ? <p style={{ color: "var(--color-text-muted)" }}>Cargando campings…</p> : null}
-          {error ? (
-            <p style={{ color: "rgba(239,68,68,0.9)", padding: 12, borderRadius: 8, background: "rgba(239,68,68,0.1)" }}>
-              {error}
-            </p>
-          ) : null}
-
-          {!loading && !error && campings.length === 0 ? (
-            <p style={{ color: "var(--color-text-muted)" }}>No hay campings disponibles.</p>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gap: 20,
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              }}
-            >
-              {campings.map((c) => (
-                <CampingCard key={c.id} camping={c} />
-              ))}
-            </div>
-          )}
         </section>
 
         <FAQ />
