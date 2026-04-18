@@ -20,12 +20,12 @@ import {
   canOperateReservations,
   isReservationViewerRole,
 } from "@/lib/adminReservationRoleUi";
+import { todayYmd } from "@/lib/dates";
 import {
-  enumerateNights,
-  formatMsToArgentineDateTime,
-  formatYmdToDmy,
-  todayYmd,
-} from "@/lib/dates";
+  ADMIN_RESERVA_CSV_HEADERS,
+  estadoBadgeLabel,
+  reservaToCsvRow,
+} from "@/lib/adminReservaCsvExport";
 import ReservaDetailModal from "@/components/admin/ReservaDetailModal";
 import AdminReservationsFilters, {
   type AdminReservationsFilterValues,
@@ -153,45 +153,10 @@ function stayOverlapsRange(checkIn: string, checkOut: string, from: string, to: 
   return checkIn <= to && checkOut >= from;
 }
 
-function estadoBadgeLabel(estado: string): string {
-  switch (estado) {
-    case "pagada":
-      return "Pagada";
-    case "pendiente_pago":
-      return "Pendiente";
-    case "fallida":
-      return "Fallida";
-    case "cancelada":
-      return "Cancelada";
-    default:
-      return estado;
-  }
-}
-
 function origenModalLabel(origen: string): string {
   if (origen === "admin") return "Admin";
   if (origen === "public") return "Web";
   return origen || "-";
-}
-
-function formatArsAmount(n: number): string {
-  return n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-
-function origenExportLabel(mode: Reserva["createdByMode"] | undefined): string {
-  if (mode === "admin") return "Administración";
-  if (mode === "public") return "Web";
-  return "—";
-}
-
-function unitChangeAdjustmentExportLabel(
-  status: Reserva["unitChangeAdjustmentStatus"] | undefined
-): string {
-  if (status === undefined || status === "none") return "Sin ajuste";
-  if (status === "pending_charge") return "Cobro pendiente";
-  if (status === "pending_refund") return "Devolución pendiente";
-  if (status === "resolved") return "Resuelto";
-  return "—";
 }
 
 function defaultFilterValues(profile: UserProfile | null): AdminReservationsFilterValues {
@@ -549,54 +514,14 @@ export default function AdminReservasPage() {
   const exportCsv = () => {
     setExportBusy(true);
     try {
-      const header = [
-        "Titular",
-        "Correo electrónico",
-        "Teléfono",
-        "Edad",
-        "Camping",
-        "Unidad",
-        "Tipo de unidad",
-        "Ingreso",
-        "Salida",
-        "Noches",
-        "Adultos",
-        "Menores",
-        "Total",
-        "Estado",
-        "Origen",
-        "Ajuste cambio de unidad",
-        "Diferencia ajuste (ARS)",
-        "Creada el",
-        "ID reserva",
-      ];
-      const rows: string[][] = [header];
+      const rows: string[][] = [[...ADMIN_RESERVA_CSV_HEADERS]];
       for (const row of tableRows) {
-        const r = row.reserva;
-        const noches = String(enumerateNights(r.checkInDate, r.checkOutDate).length);
-        const delta =
-          typeof r.unitChangeDeltaArs === "number" ? formatArsAmount(r.unitChangeDeltaArs) : "";
-        rows.push([
-          r.titularNombre,
-          r.titularEmail,
-          r.titularTelefono,
-          String(r.titularEdad),
-          row.campingNombre,
-          row.unitLabel,
-          row.tipoUnidadLabel,
-          formatYmdToDmy(r.checkInDate),
-          formatYmdToDmy(r.checkOutDate),
-          noches,
-          String(r.adultos),
-          String(r.menores),
-          formatArsAmount(r.montoTotalArs),
-          estadoBadgeLabel(r.estado),
-          origenExportLabel(r.createdByMode),
-          unitChangeAdjustmentExportLabel(r.unitChangeAdjustmentStatus),
-          delta,
-          formatMsToArgentineDateTime(r.createdAtMs),
-          r.id,
-        ]);
+        rows.push(
+          reservaToCsvRow(row.reserva, row.campingNombre, {
+            unitLabel: row.unitLabel,
+            tipoUnidadLabel: row.tipoUnidadLabel,
+          })
+        );
       }
       const csv = toCsv(rows, { separator: ";" });
       const campingPart = effectiveCampingFilter || "todos";

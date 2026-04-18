@@ -31,6 +31,11 @@ import type {
 import { computeCancellationRefund } from "@/lib/cancellationPolicy";
 import { buildAvailabilityForRange } from "@/lib/availability";
 import { addDaysYmd, todayYmd, enumerateNights, formatYmdToDmy } from "@/lib/dates";
+import {
+  ADMIN_RESERVA_CSV_HEADERS,
+  reservaToCsvRow,
+  resolveReservaCsvRowLabels,
+} from "@/lib/adminReservaCsvExport";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import {
   canExportReservationsCsv,
@@ -1299,56 +1304,16 @@ export default function AdminHomePage() {
   const exportCsv = () => {
     if (!camping) return;
 
-    const header = [
-      "id",
-      "estado",
-      "origen",
-      "camping",
-      "checkIn",
-      "checkOut",
-      "parcelas",
-      "adultos",
-      "menores",
-      "titularNombre",
-      "titularEmail",
-      "titularTelefono",
-      "totalArs",
-      "parque",
-      "ubicacion",
-      "noches",
-      "totalPersonas",
-      "createdAt",
-      "cancelMotivo",
-    ];
-
-    const rows: string[][] = [header];
-
+    const rows: string[][] = [[...ADMIN_RESERVA_CSV_HEADERS]];
     for (const r of reservasEnRango) {
-      rows.push([
-        r.id,
-        r.estado,
-        r.createdByMode ?? "",
-        camping.nombre,
-        formatYmdToDmy(r.checkInDate),
-        formatYmdToDmy(r.checkOutDate),
-        String(r.parcelas),
-        String(r.adultos),
-        String(r.menores),
-        r.titularNombre,
-        r.titularEmail,
-        r.titularTelefono,
-        String(r.montoTotalArs),
-        camping.areaProtegida,
-        camping.ubicacionTexto,
-        String(enumerateNights(r.checkInDate, r.checkOutDate).length),
-        String(r.adultos + r.menores),
-        new Date(r.createdAtMs).toLocaleString("es-AR"),
-        r.cancelMotivo ?? "",
-      ]);
+      const { unitLabel, tipoUnidadLabel } = resolveReservaCsvRowLabels(r, {
+        units,
+        unitTypes,
+      });
+      rows.push(reservaToCsvRow(r, camping.nombre, { unitLabel, tipoUnidadLabel }));
     }
 
-    const csv = toCsv(rows);
-
+    const csv = toCsv(rows, { separator: ";" });
     const safeCamping = camping.nombre
       .toLowerCase()
       .replace(/\s+/g, "-")
@@ -1356,7 +1321,7 @@ export default function AdminHomePage() {
 
     const filename = `reservas-${safeCamping}-${fromDate}-a-${rangeEndDate}.csv`;
 
-    downloadCsv(filename, csv);
+    downloadCsv(filename, csv, { bom: true });
   };
 
   const exportCsvGlobal = async () => {
@@ -1366,6 +1331,22 @@ export default function AdminHomePage() {
     setError(null);
 
     try {
+      const unitsByCampingId = new Map<string, Unit[]>();
+      const unitTypesByCampingId = new Map<string, UnitType[]>();
+      for (const c of campings) {
+        if (c.inventoryMode === "unit_based") {
+          const [us, ts] = await Promise.all([
+            fetchUnitsByCamping(c.id),
+            fetchUnitTypesByCamping(c.id),
+          ]);
+          unitsByCampingId.set(c.id, us);
+          unitTypesByCampingId.set(c.id, ts);
+        } else {
+          unitsByCampingId.set(c.id, []);
+          unitTypesByCampingId.set(c.id, []);
+        }
+      }
+
       const all: Reserva[] = [];
       for (const c of campings) {
         const items = await loadReservasForCamping(c.id);
@@ -1377,61 +1358,23 @@ export default function AdminHomePage() {
       const campingById = new Map<string, Camping>();
       campings.forEach((c) => campingById.set(c.id, c));
 
-      const header = [
-        "campingId",
-        "camping",
-        "parque",
-        "ubicacion",
-        "id",
-        "estado",
-        "origen",
-        "checkIn",
-        "checkOut",
-        "noches",
-        "parcelas",
-        "adultos",
-        "menores",
-        "totalPersonas",
-        "titularNombre",
-        "titularEmail",
-        "titularTelefono",
-        "totalArs",
-        "createdAt",
-        "cancelMotivo",
-      ];
-
-      const rows: string[][] = [header];
+      const rows: string[][] = [[...ADMIN_RESERVA_CSV_HEADERS]];
 
       for (const r of inRange) {
         const c = campingById.get(r.campingId);
-
-        rows.push([
-          r.campingId,
-          c?.nombre ?? "",
-          c?.areaProtegida ?? "",
-          c?.ubicacionTexto ?? "",
-          r.id,
-          r.estado,
-          r.createdByMode ?? "",
-          formatYmdToDmy(r.checkInDate),
-          formatYmdToDmy(r.checkOutDate),
-          String(enumerateNights(r.checkInDate, r.checkOutDate).length),
-          String(r.parcelas),
-          String(r.adultos),
-          String(r.menores),
-          String(r.adultos + r.menores),
-          r.titularNombre,
-          r.titularEmail,
-          r.titularTelefono,
-          String(r.montoTotalArs),
-          new Date(r.createdAtMs).toLocaleString("es-AR"),
-          r.cancelMotivo ?? "",
-        ]);
+        const campingNombre = c?.nombre ?? r.campingId;
+        const u = unitsByCampingId.get(r.campingId) ?? [];
+        const t = unitTypesByCampingId.get(r.campingId) ?? [];
+        const { unitLabel, tipoUnidadLabel } = resolveReservaCsvRowLabels(r, {
+          units: u,
+          unitTypes: t,
+        });
+        rows.push(reservaToCsvRow(r, campingNombre, { unitLabel, tipoUnidadLabel }));
       }
 
-      const csv = toCsv(rows);
+      const csv = toCsv(rows, { separator: ";" });
       const filename = `reservas-global-${fromDate}-a-${rangeEndDate}.csv`;
-      downloadCsv(filename, csv);
+      downloadCsv(filename, csv, { bom: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -1484,7 +1427,7 @@ export default function AdminHomePage() {
         ) : null}
         {canExportCsvCamping ? (
           <Button variant="secondary" onClick={exportCsv} disabled={!camping}>
-            Exportar CSV
+            Exportar reservas del camping
           </Button>
         ) : null}
         {canExportGlobal ? (
@@ -1493,7 +1436,7 @@ export default function AdminHomePage() {
             onClick={exportCsvGlobal}
             disabled={busy || campings.length === 0}
           >
-            CSV global
+            Exportar reservas global
           </Button>
         ) : null}
       </div>
