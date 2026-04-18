@@ -50,7 +50,8 @@ export default function Home() {
     load();
   }, []);
 
-  const campingsPreview = campings.slice(0, 3);
+  const campingsActivos = campings.filter((c) => c.activo);
+  const campingsPreview = campingsActivos.slice(0, 3);
 
   return (
     <>
@@ -238,10 +239,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Campings habilitados (vista previa del catálogo; listado completo en /reservar) */}
+        {/* Campings habilitados (vista previa; catálogo completo en /campings) */}
         <section
           className={
-            !loading && !error && campings.length > 0 && campingsPreview.length === 1
+            !loading && !error && campingsActivos.length > 0 && campingsPreview.length === 1
               ? "home-section home-campings-preview-section--single"
               : "home-section"
           }
@@ -267,11 +268,11 @@ export default function Home() {
             </p>
           ) : null}
 
-          {!loading && !error && campings.length === 0 ? (
+          {!loading && !error && campingsActivos.length === 0 ? (
             <p style={{ color: "var(--color-text-muted)" }}>No hay campings disponibles.</p>
           ) : null}
 
-          {!loading && !error && campings.length > 0 ? (
+          {!loading && !error && campingsActivos.length > 0 ? (
             <>
               <div
                 className={
@@ -285,7 +286,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="home-campings-preview-cta">
-                <Link href="/reservar" style={{ textDecoration: "none" }}>
+                <Link href="/campings" style={{ textDecoration: "none" }}>
                   <Button variant="secondary">Ver todos los campings</Button>
                 </Link>
               </div>

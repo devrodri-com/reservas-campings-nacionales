@@ -6,9 +6,9 @@ import { useParams } from "next/navigation";
 import type { Camping } from "@/types/camping";
 import { fetchCampingById } from "@/lib/campingsRepo";
 import {
-  getCampingCapacityLabel,
   getCampingContextLocation,
   getCampingDisplayAddress,
+  getCampingMapsUrl,
   getCampingPriceLabel,
 } from "@/lib/campingPresentation";
 import { Button, Card } from "@/components/ui";
@@ -58,6 +58,12 @@ export default function CampingDetailPage() {
   if (!camping) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}><p>Camping no encontrado.</p></main>;
 
   const contextLocation = getCampingContextLocation(camping);
+  const displayAddress = getCampingDisplayAddress(camping);
+  const mapsUrl = getCampingMapsUrl(camping);
+  const hasMapsEmbed = Boolean(camping.mapsEmbedUrl?.trim());
+  const hasLocationSection = Boolean(
+    contextLocation || displayAddress || hasMapsEmbed || mapsUrl,
+  );
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
@@ -87,9 +93,6 @@ export default function CampingDetailPage() {
           </div>
 
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ color: "var(--color-text-muted)" }}>
-              <strong style={{ color: "var(--color-text)" }}>{getCampingCapacityLabel(camping)}</strong>
-            </span>
             <span style={{ color: "var(--color-text-muted)" }}>
               <strong style={{ color: "var(--color-text)" }}>{getCampingPriceLabel(camping)}</strong>
             </span>
@@ -154,7 +157,7 @@ export default function CampingDetailPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 16,
           marginTop: 24,
         }}
@@ -164,73 +167,70 @@ export default function CampingDetailPage() {
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--color-accent)" }}>
               Información
             </h2>
-            {camping.descripcionCorta ? (
+            {camping.descripcionCorta?.trim() ? (
               <p style={{ margin: 0, color: "var(--color-text)", lineHeight: 1.6 }}>
-                {camping.descripcionCorta}
-              </p>
-            ) : (
-              <p style={{ margin: 0, color: "var(--color-text-muted)", fontStyle: "italic" }}>
-                (Placeholder) Descripción del camping pendiente de carga.
-              </p>
-            )}
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
-              <strong>Nota:</strong> La asignación de parcela se realiza en recepción al momento del check-in.
-            </p>
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ display: "grid", gap: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--color-accent)" }}>
-              Servicios
-            </h2>
-            <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-              (Placeholder) Información sobre servicios y amenities del camping pendiente de carga.
-            </p>
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ display: "grid", gap: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--color-accent)" }}>
-              Ubicación
-            </h2>
-            {contextLocation ? (
-              <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-                {contextLocation}
+                {camping.descripcionCorta.trim()}
               </p>
             ) : null}
-            <p style={{ margin: 0, color: "var(--color-text)", lineHeight: 1.6, fontWeight: 600 }}>
-              {getCampingDisplayAddress(camping) ?? "Dirección a confirmar"}
+            <p style={{ margin: camping.descripcionCorta?.trim() ? "8px 0 0 0" : 0, fontSize: 14, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+              {camping.inventoryMode === "unit_based" ? (
+                <>
+                  <strong>Nota:</strong> Este camping trabaja con disponibilidad por unidad real. Al reservar, el sistema te muestra las opciones disponibles para las fechas seleccionadas.
+                </>
+              ) : (
+                <>
+                  <strong>Nota:</strong> La disponibilidad de este camping se gestiona según capacidad para las fechas seleccionadas.
+                </>
+              )}
             </p>
-            {camping.mapsEmbedUrl ? (
-              <div style={{ marginTop: 12 }}>
-                <iframe
-                  src={camping.mapsEmbedUrl}
-                  width="100%"
-                  height="360"
-                  style={{ border: 0, borderRadius: 12 }}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  allowFullScreen
-                  title={`Mapa de ${camping.nombre}`}
-                />
-              </div>
-            ) : (
-              <p style={{ marginTop: 8, fontSize: 14, color: "var(--color-text-muted)", fontStyle: "italic" }}>
-                (Placeholder) Mapa embebido pendiente de carga.
-              </p>
-            )}
           </div>
         </Card>
-      </div>
 
-      <div style={{ marginTop: 32, textAlign: "center" }}>
-        <Link href={`/reservar?campingId=${encodeURIComponent(camping.id)}`} style={{ textDecoration: "none" }}>
-          <Button variant="primary" style={{ fontSize: 16, padding: "12px 24px" }}>
-            Reservar este camping
-          </Button>
-        </Link>
+        {hasLocationSection ? (
+          <Card>
+            <div style={{ display: "grid", gap: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--color-accent)" }}>
+                Ubicación
+              </h2>
+              {contextLocation ? (
+                <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+                  {contextLocation}
+                </p>
+              ) : null}
+              {displayAddress ? (
+                <p style={{ margin: 0, color: "var(--color-text)", lineHeight: 1.6, fontWeight: 600 }}>
+                  {displayAddress}
+                </p>
+              ) : null}
+              {hasMapsEmbed ? (
+                <div style={{ marginTop: displayAddress || contextLocation ? 4 : 0 }}>
+                  <iframe
+                    src={camping.mapsEmbedUrl}
+                    width="100%"
+                    height="360"
+                    style={{ border: 0, borderRadius: 12 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                    title={`Mapa de ${camping.nombre}`}
+                  />
+                </div>
+              ) : null}
+              {mapsUrl && !hasMapsEmbed ? (
+                <p style={{ margin: 0 }}>
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--color-accent)", fontWeight: 600 }}
+                  >
+                    Ver en mapa
+                  </a>
+                </p>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
       </div>
     </main>
   );

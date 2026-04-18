@@ -40,7 +40,7 @@ export function getCampingContextLocation(camping: Camping): string | null {
 }
 
 export function getCampingCapacityLabel(camping: Camping): string {
-  if (camping.inventoryMode === "unit_based") return "Reserva por unidad";
+  if (camping.inventoryMode === "unit_based") return "Disponibilidad por unidad";
   return `${camping.capacidadParcelas} parcelas`;
 }
 
