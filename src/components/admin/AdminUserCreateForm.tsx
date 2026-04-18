@@ -10,13 +10,15 @@ type CreatableRole = "admin_camping" | "viewer" | "viewer_global";
 
 type Props = {
   user: User;
+  /** Opciones para asignar camping (mismos ids que en Firestore). */
+  campingOptions: SelectOption[];
   onCreated: () => Promise<void>;
 };
 
 const ROLE_OPTIONS: SelectOption[] = [
-  { value: "admin_camping", label: "admin_camping" },
-  { value: "viewer", label: "viewer" },
-  { value: "viewer_global", label: "viewer_global" },
+  { value: "admin_camping", label: "Operador de camping" },
+  { value: "viewer", label: "Consulta por camping" },
+  { value: "viewer_global", label: "Consulta global" },
 ];
 
 const inputStyle: React.CSSProperties = {
@@ -40,9 +42,10 @@ function parseApiError(payload: unknown): string {
   return maybeError;
 }
 
-export default function AdminUserCreateForm({ user, onCreated }: Props) {
+export default function AdminUserCreateForm({ user, campingOptions, onCreated }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<CreatableRole>("viewer");
   const [campingId, setCampingId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -52,10 +55,10 @@ export default function AdminUserCreateForm({ user, onCreated }: Props) {
   const showCampingId = useMemo(() => requiresCamping(role), [role]);
 
   const canSubmit = useMemo(() => {
-    if (!email.trim() || !password.trim()) return false;
+    if (!email.trim() || !password.trim() || !confirmPassword.trim()) return false;
     if (showCampingId && !campingId.trim()) return false;
     return true;
-  }, [email, password, showCampingId, campingId]);
+  }, [email, password, confirmPassword, showCampingId, campingId]);
 
   const handleCreate = async () => {
     setSuccessMsg(null);
@@ -63,6 +66,11 @@ export default function AdminUserCreateForm({ user, onCreated }: Props) {
 
     if (!canSubmit) {
       setErrorMsg("Completá los campos obligatorios.");
+      return;
+    }
+
+    if (password.trim() !== confirmPassword.trim()) {
+      setErrorMsg("Las contraseñas no coinciden. Revisá y volvé a escribirlas.");
       return;
     }
 
@@ -100,6 +108,7 @@ export default function AdminUserCreateForm({ user, onCreated }: Props) {
 
       setEmail("");
       setPassword("");
+      setConfirmPassword("");
       setRole("viewer");
       setCampingId("");
       setSuccessMsg("Usuario creado correctamente.");
@@ -154,7 +163,7 @@ export default function AdminUserCreateForm({ user, onCreated }: Props) {
         </label>
 
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 700 }}>Password</span>
+          <span style={{ fontWeight: 700 }}>Contraseña</span>
           <input
             type="password"
             value={password}
@@ -162,6 +171,19 @@ export default function AdminUserCreateForm({ user, onCreated }: Props) {
             placeholder="Mínimo 6 caracteres"
             style={inputStyle}
             disabled={submitting}
+          />
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontWeight: 700 }}>Confirmar contraseña</span>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repetí la contraseña"
+            style={inputStyle}
+            disabled={submitting}
+            autoComplete="new-password"
           />
         </label>
 
@@ -179,17 +201,22 @@ export default function AdminUserCreateForm({ user, onCreated }: Props) {
         />
 
         {showCampingId ? (
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontWeight: 700 }}>Camping ID</span>
-            <input
-              type="text"
+          <>
+            <SelectDropdown
+              label="Camping"
               value={campingId}
-              onChange={(e) => setCampingId(e.target.value)}
-              placeholder="talampaya-campamento-agreste"
-              style={inputStyle}
-              disabled={submitting}
+              options={campingOptions}
+              onChange={(v) => setCampingId(v)}
+              placeholder="Seleccionar camping…"
+              disabled={submitting || campingOptions.length === 0}
+              searchable
             />
-          </label>
+            {campingOptions.length === 0 && !submitting ? (
+              <p style={{ margin: "-4px 0 0 0", fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
+                No hay campings cargados. Revisá la conexión o que existan campings en el sistema.
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         <div>

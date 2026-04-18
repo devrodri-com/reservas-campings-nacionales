@@ -63,10 +63,56 @@ function unitChangeStatusLabel(s: NonNullable<Reserva["unitChangeAdjustmentStatu
   }
 }
 
+function formatPaymentStatusEs(status: string): string {
+  switch (status) {
+    case "pending":
+      return "Pendiente";
+    case "approved":
+      return "Aprobado";
+    case "rejected":
+      return "Rechazado";
+    case "cancelled":
+      return "Anulado";
+    default:
+      return status;
+  }
+}
+
 const metaRowStyle: CSSProperties = {
   fontSize: 13,
   color: "var(--color-text-muted)",
   lineHeight: 1.5,
+};
+
+const summaryHeroRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 16,
+};
+
+const summaryDatesStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  fontSize: 15,
+  color: "var(--color-text)",
+  lineHeight: 1.45,
+};
+
+const summaryLabelStrong: CSSProperties = {
+  fontWeight: 700,
+  color: "var(--color-text)",
+};
+
+const reservaIdFootnoteStyle: CSSProperties = {
+  marginTop: 10,
+  paddingTop: 10,
+  borderTop: "1px solid var(--color-border)",
+  fontSize: 11,
+  color: "var(--color-text-muted)",
+  lineHeight: 1.4,
+  wordBreak: "break-all",
 };
 
 export default function ReservaDetailModal({
@@ -107,90 +153,93 @@ export default function ReservaDetailModal({
         <div style={{ display: "grid", gap: 18 }}>
           {/* BLOQUE 1 — resumen principal */}
           <Card title="Resumen">
-            <div style={{ display: "grid", gap: 12 }}>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "baseline",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>
-                    Reserva ID
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={summaryHeroRowStyle}>
+                <div style={{ minWidth: 0, flex: "1 1 140px" }}>
+                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600, letterSpacing: 0.02 }}>
+                    Estado
                   </div>
                   <div
                     style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "var(--color-text)",
-                      wordBreak: "break-all",
-                      marginTop: 2,
-                    }}
-                  >
-                    {detailReserva.id}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>Estado</div>
-                  <div
-                    style={{
-                      marginTop: 4,
-                      fontSize: 16,
+                      marginTop: 6,
+                      fontSize: 17,
                       fontWeight: 800,
                       color: "var(--color-accent)",
+                      lineHeight: 1.2,
                     }}
                   >
                     {formatEstadoLabel(detailReserva.estado)}
                   </div>
                 </div>
+                <div style={{ textAlign: "right", minWidth: 0, flex: "1 1 140px" }}>
+                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600, letterSpacing: 0.02 }}>
+                    Total
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: "var(--color-text)",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    ${detailReserva.montoTotalArs.toLocaleString("es-AR")}
+                  </div>
+                </div>
               </div>
+
+              {detailReservaUnitRows ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    paddingTop: 4,
+                    borderTop: "1px solid var(--color-border)",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "var(--color-text)",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {detailReservaUnitRows}
+                </div>
+              ) : null}
 
               <div
                 style={{
-                  display: "grid",
-                  gap: 8,
-                  paddingTop: 4,
+                  ...summaryDatesStyle,
+                  paddingTop: 12,
                   borderTop: "1px solid var(--color-border)",
                 }}
               >
-                {detailReservaUnitRows}
-              </div>
-
-              <div style={{ display: "grid", gap: 6, fontSize: 14, color: "var(--color-text)" }}>
                 <div>
-                  <strong>Fechas:</strong> {formatYmdToDmy(detailReserva.checkInDate)} →{" "}
-                  {formatYmdToDmy(detailReserva.checkOutDate)}
+                  <span style={summaryLabelStrong}>Fechas</span>
+                  <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}> · </span>
+                  <span style={{ fontWeight: 700 }}>
+                    {formatYmdToDmy(detailReserva.checkInDate)} → {formatYmdToDmy(detailReserva.checkOutDate)}
+                  </span>
                 </div>
                 <div>
-                  <strong>Noches:</strong>{" "}
-                  {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}
+                  <span style={summaryLabelStrong}>Noches</span>
+                  <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}> · </span>
+                  <span style={{ fontWeight: 700 }}>
+                    {enumerateNights(detailReserva.checkInDate, detailReserva.checkOutDate).length}
+                  </span>
                 </div>
                 {campingInventoryMode !== "unit_based" ? (
                   <div>
-                    <strong>Parcelas:</strong> {detailReserva.parcelas}
+                    <span style={summaryLabelStrong}>Parcelas</span>
+                    <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}> · </span>
+                    <span style={{ fontWeight: 700 }}>{detailReserva.parcelas}</span>
                   </div>
                 ) : null}
               </div>
 
-              <div
-                style={{
-                  marginTop: 4,
-                  paddingTop: 12,
-                  borderTop: "1px solid var(--color-border)",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "baseline",
-                  justifyContent: "space-between",
-                  gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--color-text-muted)" }}>Total</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: "var(--color-text)" }}>
-                  ${detailReserva.montoTotalArs.toLocaleString("es-AR")}
-                </span>
+              <div style={reservaIdFootnoteStyle}>
+                <span style={{ fontWeight: 600 }}>Referencia interna</span>
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}> · </span>
+                {detailReserva.id}
               </div>
             </div>
           </Card>
@@ -385,28 +434,28 @@ export default function ReservaDetailModal({
 
               {detailReserva.paidAtMs ? (
                 <div style={metaRowStyle}>
-                  <strong style={{ color: "var(--color-text)" }}>Pagada:</strong>{" "}
+                  <strong style={{ color: "var(--color-text)" }}>Pagada el:</strong>{" "}
                   {new Date(detailReserva.paidAtMs).toLocaleString("es-AR")}
                 </div>
               ) : null}
 
               {detailReserva.paymentStatus ? (
                 <div style={metaRowStyle}>
-                  <strong style={{ color: "var(--color-text)" }}>Payment status:</strong>{" "}
-                  {detailReserva.paymentStatus}
+                  <strong style={{ color: "var(--color-text)" }}>Estado del pago (pasarela):</strong>{" "}
+                  {formatPaymentStatusEs(detailReserva.paymentStatus)}
                 </div>
               ) : null}
 
               {detailReserva.mpPreferenceId ? (
                 <div style={metaRowStyle}>
-                  <strong style={{ color: "var(--color-text)" }}>MP Preference:</strong>{" "}
+                  <strong style={{ color: "var(--color-text)" }}>Preferencia Mercado Pago:</strong>{" "}
                   {detailReserva.mpPreferenceId}
                 </div>
               ) : null}
 
               {detailReserva.mpPaymentId ? (
                 <div style={metaRowStyle}>
-                  <strong style={{ color: "var(--color-text)" }}>MP Payment:</strong>{" "}
+                  <strong style={{ color: "var(--color-text)" }}>Pago Mercado Pago (ID):</strong>{" "}
                   {detailReserva.mpPaymentId}
                 </div>
               ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import {
@@ -51,7 +52,7 @@ import {
   formatWalkInUnitOptionLabel,
 } from "@/lib/adminUnitReassignSupport";
 import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
-import { fetchUnitsByCamping, updateUnit, createUnit } from "@/lib/unitsRepo";
+import { fetchUnitsByCamping, updateUnit } from "@/lib/unitsRepo";
 import {
   fetchUnitBlocksByCamping,
   createUnitBlock,
@@ -75,7 +76,7 @@ function rangeAvailabilityBadge(row: Pick<UnitAvailabilityRow, "reason" | "isAva
   }
   switch (row.reason) {
     case "Reservada":
-      return { text: "Reservada en el rango", tone: "red" };
+      return { text: "Tiene reserva dentro del rango", tone: "red" };
     case "Bloqueo por rango":
       return { text: "Bloqueada en el rango", tone: "yellow" };
     case "Estado operativo":
@@ -245,11 +246,6 @@ export default function AdminHomePage() {
   const [selectedUnitForBlock, setSelectedUnitForBlock] = useState<Unit | null>(null);
   const [blockFromDate, setBlockFromDate] = useState<string>(todayYmd());
   const [blockToDate, setBlockToDate] = useState<string>(addDaysYmd(todayYmd(), 1));
-
-  const [unitName, setUnitName] = useState("");
-  const [unitNumber, setUnitNumber] = useState("");
-  const [unitTypeIdToCreate, setUnitTypeIdToCreate] = useState("");
-  const [unitSector, setUnitSector] = useState("");
 
   const loadReservasForCamping = async (campingId: string): Promise<Reserva[]> => {
     const resSnap = await getDocs(
@@ -523,7 +519,7 @@ export default function AdminHomePage() {
         return { unit, isAvailable: false, reason: "Bloqueo por rango" };
       }
 
-      const hasReserva = reservas.some(
+      const overlappingReservas = reservas.filter(
         (r) =>
           r.campingId === camping.id &&
           r.unitId === unit.id &&
@@ -534,8 +530,16 @@ export default function AdminHomePage() {
           r.checkInDate < rangeEndDate &&
           r.checkOutDate > fromDate
       );
-      if (hasReserva) {
-        return { unit, isAvailable: false, reason: "Reservada" };
+      if (overlappingReservas.length > 0) {
+        const sorted = [...overlappingReservas].sort(
+          (a, b) =>
+            a.checkInDate.localeCompare(b.checkInDate) || a.checkOutDate.localeCompare(b.checkOutDate)
+        );
+        const detailHint =
+          sorted.length === 1
+            ? `Reserva: ${formatYmdToDmy(sorted[0].checkInDate)} → ${formatYmdToDmy(sorted[0].checkOutDate)}`
+            : `${sorted.length} reservas se superponen con el rango`;
+        return { unit, isAvailable: false, reason: "Reservada", detailHint };
       }
 
       return { unit, isAvailable: true, reason: "Disponible" };
@@ -672,11 +676,6 @@ export default function AdminHomePage() {
         return { value: String(age), label: String(age) };
       }),
     []
-  );
-
-  const unitTypeSelectOptionsForUnit: SelectOption[] = useMemo(
-    () => unitTypes.map((t) => ({ value: t.id, label: t.name })),
-    [unitTypes]
   );
 
   // UI Helpers
@@ -832,60 +831,6 @@ export default function AdminHomePage() {
     }
   };
 
-  const handleCreateUnit = async () => {
-    if (!camping) {
-      setError("No hay camping seleccionado.");
-      return;
-    }
-    if (camping.inventoryMode !== "unit_based") {
-      setError("Solo se pueden crear unidades en campings con inventario por unidad.");
-      return;
-    }
-    if (!unitTypeIdToCreate.trim()) {
-      setError("Debés seleccionar un tipo de unidad.");
-      return;
-    }
-    const displayName = unitName.trim();
-    const number = unitNumber.trim();
-    if (!displayName) {
-      setError("El nombre visible de la unidad es obligatorio.");
-      return;
-    }
-    if (!number) {
-      setError("El número o código de la unidad es obligatorio.");
-      return;
-    }
-
-    const sectorTrim = unitSector.trim();
-    const basePayload: Omit<Unit, "id" | "createdAtMs" | "sector"> = {
-      campingId: camping.id,
-      unitTypeId: unitTypeIdToCreate.trim(),
-      number,
-      displayName,
-      active: true,
-      operationalStatus: "available",
-    };
-    const payload: Omit<Unit, "id" | "createdAtMs"> = sectorTrim
-      ? { ...basePayload, sector: sectorTrim }
-      : basePayload;
-
-    setBusy(true);
-    setError(null);
-    try {
-      await createUnit(payload);
-      const refreshedUnits = await fetchUnitsByCamping(camping.id);
-      setUnits(refreshedUnits);
-      setUnitName("");
-      setUnitNumber("");
-      setUnitTypeIdToCreate("");
-      setUnitSector("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo crear la unidad.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   // KPIs
   const nowMs = Date.now();
 
@@ -899,59 +844,6 @@ export default function AdminHomePage() {
     const fallidas = reservasEnRango.filter((r) => r.estado === "fallida").length;
     return { total, pagadas, pendientes, canceladas, fallidas };
   }, [reservasEnRango, nowMs]);
-
-  const createDemoReserva = async () => {
-    if (!camping) return;
-    setBusy(true);
-    setError(null);
-
-    try {
-      const checkInDate = addDaysYmd(fromDate, 1);
-      const checkOutDate = addDaysYmd(fromDate, 3);
-      if (!checkInDate || !checkOutDate) {
-        setError("Fecha inválida. Por favor seleccioná una fecha válida.");
-        setBusy(false);
-        return;
-      }
-      const parcelas = 1;
-      const adultos = 2;
-      const menores = 1;
-
-      const montoTotalArs = camping.precioNocheArs * 2; // 2 noches demo
-
-      const doc: ReservaDoc = {
-        campingId: camping.id,
-        checkInDate,
-        checkOutDate,
-        originalCheckInDate: checkInDate,
-        parcelas,
-        adultos,
-        menores,
-        titularNombre: "Reserva Demo",
-        titularEmail: "demo@demo.com",
-        titularTelefono: "000000000",
-        titularEdad: 30,
-        estado: "pagada",
-        montoTotalArs,
-        createdAtMs: Date.now(),
-        createdByUid: user?.uid ?? undefined,
-        createdByMode: "admin",
-        paymentProvider: "mercadopago",
-        paymentStatus: "approved",
-        paidAtMs: Date.now(),
-      };
-
-      await addDoc(collection(db, "reservas"), doc);
-
-      // recargar reservas
-      const items = await loadReservasForCamping(camping.id);
-      setReservas(items);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const cancelReserva = async (reserva: Reserva) => {
     if (reserva.estado === "cancelada") {
@@ -1547,11 +1439,12 @@ export default function AdminHomePage() {
     }
   };
 
-  if (loading || profileLoading) return <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>Cargando…</main>;
+  if (loading || profileLoading)
+    return <main className="admin-dashboard-main">Cargando…</main>;
   if (!user) return null;
   if (!profile || !profile.activo) {
     return (
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
+      <main className="admin-dashboard-main">
         <h1 style={{ color: "var(--color-accent)" }}>No autorizado</h1>
         <p style={{ color: "var(--color-text-muted)" }}>
           No tenés permiso para acceder al panel o tu usuario está inactivo.
@@ -1575,28 +1468,19 @@ export default function AdminHomePage() {
   const canExportGlobal = canExportReservationsCsvGlobal(profile.role);
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
+    <main className="admin-dashboard-main">
       <h1>Panel Admin</h1>
       <p>Sesión: {user.email}</p>
 
       <div className="admin-actions">
         {canCreateOrCancel ? (
-          <>
-            <Button
-              variant="primary"
-              onClick={createDemoReserva}
-              disabled={busy || !camping}
-            >
-              {busy ? "Creando..." : "Demo"}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setShowWalkIn(!showWalkIn)}
-              disabled={busy || !camping}
-            >
-              {showWalkIn ? "Ocultar walk-in" : "Walk-in"}
-            </Button>
-          </>
+          <Button
+            variant="secondary"
+            onClick={() => setShowWalkIn(!showWalkIn)}
+            disabled={busy || !camping}
+          >
+            {showWalkIn ? "Ocultar walk-in" : "Walk-in"}
+          </Button>
         ) : null}
         {canExportCsvCamping ? (
           <Button variant="secondary" onClick={exportCsv} disabled={!camping}>
@@ -1614,9 +1498,9 @@ export default function AdminHomePage() {
         ) : null}
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", rowGap: 10 }}>
+      <div className="admin-dashboard-controls-row">
         {showCampingSelector ? (
-          <div style={{ minWidth: 0, flex: "1 1 280px" }}>
+          <div className="admin-dashboard-controls-camping">
             <SelectDropdown
               label="Camping"
               value={selectedCampingId}
@@ -1629,7 +1513,7 @@ export default function AdminHomePage() {
           </div>
         ) : null}
 
-        <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+        <div className="admin-dashboard-controls-range">
           <DateRangePicker
             label="Rango"
             checkInDate={fromDate}
@@ -1642,7 +1526,7 @@ export default function AdminHomePage() {
           />
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="admin-dashboard-range-shortcuts">
           <Button
             variant="ghost"
             onClick={() => setToDate(addDaysYmd(fromDate, 7))}
@@ -1671,6 +1555,7 @@ export default function AdminHomePage() {
       </div>
 
       <div
+        className="admin-dashboard-kpis"
         style={{
           display: "grid",
           gap: 12,
@@ -1687,12 +1572,15 @@ export default function AdminHomePage() {
         <Card title="Pendientes (hold)">
           <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.pendientes}</div>
         </Card>
-        <Card title="Canceladas / Fallidas">
-          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.canceladas + kpis.fallidas}</div>
+        <Card title="Canceladas">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.canceladas}</div>
+        </Card>
+        <Card title="Fallidas">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.fallidas}</div>
         </Card>
       </div>
 
-      <hr style={{ margin: "24px 0" }} />
+      <hr style={{ margin: "20px 0" }} />
 
       {error ? (
         <div
@@ -1762,26 +1650,40 @@ export default function AdminHomePage() {
         <Card title="Camping">
           {camping ? (
             <>
-              <p>
-                <strong>{camping.nombre}</strong> - {camping.areaProtegida} - Capacidad:{" "}
-                {camping.capacidadParcelas} parcelas
-              </p>
-              <p
-                style={{
-                  marginTop: 8,
-                  marginBottom: 0,
-                  fontSize: 13,
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {camping.inventoryMode === "unit_based" ? (
-                  <>
-                    Modo inventario: por unidad · Tipos: {unitTypes.length} · Unidades: {units.length}
-                  </>
-                ) : (
-                  <>Modo inventario: por capacidad</>
-                )}
-              </p>
+              {camping.inventoryMode === "unit_based" ? (
+                <>
+                  <p>
+                    <strong>{camping.nombre}</strong> · {camping.areaProtegida}
+                  </p>
+                  <p
+                    style={{
+                      marginTop: 8,
+                      marginBottom: 0,
+                      fontSize: 13,
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
+                    Inventario por unidad · {unitTypes.length} tipos · {units.length} unidades
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    <strong>{camping.nombre}</strong> - {camping.areaProtegida} - Capacidad:{" "}
+                    {camping.capacidadParcelas} parcelas
+                  </p>
+                  <p
+                    style={{
+                      marginTop: 8,
+                      marginBottom: 0,
+                      fontSize: 13,
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
+                    Modo inventario: por capacidad
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <p>Cargando camping…</p>
@@ -1790,105 +1692,15 @@ export default function AdminHomePage() {
       </div>
 
       {camping?.inventoryMode === "unit_based" && canCreateOrCancel ? (
-        <>
-          <div style={{ marginTop: 16 }}>
-            <Card title="Crear unidad">
-              <div style={{ display: "grid", gap: 12, maxWidth: 480 }}>
-                <label style={{ display: "grid", gap: 4 }}>
-                  Nombre visible
-                  <input
-                    value={unitName}
-                    onChange={(e) => setUnitName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <label style={{ display: "grid", gap: 4 }}>
-                  Número / código
-                  <input
-                    value={unitNumber}
-                    onChange={(e) => setUnitNumber(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <SelectDropdown
-                  label="Tipo de unidad"
-                  value={unitTypeIdToCreate}
-                  options={unitTypeSelectOptionsForUnit}
-                  onChange={setUnitTypeIdToCreate}
-                  placeholder={unitTypes.length ? "Seleccionar…" : "Creá primero un tipo de unidad"}
-                  disabled={busy || unitTypes.length === 0}
-                />
-                <label style={{ display: "grid", gap: 4 }}>
-                  Sector (opcional)
-                  <input
-                    value={unitSector}
-                    onChange={(e) => setUnitSector(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: 10,
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 10,
-                      background: "var(--color-surface)",
-                      color: "var(--color-text)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <Button
-                  variant="primary"
-                  disabled={busy || !camping || unitTypes.length === 0}
-                  onClick={() => void handleCreateUnit()}
-                >
-                  Crear unidad
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </>
+        <p style={{ margin: "12px 0 0 0", fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.45 }}>
+          <Link href="/admin/campings" className="admin-campings-config-link">
+            Gestionar unidades en Campings
+          </Link>
+          <span style={{ marginLeft: 8 }}>· Alta de unidades y tipos</span>
+        </p>
       ) : null}
 
-      {camping?.inventoryMode === "unit_based" ? (
-        <AdminUnitInventoryTable
-          busy={busy}
-          units={units}
-          unitTypes={unitTypes}
-          unitBlocks={unitBlocks}
-          unitAvailability={unitAvailability}
-          fromDate={fromDate}
-          rangeEndDate={rangeEndDate}
-          selectedUnitForBlock={selectedUnitForBlock}
-          blockFromDate={blockFromDate}
-          blockToDate={blockToDate}
-          onSetUnitOperationalStatus={(unitId, status) => void setUnitOperationalStatus(unitId, status)}
-          onSelectUnitForBlock={setSelectedUnitForBlock}
-          onChangeBlockFromDate={setBlockFromDate}
-          onChangeBlockToDate={setBlockToDate}
-          onCreateBlock={() => void handleCreateBlock()}
-          onDeleteBlock={(blockId) => void handleDeleteBlock(blockId)}
-          getUnitStatusBadge={unitStatusBadge}
-          getRangeAvailabilityBadge={rangeAvailabilityBadge}
-          BadgeComponent={Badge}
-          todayYmdValue={todayYmd()}
-        />
-      ) : null}
-
-      <div style={{ marginTop: 16 }}>
+      <div className="admin-dashboard-reservas-section">
         <Card title="Reservas (en rango)">
           {reservasEnRango.length === 0 ? (
             <p>No hay reservas en el rango seleccionado.</p>
@@ -1999,6 +1811,30 @@ export default function AdminHomePage() {
           )}
         </Card>
       </div>
+
+      {camping?.inventoryMode === "unit_based" ? (
+        <AdminUnitInventoryTable
+          busy={busy}
+          units={units}
+          unitTypes={unitTypes}
+          unitBlocks={unitBlocks}
+          unitAvailability={unitAvailability}
+          fromDate={fromDate}
+          rangeEndDate={rangeEndDate}
+          selectedUnitForBlock={selectedUnitForBlock}
+          blockFromDate={blockFromDate}
+          blockToDate={blockToDate}
+          onSetUnitOperationalStatus={(unitId, status) => void setUnitOperationalStatus(unitId, status)}
+          onSelectUnitForBlock={setSelectedUnitForBlock}
+          onChangeBlockFromDate={setBlockFromDate}
+          onChangeBlockToDate={setBlockToDate}
+          onCreateBlock={() => void handleCreateBlock()}
+          onDeleteBlock={(blockId) => void handleDeleteBlock(blockId)}
+          getUnitStatusBadge={unitStatusBadge}
+          getRangeAvailabilityBadge={rangeAvailabilityBadge}
+          BadgeComponent={Badge}
+        />
+      ) : null}
 
       <ReservaDetailModal
         open={detailOpen && !!detailReserva}

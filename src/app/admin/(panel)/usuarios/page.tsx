@@ -7,8 +7,11 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/useAuth";
 import { fetchUserProfile } from "@/lib/userProfile";
 import type { UserProfile } from "@/types/user";
+import type { Camping } from "@/types/camping";
 import { parseUserProfileFromFirestore } from "@/lib/userProfileDocument";
-import { Button, Card } from "@/components/ui";
+import { fetchCampings } from "@/lib/campingsRepo";
+import { Card } from "@/components/ui";
+import type { SelectOption } from "@/components/SelectDropdown";
 import AdminUsersTable from "@/components/admin/AdminUsersTable";
 import AdminUserCreateForm from "@/components/admin/AdminUserCreateForm";
 
@@ -23,14 +26,22 @@ async function fetchAllUsers(): Promise<UserProfile[]> {
   return users;
 }
 
+function parseToggleActivoError(payload: unknown): string {
+  if (!payload || typeof payload !== "object") return "No se pudo actualizar el usuario.";
+  const maybe = (payload as Record<string, unknown>).error;
+  return typeof maybe === "string" && maybe.trim() ? maybe : "No se pudo actualizar el usuario.";
+}
+
 export default function AdminUsuariosPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [campings, setCampings] = useState<Camping[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busyUid, setBusyUid] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/admin/login");
@@ -78,9 +89,75 @@ export default function AdminUsuariosPage() {
     }
   }, [canAccess]);
 
+  const handleToggleActivo = useCallback(
+    async (uid: string, activo: boolean) => {
+      if (!user) return;
+      setError(null);
+      setBusyUid(uid);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(uid)}/activo`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ activo }),
+        });
+        const data: unknown = await res.json().catch(() => null);
+        if (!res.ok) {
+          setError(parseToggleActivoError(data));
+          return;
+        }
+        await loadUsers();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No se pudo actualizar el usuario.");
+      } finally {
+        setBusyUid(null);
+      }
+    },
+    [user, loadUsers]
+  );
+
   useEffect(() => {
     void loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    if (!canAccess) {
+      setCampings([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchCampings();
+        if (!cancelled) setCampings(list);
+      } catch {
+        if (!cancelled) setCampings([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canAccess]);
+
+  const campingOptions: SelectOption[] = useMemo(
+    () =>
+      campings.map((c) => ({
+        value: c.id,
+        label: `${c.nombre} (${c.areaProtegida})`,
+      })),
+    [campings]
+  );
+
+  const campingLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of campings) {
+      m.set(c.id, `${c.nombre} (${c.areaProtegida})`);
+    }
+    return m;
+  }, [campings]);
 
   if (loading || profileLoading) {
     return (
@@ -139,11 +216,17 @@ export default function AdminUsuariosPage() {
         {loadingUsers ? (
           <p style={{ color: "var(--color-text-muted)" }}>Cargando usuarios…</p>
         ) : (
-          <AdminUsersTable users={users} />
+          <AdminUsersTable
+            users={users}
+            campingLabelById={campingLabelById}
+            sessionUid={user.uid}
+            busyUid={busyUid}
+            onToggleActivo={(uid, nextActivo) => void handleToggleActivo(uid, nextActivo)}
+          />
         )}
       </Card>
 
-      <AdminUserCreateForm user={user} onCreated={loadUsers} />
+      <AdminUserCreateForm user={user} campingOptions={campingOptions} onCreated={loadUsers} />
     </main>
   );
 }

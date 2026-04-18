@@ -64,3 +64,29 @@ export function formatYmdToDmy(ymd: string): string {
   const [y, m, d] = ymd.split("-");
   return `${d}/${m}/${y}`;
 }
+
+/**
+ * Fecha y hora en zona horaria Argentina, para exportación o listados (dd/mm/aaaa HH:mm).
+ */
+export function formatMsToArgentineDateTime(ms: number): string {
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: Intl.DateTimeFormatPart["type"]) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  const day = get("day");
+  const month = get("month");
+  const year = get("year");
+  const hour = get("hour");
+  const minute = get("minute");
+  if (!day || !month || !year) return "";
+  return `${day}/${month}/${year} ${hour}:${minute}`;
+}

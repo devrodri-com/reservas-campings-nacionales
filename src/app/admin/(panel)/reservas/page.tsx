@@ -20,7 +20,12 @@ import {
   canOperateReservations,
   isReservationViewerRole,
 } from "@/lib/adminReservationRoleUi";
-import { enumerateNights } from "@/lib/dates";
+import {
+  enumerateNights,
+  formatMsToArgentineDateTime,
+  formatYmdToDmy,
+  todayYmd,
+} from "@/lib/dates";
 import ReservaDetailModal from "@/components/admin/ReservaDetailModal";
 import AdminReservationsFilters, {
   type AdminReservationsFilterValues,
@@ -169,13 +174,39 @@ function origenModalLabel(origen: string): string {
   return origen || "-";
 }
 
-const EMPTY_FILTERS: AdminReservationsFilterValues = {
-  campingId: "",
-  dateFrom: "",
-  dateTo: "",
-  estado: "",
-  origen: "",
-};
+function formatArsAmount(n: number): string {
+  return n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function origenExportLabel(mode: Reserva["createdByMode"] | undefined): string {
+  if (mode === "admin") return "Administración";
+  if (mode === "public") return "Web";
+  return "—";
+}
+
+function unitChangeAdjustmentExportLabel(
+  status: Reserva["unitChangeAdjustmentStatus"] | undefined
+): string {
+  if (status === undefined || status === "none") return "Sin ajuste";
+  if (status === "pending_charge") return "Cobro pendiente";
+  if (status === "pending_refund") return "Devolución pendiente";
+  if (status === "resolved") return "Resuelto";
+  return "—";
+}
+
+function defaultFilterValues(profile: UserProfile | null): AdminReservationsFilterValues {
+  return {
+    campingId:
+      profile?.role === "admin_camping" && profile.campingId ? profile.campingId : "",
+    dateFrom: "",
+    dateTo: "",
+    estado: "",
+    origen: "",
+    momento: "",
+  };
+}
+
+const EMPTY_FILTERS: AdminReservationsFilterValues = defaultFilterValues(null);
 
 export default function AdminReservasPage() {
   const router = useRouter();
@@ -231,6 +262,10 @@ export default function AdminReservasPage() {
     if (profile?.role === "admin_camping" && profile.campingId) {
       setFilterValues((prev) => ({ ...prev, campingId: profile.campingId ?? "" }));
     }
+  }, [profile]);
+
+  const resetFilters = useCallback(() => {
+    setFilterValues(defaultFilterValues(profile));
   }, [profile]);
 
   const reloadAllReservas = useCallback(async () => {
@@ -351,6 +386,21 @@ export default function AdminReservasPage() {
     } else if (filterValues.dateTo.trim()) {
       list = list.filter((r) => r.checkInDate <= filterValues.dateTo);
     }
+
+    const today = todayYmd();
+    if (filterValues.momento === "futuras") {
+      list = list.filter((r) => r.checkInDate >= today);
+    } else if (filterValues.momento === "pasadas") {
+      list = list.filter((r) => r.checkOutDate < today);
+    }
+
+    list = [...list].sort((a, b) => {
+      const byIn = a.checkInDate.localeCompare(b.checkInDate);
+      if (byIn !== 0) return byIn;
+      const byOut = a.checkOutDate.localeCompare(b.checkOutDate);
+      if (byOut !== 0) return byOut;
+      return b.createdAtMs - a.createdAtMs;
+    });
 
     return list;
   }, [allReservas, effectiveCampingFilter, filterValues]);
@@ -500,56 +550,57 @@ export default function AdminReservasPage() {
     setExportBusy(true);
     try {
       const header = [
-        "reservaId",
-        "createdAt",
-        "camping",
-        "titularNombre",
-        "titularEmail",
-        "titularTelefono",
-        "edad",
-        "checkInDate",
-        "checkOutDate",
-        "noches",
-        "unidad",
-        "tipoUnidad",
-        "adultos",
-        "menores",
-        "montoTotalArs",
-        "estado",
-        "origen",
-        "unitChangeAdjustmentStatus",
-        "unitChangeDeltaArs",
+        "Titular",
+        "Correo electrónico",
+        "Teléfono",
+        "Edad",
+        "Camping",
+        "Unidad",
+        "Tipo de unidad",
+        "Ingreso",
+        "Salida",
+        "Noches",
+        "Adultos",
+        "Menores",
+        "Total",
+        "Estado",
+        "Origen",
+        "Ajuste cambio de unidad",
+        "Diferencia ajuste (ARS)",
+        "Creada el",
+        "ID reserva",
       ];
       const rows: string[][] = [header];
       for (const row of tableRows) {
         const r = row.reserva;
         const noches = String(enumerateNights(r.checkInDate, r.checkOutDate).length);
-        const origen = r.createdByMode === "admin" ? "walk-in" : r.createdByMode === "public" ? "web" : "";
+        const delta =
+          typeof r.unitChangeDeltaArs === "number" ? formatArsAmount(r.unitChangeDeltaArs) : "";
         rows.push([
-          r.id,
-          new Date(r.createdAtMs).toISOString(),
-          row.campingNombre,
           r.titularNombre,
           r.titularEmail,
           r.titularTelefono,
           String(r.titularEdad),
-          r.checkInDate,
-          r.checkOutDate,
-          noches,
+          row.campingNombre,
           row.unitLabel,
           row.tipoUnidadLabel,
+          formatYmdToDmy(r.checkInDate),
+          formatYmdToDmy(r.checkOutDate),
+          noches,
           String(r.adultos),
           String(r.menores),
-          String(r.montoTotalArs),
-          r.estado,
-          origen,
-          r.unitChangeAdjustmentStatus ?? "",
-          typeof r.unitChangeDeltaArs === "number" ? String(r.unitChangeDeltaArs) : "",
+          formatArsAmount(r.montoTotalArs),
+          estadoBadgeLabel(r.estado),
+          origenExportLabel(r.createdByMode),
+          unitChangeAdjustmentExportLabel(r.unitChangeAdjustmentStatus),
+          delta,
+          formatMsToArgentineDateTime(r.createdAtMs),
+          r.id,
         ]);
       }
-      const csv = toCsv(rows);
+      const csv = toCsv(rows, { separator: ";" });
       const campingPart = effectiveCampingFilter || "todos";
-      downloadCsv(`reservas-${campingPart}-${Date.now()}.csv`, csv);
+      downloadCsv(`reservas-${campingPart}-${Date.now()}.csv`, csv, { bom: true });
     } finally {
       setExportBusy(false);
     }
@@ -639,6 +690,7 @@ export default function AdminReservasPage() {
         campings={campings}
         values={filterValues}
         onChange={setFilterValues}
+        onResetFilters={resetFilters}
       />
 
       {!dataLoading ? (

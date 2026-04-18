@@ -12,7 +12,7 @@ export type AdminReservationTableRow = {
   tipoUnidadLabel: string;
 };
 
-type BadgeTone = "green" | "yellow" | "red" | "gray" | "blue";
+type BadgeTone = "green" | "yellow" | "red" | "gray" | "blue" | "refund_pending";
 
 function SmallBadge(props: { text: string; tone: BadgeTone; compact?: boolean }) {
   const tones: Record<BadgeTone, { bg: string; border: string; color: string }> = {
@@ -25,6 +25,12 @@ function SmallBadge(props: { text: string; tone: BadgeTone; compact?: boolean })
       color: "var(--color-text)",
     },
     blue: { bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.35)", color: "rgb(30,64,175)" },
+    // Contraste reforzado para estado crítico de devolución pendiente en modo oscuro.
+    refund_pending: {
+      bg: "color-mix(in srgb, rgb(245, 158, 11) 26%, var(--color-surface))",
+      border: "color-mix(in srgb, rgb(245, 158, 11) 52%, var(--color-border))",
+      color: "color-mix(in srgb, rgb(120, 53, 15) 28%, var(--color-text))",
+    },
   };
   const t = tones[props.tone];
   const compact = Boolean(props.compact);
@@ -72,12 +78,8 @@ function unitChangeSecondaryBadge(
   s: Reserva["unitChangeAdjustmentStatus"]
 ): { text: string; tone: BadgeTone } | null {
   if (s === "pending_charge") return { text: "Cobro pendiente", tone: "yellow" };
-  if (s === "pending_refund") return { text: "Devolución pendiente", tone: "yellow" };
+  if (s === "pending_refund") return { text: "Devolución pendiente", tone: "refund_pending" };
   return null;
-}
-
-function shortReservaId(id: string): string {
-  return id.length > 10 ? `${id.slice(0, 8)}…` : id;
 }
 
 /** Un solo contenedor de scroll horizontal (mismo patrón que `Table` en ui.tsx), sin padding lateral que recorte celdas. */
@@ -147,14 +149,13 @@ export default function AdminReservationsTable({
       <table
         style={{
           width: "100%",
-          minWidth: 1040,
+          minWidth: 920,
           borderCollapse: "collapse",
           tableLayout: "auto",
         }}
       >
         <thead>
           <tr>
-            <th style={{ ...thBase, padding: padTight, minWidth: 108 }}>Reserva</th>
             <th style={{ ...thBase, padding: padAir, minWidth: 188 }}>Titular</th>
             <th style={{ ...thBase, padding: padAir, minWidth: 140 }}>Camping</th>
             <th style={{ ...thBase, padding: padAir, minWidth: 140 }}>Unidad</th>
@@ -170,7 +171,7 @@ export default function AdminReservationsTable({
           {rows.length === 0 ? (
             <tr>
               <td
-                colSpan={10}
+                colSpan={9}
                 style={{
                   ...tdBase,
                   padding: 28,
@@ -190,17 +191,6 @@ export default function AdminReservationsTable({
               const adj = unitChangeSecondaryBadge(r.unitChangeAdjustmentStatus);
               return (
                 <tr key={r.id}>
-                  <td style={{ ...tdBase, padding: padTight }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "ui-monospace, monospace" }}>
-                      {shortReservaId(r.id)}
-                    </div>
-                    <div style={{ ...secondaryText, marginTop: 6, fontSize: 11 }}>
-                      {new Date(r.createdAtMs).toLocaleString("es-AR", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </div>
-                  </td>
                   <td style={{ ...tdBase, padding: padAir }}>
                     <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{r.titularNombre}</div>
                     {showTitularContact ? (

@@ -1,10 +1,14 @@
-export function toCsv(rows: string[][]): string {
+export type CsvSeparator = "," | ";";
+
+export function toCsv(rows: string[][], options?: { separator?: CsvSeparator }): string {
+  const separator = options?.separator ?? ",";
   const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-  return rows.map((r) => r.map(escape).join(",")).join("\n");
+  return rows.map((r) => r.map(escape).join(separator)).join("\r\n");
 }
 
-export function downloadCsv(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+export function downloadCsv(filename: string, csv: string, options?: { bom?: boolean }): void {
+  const payload = options?.bom ? `\uFEFF${csv}` : csv;
+  const blob = new Blob([payload], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -16,6 +16,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- sincronizar perfil con sesión Firebase */
@@ -83,6 +84,8 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
 
   return (
     <AdminShell
+      mobileNavOpen={mobileNavOpen}
+      onMobileNavOpenChange={setMobileNavOpen}
       sidebar={
         <AdminSidebar
           showCampingsAndUsuarios={!profileLoading && showCampingsAndUsuarios}
@@ -90,6 +93,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
           theme={theme}
           onToggleTheme={toggleTheme}
           onSignOut={onSignOut}
+          onAfterNavigate={() => setMobileNavOpen(false)}
         />
       }
     >

@@ -12,6 +12,8 @@ export type AdminSidebarProps = {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   onSignOut: () => void;
+  /** Tras navegar (drawer móvil): cerrar menú. */
+  onAfterNavigate?: () => void;
 };
 
 /** Solo longhand en bordes/padding para evitar warnings por mezcla con shorthand en rerenders. */
@@ -45,6 +47,7 @@ export default function AdminSidebar({
   theme,
   onToggleTheme,
   onSignOut,
+  onAfterNavigate,
 }: AdminSidebarProps) {
   const pathname = usePathname() ?? "";
 
@@ -69,12 +72,12 @@ export default function AdminSidebar({
     fontWeight: 500,
   };
 
-  const themeBtn: CSSProperties = {
+  const themeBtnHeader: CSSProperties = {
     margin: 0,
-    marginBottom: 8,
     padding: 0,
-    width: "100%",
+    width: 36,
     height: 36,
+    flexShrink: 0,
     boxSizing: "border-box",
     display: "inline-flex",
     alignItems: "center",
@@ -116,12 +119,11 @@ export default function AdminSidebar({
 
   return (
     <aside
+      id="admin-sidebar-aside"
+      className="admin-sidebar"
       style={{
-        width: 200,
         flexShrink: 0,
         alignSelf: "stretch",
-        minHeight: 0,
-        maxHeight: "100%",
         borderRightWidth: 1,
         borderRightStyle: "solid",
         borderRightColor: "var(--color-border)",
@@ -148,13 +150,34 @@ export default function AdminSidebar({
       >
         <div
           style={{
-            fontWeight: 700,
-            fontSize: 12,
-            letterSpacing: 0.02,
-            color: "var(--color-accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            minWidth: 0,
           }}
         >
-          Panel Admin
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: 0.02,
+              color: "var(--color-accent)",
+              lineHeight: 1.2,
+              minWidth: 0,
+            }}
+          >
+            Panel Admin
+          </div>
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
+            style={themeBtnHeader}
+          >
+            {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
+          </button>
         </div>
         {sessionEmail ? (
           <div
@@ -174,6 +197,8 @@ export default function AdminSidebar({
       </header>
 
       <nav
+        id="admin-sidebar-nav"
+        aria-label="Navegación del panel"
         style={{
           display: "flex",
           flexDirection: "column",
@@ -186,19 +211,19 @@ export default function AdminSidebar({
           paddingBottom: 8,
         }}
       >
-        <Link href="/admin" style={isPanel ? activeStyle : inactiveStyle}>
+        <Link href="/admin" style={isPanel ? activeStyle : inactiveStyle} onClick={onAfterNavigate}>
           Panel
         </Link>
-        <Link href="/admin/reservas" style={isReservas ? activeStyle : inactiveStyle}>
+        <Link href="/admin/reservas" style={isReservas ? activeStyle : inactiveStyle} onClick={onAfterNavigate}>
           Reservas
         </Link>
         {showCampingsAndUsuarios ? (
-          <Link href="/admin/campings" style={isCampings ? activeStyle : inactiveStyle}>
+          <Link href="/admin/campings" style={isCampings ? activeStyle : inactiveStyle} onClick={onAfterNavigate}>
             Campings
           </Link>
         ) : null}
         {showCampingsAndUsuarios ? (
-          <Link href="/admin/usuarios" style={isUsuarios ? activeStyle : inactiveStyle}>
+          <Link href="/admin/usuarios" style={isUsuarios ? activeStyle : inactiveStyle} onClick={onAfterNavigate}>
             Usuarios
           </Link>
         ) : null}
@@ -213,15 +238,6 @@ export default function AdminSidebar({
           paddingTop: 10,
         }}
       >
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
-          aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
-          style={themeBtn}
-        >
-          {theme === "dark" ? <SunIcon title="Modo claro" /> : <MoonIcon title="Modo oscuro" />}
-        </button>
         <button type="button" onClick={onSignOut} style={signOutBtn}>
           Cerrar sesión
         </button>

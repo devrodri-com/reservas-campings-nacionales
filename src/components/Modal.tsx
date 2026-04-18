@@ -8,6 +8,8 @@ type Props = {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** Si se pasa, reemplaza el pie con el botón "Cerrar" por defecto (p. ej. confirmación). */
+  footer?: React.ReactNode;
 };
 
 export default function Modal(props: Props) {
@@ -58,11 +60,13 @@ export default function Modal(props: Props) {
         <Card title={props.title}>
           <div style={{ display: "grid", gap: 12 }}>
             {props.children}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button variant="secondary" onClick={props.onClose}>
-                Cerrar
-              </Button>
-            </div>
+            {props.footer ?? (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button variant="secondary" onClick={props.onClose}>
+                  Cerrar
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
       </div>

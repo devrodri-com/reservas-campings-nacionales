@@ -6,7 +6,9 @@ import type { Camping } from "@/types/camping";
 import type { ReservaEstado, CreatedByMode } from "@/types/reserva";
 import SelectDropdown, { type SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
+
+export type AdminReservationsMomentoFilter = "" | "futuras" | "pasadas";
 
 export type AdminReservationsFilterValues = {
   campingId: string;
@@ -14,6 +16,8 @@ export type AdminReservationsFilterValues = {
   dateTo: string;
   estado: ReservaEstado | "";
   origen: CreatedByMode | "";
+  /** Vacío = todas; futuras/pasadas según check-in / check-out vs hoy. */
+  momento: AdminReservationsMomentoFilter;
 };
 
 type Props = {
@@ -21,6 +25,7 @@ type Props = {
   campings: Camping[];
   values: AdminReservationsFilterValues;
   onChange: (next: AdminReservationsFilterValues) => void;
+  onResetFilters: () => void;
 };
 
 const ESTADO_OPTIONS: SelectOption[] = [
@@ -35,6 +40,12 @@ const ORIGEN_OPTIONS: SelectOption[] = [
   { value: "", label: "Todos" },
   { value: "public", label: "Web" },
   { value: "admin", label: "Walk-in" },
+];
+
+const MOMENTO_OPTIONS: SelectOption[] = [
+  { value: "", label: "Todas" },
+  { value: "futuras", label: "Futuras" },
+  { value: "pasadas", label: "Pasadas" },
 ];
 
 const labelStyle: CSSProperties = {
@@ -58,7 +69,7 @@ const controlStyle: CSSProperties = {
   lineHeight: "22px",
 };
 
-export default function AdminReservationsFilters({ profile, campings, values, onChange }: Props) {
+export default function AdminReservationsFilters({ profile, campings, values, onChange, onResetFilters }: Props) {
   const campingOptions: SelectOption[] = [
     { value: "", label: "Todos los campings" },
     ...campings.map((c) => ({
@@ -72,16 +83,30 @@ export default function AdminReservationsFilters({ profile, campings, values, on
       ? campings.find((c) => c.id === profile.campingId)
       : undefined;
 
+  const filtersPanel: CSSProperties = {
+    marginTop: 4,
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid var(--color-border)",
+    background: "color-mix(in srgb, var(--color-border) 10%, var(--color-surface))",
+  };
+
   const filtersGridDesktop: CSSProperties = {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr)",
     gap: 10,
     alignItems: "end",
-    padding: 12,
-    marginTop: 4,
-    borderRadius: 10,
-    border: "1px solid var(--color-border)",
-    background: "color-mix(in srgb, var(--color-border) 10%, var(--color-surface))",
+  };
+
+  const filtersSecondRow: CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 10,
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTop: "1px solid color-mix(in srgb, var(--color-border) 55%, transparent)",
   };
 
   const cell: CSSProperties = { minWidth: 0, width: "100%" };
@@ -96,6 +121,7 @@ export default function AdminReservationsFilters({ profile, campings, values, on
         }
       `}</style>
       <Card title="Filtros">
+        <div style={filtersPanel}>
         <div className="admin-resv-filters-grid" style={filtersGridDesktop}>
           <div style={cell}>
             {profile.role === "admin_camping" && fixedCamping ? (
@@ -162,6 +188,27 @@ export default function AdminReservationsFilters({ profile, campings, values, on
               size="compact"
             />
           </div>
+        </div>
+
+        <div style={filtersSecondRow}>
+          <div style={{ ...cell, flex: "1 1 220px", maxWidth: 320 }}>
+            <SelectDropdown
+              label="Momento"
+              value={values.momento}
+              options={MOMENTO_OPTIONS}
+              onChange={(v) =>
+                onChange({
+                  ...values,
+                  momento: v === "" ? "" : (v as AdminReservationsMomentoFilter),
+                })
+              }
+              size="compact"
+            />
+          </div>
+          <Button type="button" variant="ghost" onClick={onResetFilters}>
+            Limpiar filtros
+          </Button>
+        </div>
         </div>
       </Card>
     </div>
