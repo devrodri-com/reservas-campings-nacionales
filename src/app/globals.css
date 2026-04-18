@@ -100,20 +100,85 @@ select, input, textarea, button {
 .footer-content {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
+  gap: 20px;
+  align-items: start;
+  padding-top: 8px;
 }
 
 @media (min-width: 768px) {
   .footer-content {
-    grid-template-columns: 2fr 1fr;
-    gap: 24px;
+    grid-template-columns: minmax(0, 2.2fr) minmax(240px, 0.9fr);
+    gap: 28px;
     align-items: start;
   }
+}
 
-  .footer-links {
-    justify-self: end;
-    text-align: right;
+.footer-institutional {
+  min-width: 0;
+}
+
+.footer-institutional-lead {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.footer-institutional-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  max-width: min(42em, 100%);
+}
+
+/* Acceso operativo secundario (columna propia en desktop) */
+.footer-operador {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .footer-operador {
+    padding-left: 22px;
+    padding-top: 4px;
+    border-left: 1px solid var(--color-border);
   }
+}
+.footer-operador-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+}
+.footer-operador-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+.footer-operador-cta {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  box-shadow: none;
+}
+.footer-operador-cta:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
 }
 
 /* Reservar grids */
@@ -305,33 +370,73 @@ select, input, textarea, button {
   margin-top: 4px;
 }
 
-/* Cómo funciona: guía sobria */
-.home-como-funciona .home-step {
+/* Cómo funciona: flujo en 3 pasos, editorial */
+.home-como-lead {
+  margin: 0 0 20px 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  max-width: 42em;
+}
+.home-como-funciona {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+@media (min-width: 900px) {
+  .home-como-funciona {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+.home-como-card {
+  position: relative;
+  box-sizing: border-box;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: rgba(44, 100, 101, 0.03);
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100%;
+  padding: 18px 18px 20px;
+  border-radius: var(--radius);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
+  box-shadow: none;
 }
-.home-como-funciona .home-step-num {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-primary-contrast);
-  font-size: 13px;
+@media (min-width: 900px) {
+  .home-como-card:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 22px;
+    bottom: 22px;
+    right: -12px;
+    width: 1px;
+    background: var(--color-border);
+    opacity: 0.65;
+    pointer-events: none;
+  }
+}
+.home-como-eyebrow {
+  display: block;
+  font-size: 11px;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  letter-spacing: 0.02em;
+  color: var(--color-accent);
+  margin: 0;
 }
-.home-como-funciona .home-step-text {
-  font-size: 14px;
-  line-height: 1.5;
+.home-como-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
   color: var(--color-text);
+}
+.home-como-card-desc {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
 }
 
 /* Nuestros pilares: editorial, no catálogo */

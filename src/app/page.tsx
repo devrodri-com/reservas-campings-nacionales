@@ -9,10 +9,23 @@ import CampingCard from "@/components/CampingCard";
 import FAQ from "@/components/FAQ";
 import { Button } from "@/components/ui";
 
-const COMO_FUNCIONA = [
-  "Elegí tu camping y fechas",
-  "Completá tus datos y realizá el pago online",
-  "Presentá tu reserva en el camping al llegar",
+const COMO_FUNCIONA: { step: number; title: string; description: string }[] = [
+  {
+    step: 1,
+    title: "Elegí tu camping y fechas",
+    description:
+      "Consultá disponibilidad y seleccioná la opción que mejor se adapte a tu viaje.",
+  },
+  {
+    step: 2,
+    title: "Completá tus datos y pagá online",
+    description: "Confirmá la reserva en pocos pasos con el flujo de pago del sitio.",
+  },
+  {
+    step: 3,
+    title: "Presentá tu reserva al llegar",
+    description: "Mostrá tu comprobante en el camping para validar el ingreso.",
+  },
 ];
 
 export default function Home() {
@@ -219,22 +232,17 @@ export default function Home() {
 
         {/* Cómo funciona */}
         <section className="home-section">
-          <h2 style={{ margin: "0 0 16px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "clamp(18px, 2.5vw, 22px)", color: "var(--color-accent)", fontWeight: 700 }}>
             Cómo funciona
           </h2>
-          <div
-            className="home-como-funciona"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 14,
-            }}
-          >
-            {COMO_FUNCIONA.map((texto, i) => (
-              <div key={i} className="home-step">
-                <span className="home-step-num">{i + 1}</span>
-                <span className="home-step-text">{texto}</span>
-              </div>
+          <p className="home-como-lead">Reservá tu lugar en tres pasos simples.</p>
+          <div className="home-como-funciona">
+            {COMO_FUNCIONA.map((item) => (
+              <article key={item.step} className="home-como-card">
+                <span className="home-como-eyebrow">Paso {item.step}</span>
+                <h3 className="home-como-card-title">{item.title}</h3>
+                <p className="home-como-card-desc">{item.description}</p>
+              </article>
             ))}
           </div>
         </section>
