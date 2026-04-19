@@ -65,6 +65,13 @@ export default function CampingDetailPage() {
     contextLocation || displayAddress || hasMapsEmbed || mapsUrl,
   );
 
+  const serviciosLines = (() => {
+    const raw = camping.serviciosTexto?.trim() ?? "";
+    if (!raw) return [];
+    return raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  })();
+  const hasServiciosSection = serviciosLines.length > 0;
+
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
       <img
@@ -185,6 +192,34 @@ export default function CampingDetailPage() {
             </p>
           </div>
         </Card>
+
+        {hasServiciosSection ? (
+          <Card>
+            <div style={{ display: "grid", gap: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--color-accent)" }}>
+                Servicios
+              </h2>
+              {serviciosLines.length > 1 ? (
+                <ul
+                  style={{
+                    margin: 0,
+                    paddingLeft: 20,
+                    color: "var(--color-text)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {serviciosLines.map((line, idx) => (
+                    <li key={idx}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ margin: 0, color: "var(--color-text)", lineHeight: 1.6 }}>
+                  {serviciosLines[0]}
+                </p>
+              )}
+            </div>
+          </Card>
+        ) : null}
 
         {hasLocationSection ? (
           <Card>

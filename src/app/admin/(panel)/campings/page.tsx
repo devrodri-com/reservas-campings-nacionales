@@ -32,6 +32,7 @@ import { adminParseOptionalUint } from "@/lib/adminFormNumbers";
 type EditableFields = Pick<
   Camping,
   | "descripcionCorta"
+  | "serviciosTexto"
   | "igUrl"
   | "webUrl"
   | "coverImageUrl"
@@ -98,6 +99,7 @@ export default function AdminCampingsPage() {
 
   const [form, setForm] = useState<EditableFields>({
     descripcionCorta: "",
+    serviciosTexto: "",
     igUrl: "",
     webUrl: "",
     coverImageUrl: "",
@@ -327,6 +329,7 @@ export default function AdminCampingsPage() {
     if (!selectedCamping) return;
     setForm({
       descripcionCorta: selectedCamping.descripcionCorta ?? "",
+      serviciosTexto: selectedCamping.serviciosTexto ?? "",
       igUrl: selectedCamping.igUrl ?? "",
       webUrl: selectedCamping.webUrl ?? "",
       coverImageUrl: selectedCamping.coverImageUrl ?? "",
@@ -413,6 +416,7 @@ export default function AdminCampingsPage() {
         cancellationRefundPercentAfterThreshold: number;
       } = {
         descripcionCorta: form.descripcionCorta?.trim() || "",
+        serviciosTexto: form.serviciosTexto?.trim() || "",
         igUrl: sanitizeUrl(form.igUrl || ""),
         webUrl: sanitizeUrl(form.webUrl || ""),
         coverImageUrl: sanitizeUrl(form.coverImageUrl || ""),
@@ -473,6 +477,7 @@ export default function AdminCampingsPage() {
         activo: true,
         inventoryMode: "unit_based",
         descripcionCorta: "",
+        serviciosTexto: "",
         igUrl: "",
         webUrl: "",
         coverImageUrl: "",
@@ -1257,6 +1262,7 @@ export default function AdminCampingsPage() {
                     onRevert={() => {
                       setForm({
                         descripcionCorta: selectedCamping.descripcionCorta ?? "",
+                        serviciosTexto: selectedCamping.serviciosTexto ?? "",
                         igUrl: selectedCamping.igUrl ?? "",
                         webUrl: selectedCamping.webUrl ?? "",
                         coverImageUrl: selectedCamping.coverImageUrl ?? "",

@@ -8,6 +8,7 @@ import { adminDigitsOnlyNonNegative } from "@/lib/adminFormNumbers";
 type EditableFields = Pick<
   Camping,
   | "descripcionCorta"
+  | "serviciosTexto"
   | "igUrl"
   | "webUrl"
   | "coverImageUrl"
@@ -169,6 +170,19 @@ export default function AdminCampingDataSection({
             onChange={(e) => setForm((p) => ({ ...p, coverImageUrl: e.target.value }))}
             placeholder="Dejar vacío para usar el placeholder"
             style={coverInput}
+          />
+        </label>
+
+        <label style={field}>
+          <span style={{ fontWeight: 700 }}>Servicios del camping</span>
+          <span className="admin-field-hint" style={{ display: "block" }}>
+            Podés escribir un servicio por línea. Ej.: Baños, Parrillas, Acceso al río, Electricidad.
+          </span>
+          <textarea
+            value={form.serviciosTexto ?? ""}
+            onChange={(e) => setForm((p) => ({ ...p, serviciosTexto: e.target.value }))}
+            rows={5}
+            style={textAreaStyle}
           />
         </label>
       </div>

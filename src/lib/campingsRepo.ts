@@ -22,6 +22,7 @@ export function isCampingDoc(v: unknown): v is CampingDoc {
       o.inventoryMode === "capacity" ||
       o.inventoryMode === "unit_based") &&
     (o.descripcionCorta === undefined || typeof o.descripcionCorta === "string") &&
+    (o.serviciosTexto === undefined || typeof o.serviciosTexto === "string") &&
     (o.igUrl === undefined || typeof o.igUrl === "string") &&
     (o.webUrl === undefined || typeof o.webUrl === "string") &&
     (o.paymentsProvider === undefined || o.paymentsProvider === "mercadopago") &&

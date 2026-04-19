@@ -15,6 +15,8 @@ export type Camping = {
   inventoryMode?: InventoryMode;
   /** Opcional. Descripción breve para página de detalle. */
   descripcionCorta?: string;
+  /** Opcional. Servicios del camping (texto editorial; p. ej. un ítem por línea). */
+  serviciosTexto?: string;
   /** Opcional. URL de Instagram. */
   igUrl?: string;
   /** Opcional. URL del sitio oficial. */
