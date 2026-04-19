@@ -1,8 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { UnitAvailabilityResult } from "@/lib/adminUnitReassignSupport";
 import type { Unit } from "@/types/unit";
 import type { UnitType } from "@/types/unitType";
+
+const AVAILABILITY_LABEL: Record<
+  Extract<UnitAvailabilityResult, { available: false }>["code"],
+  string
+> = {
+  inactive: "Inactiva",
+  operational: "No disponible (estado)",
+  blocked: "Bloqueada",
+  reserved: "Reservada",
+};
+
+function labelForAvailability(a: UnitAvailabilityResult | undefined): string | null {
+  if (!a || a.available) return null;
+  return AVAILABILITY_LABEL[a.code];
+}
+
+function isUnitSelectable(
+  unitId: string,
+  availabilityByUnitId: Record<string, UnitAvailabilityResult> | undefined
+): boolean {
+  if (availabilityByUnitId === undefined) return true;
+  const a = availabilityByUnitId[unitId];
+  return a?.available === true;
+}
 
 type AdminUnitSelectorProps = {
   units: Unit[];
@@ -10,6 +35,8 @@ type AdminUnitSelectorProps = {
   selectedUnitId: string;
   onSelectUnit: (unitId: string) => void;
   disabled?: boolean;
+  /** Si se pasa, las unidades no disponibles en el rango se muestran deshabilitadas (p. ej. alta manual). */
+  availabilityByUnitId?: Record<string, UnitAvailabilityResult>;
 };
 
 type UnitSelectorRow = {
@@ -73,6 +100,7 @@ export default function AdminUnitSelector({
   selectedUnitId,
   onSelectUnit,
   disabled = false,
+  availabilityByUnitId,
 }: AdminUnitSelectorProps) {
   const unitTypesById = useMemo(() => {
     const map = new Map<string, UnitType>();
@@ -97,20 +125,37 @@ export default function AdminUnitSelector({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- alinear claves de acordeón con grupos recibidos */
+    /* eslint-disable react-hooks/set-state-in-effect -- acordeón alineado a grupos y expansión si hay selección */
     setExpandedGroups((prev) => {
       const next: Record<string, boolean> = {};
       for (const group of groups) {
         next[group.typeName] = prev[group.typeName] ?? false;
       }
+      if (selectedUnitId) {
+        const containing = groups.find((g) => g.rows.some((r) => r.id === selectedUnitId));
+        if (containing) {
+          next[containing.typeName] = true;
+        }
+      }
       return next;
     });
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [groups]);
+  }, [groups, selectedUnitId]);
 
   return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <div style={{ fontWeight: 700 }}>Unidad</div>
+    <div style={{ display: "grid", gap: 10 }}>
+      <div>
+        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--color-text)" }}>Elegí una unidad</div>
+        <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 4, lineHeight: 1.45 }}>
+          Agrupadas por tipo. Tocá para expandir y elegir la unidad correspondiente.
+          {availabilityByUnitId ? (
+            <span>
+              {" "}
+              Las que no están libres para las fechas elegidas aparecen deshabilitadas.
+            </span>
+          ) : null}
+        </div>
+      </div>
       {groups.length === 0 ? (
         <div style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
           No hay unidades disponibles para seleccionar.
@@ -118,6 +163,11 @@ export default function AdminUnitSelector({
       ) : (
         groups.map((group) => {
           const expanded = expandedGroups[group.typeName] ?? false;
+          const hasSelectionHere = group.rows.some(
+            (r) =>
+              r.id === selectedUnitId &&
+              isUnitSelectable(r.id, availabilityByUnitId)
+          );
           return (
             <div
               key={group.typeName}
@@ -126,6 +176,9 @@ export default function AdminUnitSelector({
                 borderRadius: 12,
                 overflow: "hidden",
                 background: "var(--color-surface)",
+                boxShadow: expanded
+                  ? "0 1px 0 color-mix(in srgb, var(--color-accent) 25%, transparent)"
+                  : "none",
               }}
             >
               <button
@@ -141,66 +194,178 @@ export default function AdminUnitSelector({
                   textAlign: "left",
                   border: "none",
                   borderBottom: expanded ? "1px solid var(--color-border)" : "none",
-                  background: "transparent",
-                  padding: "10px 12px",
+                  background: expanded
+                    ? "color-mix(in srgb, var(--color-accent) 8%, var(--color-surface))"
+                    : "transparent",
+                  padding: "12px 14px",
                   cursor: "pointer",
-                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
                   color: "var(--color-text)",
                 }}
               >
-                {expanded ? "▼" : "▶"} {group.typeName} ({group.rows.length})
+                <span style={{ fontWeight: 800, fontSize: 14 }}>
+                  <span aria-hidden style={{ marginRight: 8, opacity: 0.75 }}>
+                    {expanded ? "▼" : "▶"}
+                  </span>
+                  {group.typeName}
+                  <span style={{ fontWeight: 600, color: "var(--color-text-muted)", marginLeft: 6 }}>
+                    ({group.rows.length})
+                  </span>
+                </span>
+                {hasSelectionHere ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      color: "var(--color-accent)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    Con selección
+                  </span>
+                ) : null}
               </button>
 
               {expanded ? (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: "var(--color-bg)" }}>
-                        <th style={{ textAlign: "left", padding: "8px 12px" }}>Unidad</th>
-                        <th style={{ textAlign: "left", padding: "8px 12px" }}>Capacidad</th>
-                        <th style={{ textAlign: "left", padding: "8px 12px" }}>Cobro</th>
-                        <th style={{ textAlign: "left", padding: "8px 12px" }}>Precio</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.rows.map((row) => {
-                        const selected = row.id === selectedUnitId;
-                        return (
-                          <tr
-                            key={row.id}
-                            onClick={() => {
-                              if (!disabled) onSelectUnit(row.id);
-                            }}
+                <div
+                  role="listbox"
+                  aria-label={`Unidades tipo ${group.typeName}`}
+                  style={{ padding: "6px 0" }}
+                >
+                  {group.rows.map((row, idx) => {
+                    const rowSelectable = isUnitSelectable(row.id, availabilityByUnitId);
+                    const avail = availabilityByUnitId?.[row.id];
+                    const blockedLabel = labelForAvailability(avail);
+                    const selected = row.id === selectedUnitId && rowSelectable;
+                    const rowDisabled = disabled || !rowSelectable;
+                    return (
+                      <button
+                        key={row.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        aria-disabled={rowDisabled}
+                        disabled={rowDisabled}
+                        onClick={() => {
+                          if (!rowDisabled) onSelectUnit(row.id);
+                        }}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          border: "none",
+                          borderTop:
+                            idx === 0
+                              ? "none"
+                              : "1px solid color-mix(in srgb, var(--color-border) 85%, transparent)",
+                          margin: 0,
+                          padding: "12px 14px",
+                          cursor: rowDisabled ? "not-allowed" : "pointer",
+                          opacity: rowDisabled ? 0.72 : 1,
+                          display: "grid",
+                          gridTemplateColumns: "minmax(0, 1fr) auto",
+                          gap: "10px 12px",
+                          alignItems: "start",
+                          background: selected
+                            ? "color-mix(in srgb, var(--color-accent) 12%, var(--color-surface))"
+                            : !rowSelectable
+                              ? "color-mix(in srgb, var(--color-text-muted) 6%, var(--color-surface))"
+                              : "var(--color-surface)",
+                          boxShadow:
+                            selected && rowSelectable
+                              ? "inset 3px 0 0 var(--color-accent)"
+                              : !rowSelectable
+                                ? "inset 3px 0 0 color-mix(in srgb, var(--color-text-muted) 45%, transparent)"
+                                : "none",
+                          color: "var(--color-text)",
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div
                             style={{
-                              cursor: disabled ? "not-allowed" : "pointer",
-                              background: selected ? "rgba(37,99,235,0.08)" : "transparent",
-                              outline: selected ? "1px solid rgba(37,99,235,0.5)" : "none",
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                              gap: 8,
+                              fontWeight: 800,
+                              fontSize: 14,
+                              lineHeight: 1.3,
                             }}
                           >
-                            <td style={{ padding: "8px 12px", borderTop: "1px solid var(--color-border)" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span>{row.displayName}</span>
-                                {selected ? (
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--color-accent)" }}>
-                                    Seleccionada
-                                  </span>
-                                ) : null}
-                              </div>
-                            </td>
-                            <td style={{ padding: "8px 12px", borderTop: "1px solid var(--color-border)" }}>
-                              {row.capacityMax} personas
-                            </td>
-                            <td style={{ padding: "8px 12px", borderTop: "1px solid var(--color-border)" }}>
-                              {row.pricingLabel}
-                            </td>
-                            <td style={{ padding: "8px 12px", borderTop: "1px solid var(--color-border)" }}>
-                              {row.priceLabel}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            <span>{row.displayName}</span>
+                            {selected ? (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  border: "1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border))",
+                                  background: "color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))",
+                                  color: "var(--color-accent)",
+                                }}
+                              >
+                                Seleccionada
+                              </span>
+                            ) : null}
+                            {!rowSelectable && blockedLabel ? (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  letterSpacing: "0.05em",
+                                  textTransform: "uppercase",
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  border: "1px solid color-mix(in srgb, var(--color-text-muted) 40%, var(--color-border))",
+                                  background: "color-mix(in srgb, var(--color-text-muted) 12%, var(--color-surface))",
+                                  color: "var(--color-text-muted)",
+                                }}
+                              >
+                                {blockedLabel}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div
+                            style={{
+                              marginTop: 6,
+                              fontSize: 12,
+                              color: "var(--color-text-muted)",
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {rowSelectable ? (
+                              <>
+                                <span style={{ fontWeight: 600 }}>{row.pricingLabel}</span>
+                                {" · "}
+                                {row.priceLabel}
+                              </>
+                            ) : (
+                              <span style={{ fontStyle: "italic" }}>No disponible para las fechas elegidas</span>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "var(--color-text-muted)",
+                            textAlign: "right",
+                            whiteSpace: "nowrap",
+                            paddingTop: 2,
+                          }}
+                        >
+                          {rowSelectable ? `Hasta ${row.capacityMax} pers.` : "—"}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

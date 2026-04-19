@@ -53,8 +53,10 @@ import type { UnitChangePreview } from "@/components/admin/AdminReservationUnitC
 import { computeUnitBasedPricePerNight } from "@/lib/computeUnitBasedPricePerNight";
 import {
   unitAvailableForReservaRange,
+  unitAvailabilityForReservaRange,
   computeReservaUnitBasedMontoTotalArs,
   formatWalkInUnitOptionLabel,
+  type UnitAvailabilityResult,
 } from "@/lib/adminUnitReassignSupport";
 import { fetchUnitTypesByCamping } from "@/lib/unitTypesRepo";
 import { fetchUnitsByCamping, updateUnit } from "@/lib/unitsRepo";
@@ -223,7 +225,7 @@ export default function AdminHomePage() {
   const [toDate, setToDate] = useState<string>(addDaysYmd(todayYmd(), 7));
   const [showWalkIn, setShowWalkIn] = useState(false);
 
-  // Walk-in form state
+  // Formulario de reserva manual (estado UI)
   const [walkInCheckIn, setWalkInCheckIn] = useState<string>(addDaysYmd(todayYmd(), 1));
   const [walkInCheckOut, setWalkInCheckOut] = useState<string>(addDaysYmd(todayYmd(), 2));
   const [walkInParcelas, setWalkInParcelas] = useState<number>(1);
@@ -562,7 +564,7 @@ export default function AdminHomePage() {
     return reservas.filter((r) => r.checkInDate < rangeEndDate && r.checkOutDate > fromDate);
   }, [reservas, fromDate, rangeEndDate]);
 
-  // Walk-in options
+  // Opciones del formulario de reserva manual
   const walkInMaxPersonas = useMemo(() => {
     const maxPer = camping?.maxPersonasPorParcela ?? 6;
     return walkInParcelas * maxPer;
@@ -658,6 +660,33 @@ export default function AdminHomePage() {
     camping?.inventoryMode === "unit_based" &&
     walkInUnitId.trim().length > 0 &&
     walkInEstimatedMontoArs === null;
+
+  const walkInUnitAvailabilityById = useMemo((): Record<string, UnitAvailabilityResult> => {
+    const rec: Record<string, UnitAvailabilityResult> = {};
+    if (!camping || camping.inventoryMode !== "unit_based") return rec;
+    for (const u of units) {
+      rec[u.id] = unitAvailabilityForReservaRange(
+        u,
+        reservas,
+        unitBlocks,
+        walkInCheckIn,
+        walkInCheckOut
+      );
+    }
+    return rec;
+  }, [camping, units, reservas, unitBlocks, walkInCheckIn, walkInCheckOut]);
+
+  useEffect(() => {
+    if (!camping || camping.inventoryMode !== "unit_based" || !walkInUnitId.trim()) return;
+    const u = units.find((x) => x.id === walkInUnitId);
+    if (!u) {
+      setWalkInUnitId("");
+      return;
+    }
+    if (!unitAvailabilityForReservaRange(u, reservas, unitBlocks, walkInCheckIn, walkInCheckOut).available) {
+      setWalkInUnitId("");
+    }
+  }, [camping, walkInUnitId, units, reservas, unitBlocks, walkInCheckIn, walkInCheckOut]);
 
   useEffect(() => {
     if (!camping || camping.inventoryMode !== "unit_based") return;
@@ -840,6 +869,7 @@ export default function AdminHomePage() {
   const nowMs = Date.now();
 
   const kpis = useMemo(() => {
+    const today = todayYmd();
     const total = reservasEnRango.length;
     const pagadas = reservasEnRango.filter((r) => r.estado === "pagada").length;
     const pendientes = reservasEnRango.filter(
@@ -847,8 +877,15 @@ export default function AdminHomePage() {
     ).length;
     const canceladas = reservasEnRango.filter((r) => r.estado === "cancelada").length;
     const fallidas = reservasEnRango.filter((r) => r.estado === "fallida").length;
-    return { total, pagadas, pendientes, canceladas, fallidas };
-  }, [reservasEnRango, nowMs]);
+    const enCurso = reservas.filter(
+      (r) =>
+        r.checkInDate <= today &&
+        r.checkOutDate > today &&
+        r.estado !== "cancelada" &&
+        r.estado !== "fallida"
+    ).length;
+    return { total, pagadas, pendientes, canceladas, fallidas, enCurso };
+  }, [reservasEnRango, reservas, nowMs]);
 
   const cancelReserva = async (reserva: Reserva) => {
     if (reserva.estado === "cancelada") {
@@ -1422,12 +1459,29 @@ export default function AdminHomePage() {
             onClick={() => setShowWalkIn(!showWalkIn)}
             disabled={busy || !camping}
           >
-            {showWalkIn ? "Ocultar walk-in" : "Walk-in"}
+            {showWalkIn ? (
+              <>
+                <span className="admin-actions__btn-text admin-actions__btn-text--long">
+                  Ocultar nueva reserva manual
+                </span>
+                <span className="admin-actions__btn-text admin-actions__btn-text--short">Ocultar</span>
+              </>
+            ) : (
+              <>
+                <span className="admin-actions__btn-text admin-actions__btn-text--long">
+                  Nueva reserva manual
+                </span>
+                <span className="admin-actions__btn-text admin-actions__btn-text--short">Nueva reserva</span>
+              </>
+            )}
           </Button>
         ) : null}
         {canExportCsvCamping ? (
           <Button variant="secondary" onClick={exportCsv} disabled={!camping}>
-            Exportar reservas del camping
+            <span className="admin-actions__btn-text admin-actions__btn-text--long">
+              Exportar reservas del camping
+            </span>
+            <span className="admin-actions__btn-text admin-actions__btn-text--short">Exportar camping</span>
           </Button>
         ) : null}
         {canExportGlobal ? (
@@ -1436,7 +1490,10 @@ export default function AdminHomePage() {
             onClick={exportCsvGlobal}
             disabled={busy || campings.length === 0}
           >
-            Exportar reservas global
+            <span className="admin-actions__btn-text admin-actions__btn-text--long">
+              Exportar reservas global
+            </span>
+            <span className="admin-actions__btn-text admin-actions__btn-text--short">Exportar global</span>
           </Button>
         ) : null}
       </div>
@@ -1497,22 +1554,17 @@ export default function AdminHomePage() {
         </div>
       </div>
 
-      <div
-        className="admin-dashboard-kpis"
-        style={{
-          display: "grid",
-          gap: 12,
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          marginTop: 12,
-        }}
-      >
+      <div className="admin-dashboard-kpis">
         <Card title="Reservas (rango)">
           <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.total}</div>
+        </Card>
+        <Card title="En curso">
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.enCurso}</div>
         </Card>
         <Card title="Pagadas">
           <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.pagadas}</div>
         </Card>
-        <Card title="Pendientes (hold)">
+        <Card title="Pendientes">
           <div style={{ fontSize: 28, fontWeight: 900 }}>{kpis.pendientes}</div>
         </Card>
         <Card title="Canceladas">
@@ -1582,6 +1634,7 @@ export default function AdminHomePage() {
           walkInNochesCount={walkInNochesCount}
           walkInEstimatedMontoArs={walkInEstimatedMontoArs ?? 0}
           units={units}
+          walkInUnitAvailabilityById={walkInUnitAvailabilityById}
           onSubmitWalkIn={createWalkInReserva}
         />
       ) : null}

@@ -897,6 +897,14 @@ select, input, textarea, button {
   gap: 8px;
 }
 
+/* KPIs del panel: 3×2 en desktop, 2 columnas en tablet, 1 en móvil */
+.admin-dashboard-kpis {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 900px) {
   .admin-dashboard-main {
     padding: 16px 12px;
@@ -928,27 +936,85 @@ select, input, textarea, button {
   }
 }
 
+@media (max-width: 520px) {
+  .admin-dashboard-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Admin dashboard · inventario por unidad (tabla colapsable) */
 .admin-inventory-details {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
+  border-radius: 10px;
   overflow: hidden;
   background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .admin-inventory-details__summary {
   cursor: pointer;
   list-style: none;
-  padding: 10px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 14px 12px;
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text);
-  background: color-mix(in srgb, var(--color-border) 5%, var(--color-surface));
-  line-height: 1.4;
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  line-height: 1.35;
+  box-shadow: inset 3px 0 0 var(--color-accent);
 }
 
 .admin-inventory-details__summary::-webkit-details-marker {
   display: none;
+}
+
+.admin-inventory-details__summary::marker {
+  display: none;
+}
+
+.admin-inventory-details__summary-chevron {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.admin-inventory-details[open] .admin-inventory-details__summary-chevron {
+  transform: rotate(90deg);
+}
+
+.admin-inventory-details__summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-inventory-details__summary-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-accent);
+  letter-spacing: -0.01em;
+}
+
+.admin-inventory-details__summary-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 .admin-inventory-details[open] .admin-inventory-details__summary {
@@ -1283,30 +1349,53 @@ select.admin-native-select:disabled {
   cursor: not-allowed;
 }
 
-/* Admin actions responsive */
+/* Admin actions: columna completa en móvil; desktop en fila con labels largos */
 .admin-actions {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
 }
 
 @media (min-width: 900px) {
   .admin-actions {
-    display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
     gap: 12px;
+    align-items: center;
   }
 }
 
 .admin-actions button {
   width: 100%;
   justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 @media (min-width: 900px) {
   .admin-actions button {
     width: auto;
+  }
+}
+
+/* Labels cortos en móvil / largos en desktop (panel admin) */
+.admin-actions__btn-text--long {
+  display: none;
+}
+
+.admin-actions__btn-text--short {
+  display: inline;
+}
+
+@media (min-width: 900px) {
+  .admin-actions__btn-text--long {
+    display: inline;
+  }
+
+  .admin-actions__btn-text--short {
+    display: none;
   }
 }
 

@@ -1,8 +1,11 @@
 "use client";
 
+import type { CSSProperties, ReactNode } from "react";
 import type { Camping } from "@/types/camping";
+import type { UnitAvailabilityResult } from "@/lib/adminUnitReassignSupport";
 import type { Unit } from "@/types/unit";
 import type { UnitType } from "@/types/unitType";
+import { formatYmdToDmy } from "@/lib/dates";
 import { Button, Card } from "@/components/ui";
 import AdminUnitSelector from "@/components/admin/AdminUnitSelector";
 import PhoneFieldSimple from "@/components/PhoneFieldSimple";
@@ -47,15 +50,81 @@ export type AdminWalkInCardProps = {
   walkInNochesCount: number;
   walkInEstimatedMontoArs: number;
   units: Unit[];
+  /** Por unidad, coherente con el rango elegido (vacío si no aplica). */
+  walkInUnitAvailabilityById: Record<string, UnitAvailabilityResult>;
   onSubmitWalkIn: () => void | Promise<void>;
 };
 
+const summaryLabel: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "var(--color-text-muted)",
+};
+
+const summaryValue: CSSProperties = {
+  fontSize: 14,
+  color: "var(--color-text)",
+  fontWeight: 600,
+  lineHeight: 1.4,
+};
+
+function SummaryRow(props: {
+  label: string;
+  children: ReactNode;
+  valueStyle?: CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 4,
+        padding: "10px 0",
+        borderBottom: "1px solid color-mix(in srgb, var(--color-border) 70%, transparent)",
+      }}
+    >
+      <div style={summaryLabel}>{props.label}</div>
+      <div style={{ ...summaryValue, ...props.valueStyle }}>{props.children}</div>
+    </div>
+  );
+}
+
 export default function AdminWalkInCard(props: AdminWalkInCardProps) {
   const { camping } = props;
+  const selectedUnitName =
+    camping.inventoryMode === "unit_based"
+      ? props.units.find((u) => u.id === props.walkInUnitId)?.displayName ?? null
+      : null;
 
   return (
     <div style={{ marginTop: 16 }}>
-      <Card title="Crear reserva manual (walk-in)">
+      <Card>
+        <header style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid var(--color-border)" }}>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 18,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              color: "var(--color-accent)",
+            }}
+          >
+            Crear reserva manual
+          </h2>
+          <p
+            style={{
+              margin: "8px 0 0 0",
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: "var(--color-text-muted)",
+              maxWidth: 520,
+            }}
+          >
+            Usá este bloque para cargar reservas tomadas por mostrador, teléfono o atención directa.
+          </p>
+        </header>
+
         <div style={{ display: "grid", gap: 12 }}>
           <div className="reservar-grid-top">
             <div style={{ minWidth: 0 }}>
@@ -80,6 +149,7 @@ export default function AdminWalkInCard(props: AdminWalkInCardProps) {
                     selectedUnitId={props.walkInUnitId}
                     onSelectUnit={props.onWalkInUnitIdChange}
                     disabled={props.busy}
+                    availabilityByUnitId={props.walkInUnitAvailabilityById}
                   />
                 </div>
                 <SelectDropdown
@@ -124,49 +194,90 @@ export default function AdminWalkInCard(props: AdminWalkInCardProps) {
             )}
           </div>
 
-          <div
+          <section
+            aria-label="Resumen de la reserva manual"
             style={{
-              border: "1px solid var(--color-border)",
+              border: "1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border))",
               borderRadius: 12,
-              padding: 12,
-              background: "var(--color-bg)",
+              padding: "14px 16px",
+              background:
+                "color-mix(in srgb, var(--color-accent) 5%, var(--color-surface))",
               display: "grid",
-              gap: 6,
+              gap: 0,
             }}
           >
-            <div style={{ fontWeight: 800, color: "var(--color-accent)" }}>Resumen walk-in</div>
-            <div>
-              <strong>Camping:</strong> {camping.nombre}
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: "var(--color-accent)",
+                marginBottom: 4,
+              }}
+            >
+              Resumen
             </div>
-            <div>
-              <strong>Fechas:</strong> {props.walkInCheckIn} → {props.walkInCheckOut}
-            </div>
-            <div>
-              <strong>Noches:</strong> {props.walkInNochesCount}
-            </div>
+            <SummaryRow label="Camping">{camping.nombre}</SummaryRow>
+            <SummaryRow label="Estadía">
+              <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                {formatYmdToDmy(props.walkInCheckIn)}
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 600, margin: "0 6px" }}>
+                  →
+                </span>
+                {formatYmdToDmy(props.walkInCheckOut)}
+              </span>
+            </SummaryRow>
+            <SummaryRow label="Noches">
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>{props.walkInNochesCount}</span>
+            </SummaryRow>
             {camping.inventoryMode === "unit_based" ? (
-              <div>
-                <strong>Unidad:</strong>{" "}
-                {props.units.find((u) => u.id === props.walkInUnitId)?.displayName ?? "—"}
-              </div>
+              <SummaryRow
+                label="Unidad seleccionada"
+                valueStyle={{
+                  fontWeight: 800,
+                  fontSize: 15,
+                  color: selectedUnitName ? "var(--color-text)" : "var(--color-text-muted)",
+                }}
+              >
+                {selectedUnitName ?? "Elegí una unidad arriba"}
+              </SummaryRow>
             ) : (
-              <div>
-                <strong>Parcelas:</strong> {props.walkInParcelas}
-              </div>
+              <SummaryRow label="Parcelas">{props.walkInParcelas}</SummaryRow>
             )}
-            <div>
-              <strong>Personas:</strong> {props.walkInAdultos} adultos / {props.walkInMenores}{" "}
-              menores
+            <SummaryRow label="Personas">
+              {props.walkInAdultos} adultos · {props.walkInMenores} menores
+            </SummaryRow>
+            <div style={{ paddingTop: 12, borderTop: "1px solid var(--color-border)", marginTop: 4 }}>
+              <div style={summaryLabel}>Total estimado</div>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 22,
+                  fontWeight: 800,
+                  fontVariantNumeric: "tabular-nums",
+                  color: "var(--color-accent)",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                ${props.walkInEstimatedMontoArs.toLocaleString("es-AR")}{" "}
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--color-text-muted)" }}>
+                  ARS
+                </span>
+              </div>
             </div>
-            <div>
-              <strong>Total estimado:</strong> ${props.walkInEstimatedMontoArs.toLocaleString("es-AR")}{" "}
-              ARS
-            </div>
-          </div>
+          </section>
 
-          <hr />
-
-          <h2 style={{ margin: "12px 0 0 0", color: "var(--color-accent)" }}>Datos de contacto</h2>
+          <h2
+            style={{
+              margin: "4px 0 0 0",
+              fontSize: 15,
+              fontWeight: 800,
+              color: "var(--color-accent)",
+            }}
+          >
+            Datos de contacto
+          </h2>
 
           <div className="reservar-grid-60-40">
             <label>
@@ -234,7 +345,7 @@ export default function AdminWalkInCard(props: AdminWalkInCardProps) {
             onClick={() => void props.onSubmitWalkIn()}
             disabled={props.busy || !props.canCreateOrCancel}
           >
-            {props.busy ? "Creando..." : "Crear reserva walk-in"}
+            {props.busy ? "Creando..." : "Crear reserva manual"}
           </Button>
         </div>
       </Card>

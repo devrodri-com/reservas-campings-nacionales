@@ -354,9 +354,17 @@ export default function AdminReservasPage() {
 
     const today = todayYmd();
     if (filterValues.momento === "futuras") {
-      list = list.filter((r) => r.checkInDate >= today);
+      list = list.filter((r) => r.checkInDate > today);
+    } else if (filterValues.momento === "en_curso") {
+      list = list.filter(
+        (r) =>
+          r.checkInDate <= today &&
+          r.checkOutDate > today &&
+          r.estado !== "cancelada" &&
+          r.estado !== "fallida"
+      );
     } else if (filterValues.momento === "pasadas") {
-      list = list.filter((r) => r.checkOutDate < today);
+      list = list.filter((r) => r.checkOutDate <= today);
     }
 
     list = [...list].sort((a, b) => {

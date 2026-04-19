@@ -5,21 +5,32 @@ import type { Unit } from "@/types/unit";
 import type { UnitBlock } from "@/types/unitBlock";
 import type { UnitType } from "@/types/unitType";
 
-export function unitAvailableForReservaRange(
+/** Motivo por el que una unidad no puede usarse en un rango (misma lógica que `unitAvailableForReservaRange`). */
+export type UnitUnavailableCode = "inactive" | "operational" | "blocked" | "reserved";
+
+export type UnitAvailabilityResult =
+  | { available: true }
+  | { available: false; code: UnitUnavailableCode };
+
+/**
+ * Evalúa disponibilidad de una unidad en un rango de fechas (reservas + bloqueos + estado).
+ * Base única para UI y validaciones posteriores.
+ */
+export function unitAvailabilityForReservaRange(
   unit: Unit,
   reservas: Reserva[],
   unitBlocks: UnitBlock[],
   checkInDate: string,
   checkOutDate: string,
   ignoreReservaId?: string
-): boolean {
-  if (!unit.active) return false;
-  if (unit.operationalStatus !== "available") return false;
+): UnitAvailabilityResult {
+  if (!unit.active) return { available: false, code: "inactive" };
+  if (unit.operationalStatus !== "available") return { available: false, code: "operational" };
 
   const blockedInRange = unitBlocks.some(
     (b) => b.unitId === unit.id && b.fromDate < checkOutDate && b.toDate > checkInDate
   );
-  if (blockedInRange) return false;
+  if (blockedInRange) return { available: false, code: "blocked" };
 
   const nowMs = Date.now();
   const otherReservaBlocks = reservas.some(
@@ -33,9 +44,27 @@ export function unitAvailableForReservaRange(
       r.checkInDate < checkOutDate &&
       r.checkOutDate > checkInDate
   );
-  if (otherReservaBlocks) return false;
+  if (otherReservaBlocks) return { available: false, code: "reserved" };
 
-  return true;
+  return { available: true };
+}
+
+export function unitAvailableForReservaRange(
+  unit: Unit,
+  reservas: Reserva[],
+  unitBlocks: UnitBlock[],
+  checkInDate: string,
+  checkOutDate: string,
+  ignoreReservaId?: string
+): boolean {
+  return unitAvailabilityForReservaRange(
+    unit,
+    reservas,
+    unitBlocks,
+    checkInDate,
+    checkOutDate,
+    ignoreReservaId
+  ).available;
 }
 
 export function computeReservaUnitBasedMontoTotalArs(

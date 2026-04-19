@@ -8,7 +8,7 @@ import SelectDropdown, { type SelectOption } from "@/components/SelectDropdown";
 import DateRangePicker from "@/components/DateRangePicker";
 import { Button, Card } from "@/components/ui";
 
-export type AdminReservationsMomentoFilter = "" | "futuras" | "pasadas";
+export type AdminReservationsMomentoFilter = "" | "futuras" | "en_curso" | "pasadas";
 
 export type AdminReservationsFilterValues = {
   campingId: string;
@@ -16,7 +16,7 @@ export type AdminReservationsFilterValues = {
   dateTo: string;
   estado: ReservaEstado | "";
   origen: CreatedByMode | "";
-  /** Vacío = todas; futuras/pasadas según check-in / check-out vs hoy. */
+  /** Vacío = todas; futuras / en curso / pasadas según ingreso y salida vs hoy. */
   momento: AdminReservationsMomentoFilter;
 };
 
@@ -45,6 +45,7 @@ const ORIGEN_OPTIONS: SelectOption[] = [
 const MOMENTO_OPTIONS: SelectOption[] = [
   { value: "", label: "Todas" },
   { value: "futuras", label: "Futuras" },
+  { value: "en_curso", label: "En curso" },
   { value: "pasadas", label: "Pasadas" },
 ];
 

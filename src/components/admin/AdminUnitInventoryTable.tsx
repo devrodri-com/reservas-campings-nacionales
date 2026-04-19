@@ -105,7 +105,17 @@ export default function AdminUnitInventoryTable(props: AdminUnitInventoryTablePr
 
               <details className="admin-inventory-details">
                 <summary className="admin-inventory-details__summary">
-                  Ver tabla por unidad, estados y acción <strong>Bloquear rango</strong>
+                  <span className="admin-inventory-details__summary-chevron" aria-hidden>
+                    ▸
+                  </span>
+                  <span className="admin-inventory-details__summary-text">
+                    <span className="admin-inventory-details__summary-title">
+                      Ver inventario detallado
+                    </span>
+                    <span className="admin-inventory-details__summary-hint">
+                      Estados, disponibilidad y bloqueo por rango
+                    </span>
+                  </span>
                 </summary>
                 <div className="admin-inventory-details__body">
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
