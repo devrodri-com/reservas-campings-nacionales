@@ -6,6 +6,10 @@ const ITEMS: FAQItem[] = [
     a: "Seleccionás el camping, elegís fechas y cantidad de parcelas, completás tus datos y realizás el pago online.",
   },
   {
+    q: "¿Cómo sé qué servicios tiene cada camping?",
+    a: "En la ficha de cada camping podés consultar la información general, servicios disponibles, ubicación y condiciones de reserva.",
+  },
+  {
     q: "¿Cuánto tiempo tengo para completar el pago?",
     a: "El sistema mantiene un hold temporal de 15 minutos. Si el pago no se completa en ese plazo, la disponibilidad se libera automáticamente.",
   },
@@ -19,7 +23,7 @@ const ITEMS: FAQItem[] = [
   },
   {
     q: "¿Qué pasa si no puedo asistir?",
-    a: "Las políticas de cancelación dependen de cada camping. La plataforma permite gestionar cancelaciones y reintegros según reglas definidas por Parques Nacionales. ",
+    a: "Las políticas de cancelación dependen de cada camping. Podés gestionar cancelaciones y reintegros según las reglas vigentes. ",
   },
 ];
 
