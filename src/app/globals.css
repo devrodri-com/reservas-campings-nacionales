@@ -11,6 +11,10 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
   --radius: 12px;
+  /* Badge informativo azul (p. ej. origen Manual en tablas admin): mismo aspecto que antes en modo claro. */
+  --admin-badge-blue-bg: rgba(59, 130, 246, 0.12);
+  --admin-badge-blue-border: rgba(59, 130, 246, 0.35);
+  --admin-badge-blue-fg: rgb(30, 64, 175);
 }
 
 html[data-theme="dark"] {
@@ -22,6 +26,10 @@ html[data-theme="dark"] {
   --color-text: #e0e0e0;
   --color-text-muted: #9e9e9e;
   --color-border: #333333;
+  /* Manual / origen admin: más lectura sin competir con estados críticos */
+  --admin-badge-blue-bg: color-mix(in srgb, rgb(59, 130, 246) 26%, var(--color-surface));
+  --admin-badge-blue-border: color-mix(in srgb, rgb(96, 165, 250) 55%, var(--color-border));
+  --admin-badge-blue-fg: rgb(186, 230, 253);
 }
 
 html, body {

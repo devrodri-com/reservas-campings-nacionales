@@ -24,7 +24,11 @@ function SmallBadge(props: { text: string; tone: BadgeTone; compact?: boolean })
       border: "color-mix(in srgb, var(--color-text-muted) 45%, var(--color-border))",
       color: "var(--color-text)",
     },
-    blue: { bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.35)", color: "rgb(30,64,175)" },
+    blue: {
+      bg: "var(--admin-badge-blue-bg)",
+      border: "var(--admin-badge-blue-border)",
+      color: "var(--admin-badge-blue-fg)",
+    },
     // Contraste reforzado para estado crítico de devolución pendiente en modo oscuro.
     refund_pending: {
       bg: "color-mix(in srgb, rgb(245, 158, 11) 26%, var(--color-surface))",
@@ -69,7 +73,7 @@ function estadoBadge(estado: string): { text: string; tone: BadgeTone } {
 }
 
 function origenLabel(mode: string | undefined): { text: string; tone: BadgeTone } {
-  if (mode === "admin") return { text: "Walk-in", tone: "blue" };
+  if (mode === "admin") return { text: "Manual", tone: "blue" };
   if (mode === "public") return { text: "Web", tone: "gray" };
   return { text: mode || "—", tone: "gray" };
 }

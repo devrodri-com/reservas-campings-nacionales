@@ -39,7 +39,7 @@ const ESTADO_OPTIONS: SelectOption[] = [
 const ORIGEN_OPTIONS: SelectOption[] = [
   { value: "", label: "Todos" },
   { value: "public", label: "Web" },
-  { value: "admin", label: "Walk-in" },
+  { value: "admin", label: "Reserva manual" },
 ];
 
 const MOMENTO_OPTIONS: SelectOption[] = [
