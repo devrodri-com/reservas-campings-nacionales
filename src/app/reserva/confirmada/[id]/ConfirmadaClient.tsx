@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Reserva, ReservaEstado, CreatedByMode, RefundStatus } from "@/types/reserva";
 import type { Camping } from "@/types/camping";
+import type { Unit } from "@/types/unit";
 import { formatArs } from "@/lib/money";
 import { formatYmdToDmy } from "@/lib/dates";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -64,8 +65,36 @@ function isReservaDoc(v: unknown): v is ReservaDoc {
     (o.refundDeltaArs === undefined || typeof o.refundDeltaArs === "number") &&
     (o.refundStatus === undefined || isRefundStatus(o.refundStatus)) &&
     (o.cancelledAtMs === undefined || typeof o.cancelledAtMs === "number") &&
-    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string")
+    (o.cancelledByUid === undefined || typeof o.cancelledByUid === "string") &&
+    (o.unitId === undefined || typeof o.unitId === "string") &&
+    (o.unitTypeId === undefined || typeof o.unitTypeId === "string")
   );
+}
+
+type UnitDoc = Omit<Unit, "id">;
+
+function isUnitOperationalStatus(v: unknown): v is Unit["operationalStatus"] {
+  return v === "available" || v === "blocked" || v === "maintenance";
+}
+
+function isUnitDocData(v: unknown): v is UnitDoc {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.campingId === "string" &&
+    typeof o.unitTypeId === "string" &&
+    typeof o.number === "string" &&
+    typeof o.displayName === "string" &&
+    typeof o.active === "boolean" &&
+    isUnitOperationalStatus(o.operationalStatus) &&
+    typeof o.createdAtMs === "number"
+  );
+}
+
+function isUnitTypeLabelData(v: unknown): v is { name: string; capacityMax: number } {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.name === "string" && typeof o.capacityMax === "number";
 }
 
 type CampingDoc = Omit<Camping, "id">;
@@ -107,11 +136,13 @@ export default function ConfirmadaClient() {
   const [error, setError] = useState<string | null>(null);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [unitInfo, setUnitInfo] = useState<{ unidad: string; tipo?: string } | null>(null);
   const markedPaidRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
       setError(null);
+      setUnitInfo(null);
       const snap = await getDoc(doc(db, "reservas", reservaId));
       if (!snap.exists()) {
         setError("Reserva no encontrada.");
@@ -128,7 +159,31 @@ export default function ConfirmadaClient() {
       if (campSnap.exists()) {
         const campData = campSnap.data();
         if (isCampingDoc(campData)) {
-          setCamping({ id: campSnap.id, ...campData });
+          const campingResolved = { id: campSnap.id, ...campData };
+          setCamping(campingResolved);
+
+          if (
+            campingResolved.inventoryMode === "unit_based" &&
+            typeof data.unitId === "string" &&
+            data.unitId.length > 0
+          ) {
+            const unitSnap = await getDoc(doc(db, "units", data.unitId));
+            if (unitSnap.exists()) {
+              const rawUnit = unitSnap.data();
+              if (isUnitDocData(rawUnit)) {
+                const unitRow = { id: unitSnap.id, ...rawUnit };
+                let tipo: string | undefined;
+                const typeSnap = await getDoc(doc(db, "unitTypes", unitRow.unitTypeId));
+                if (typeSnap.exists()) {
+                  const rawT = typeSnap.data();
+                  if (isUnitTypeLabelData(rawT)) {
+                    tipo = `${rawT.name} (${rawT.capacityMax} pers. máx.)`;
+                  }
+                }
+                setUnitInfo({ unidad: unitRow.displayName, tipo });
+              }
+            }
+          }
         }
       }
     } catch (e) {
@@ -172,7 +227,10 @@ export default function ConfirmadaClient() {
 
   return (
     <main className="confirmada-main" style={{ padding: 24, maxWidth: 720 }}>
-      <h1>Reserva confirmada</h1>
+      <header className="confirmada-print-header">
+        <h1>Reserva confirmada</h1>
+        <p className="confirmada-print-tagline">Comprobante de reserva</p>
+      </header>
 
       {error ? <p style={{ color: "red" }}>{error}</p> : null}
 
@@ -181,7 +239,8 @@ export default function ConfirmadaClient() {
       ) : (
         <Card>
           <p>
-            <strong>ID:</strong> {reserva.id}
+            <strong>ID de reserva:</strong>{" "}
+            <span style={{ fontFamily: "monospace", fontSize: "1.05em" }}>{reserva.id}</span>
           </p>
           <p>
             <strong>Camping:</strong> {camping ? `${camping.nombre} - ${camping.areaProtegida}` : reserva.campingId}
@@ -189,9 +248,23 @@ export default function ConfirmadaClient() {
           <p>
             <strong>Fechas:</strong> {formatYmdToDmy(reserva.checkInDate)} → {formatYmdToDmy(reserva.checkOutDate)}
           </p>
-          <p>
-            <strong>Parcelas:</strong> {reserva.parcelas}
-          </p>
+          {camping?.inventoryMode === "unit_based" ? (
+            <>
+              <p>
+                <strong>Unidad:</strong>{" "}
+                {unitInfo?.unidad ?? (reserva.unitId ? reserva.unitId : "—")}
+              </p>
+              {unitInfo?.tipo ? (
+                <p>
+                  <strong>Tipo:</strong> {unitInfo.tipo}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p>
+              <strong>Parcelas:</strong> {reserva.parcelas}
+            </p>
+          )}
           <p>
             <strong>Personas:</strong> {reserva.adultos} adultos / {reserva.menores} menores
           </p>
@@ -203,7 +276,7 @@ export default function ConfirmadaClient() {
           </p>
 
           {reserva.estado === "pendiente_pago" ? (
-            <div style={{ marginTop: 16 }}>
+            <div className="confirmada-no-print" style={{ marginTop: 16 }}>
               {typeof reserva.expiresAtMs === "number" && reserva.expiresAtMs <= Date.now() ? (
                 <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
                   La reserva expiró. El hold de 15 minutos ya venció.
@@ -245,12 +318,15 @@ export default function ConfirmadaClient() {
             </div>
           ) : null}
 
-          <div style={{ marginTop: 16, padding: 16, border: "1px dashed var(--color-border)" }}>
-            <p style={{ margin: 0 }}><strong>Código de reserva (demo):</strong></p>
-            <p style={{ margin: 0, fontFamily: "monospace", fontSize: 18 }}>{reserva.id}</p>
-          </div>
+          {reserva.estado === "pagada" ? (
+            <div className="confirmada-no-print" style={{ marginTop: 16 }}>
+              <Button variant="secondary" type="button" onClick={() => window.print()}>
+                Imprimir comprobante
+              </Button>
+            </div>
+          ) : null}
 
-          <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+          <div className="confirmada-no-print" style={{ marginTop: 16, display: "flex", gap: 12 }}>
             <Button variant="secondary" onClick={() => router.push("/consultar")}>
               Consultar reserva
             </Button>

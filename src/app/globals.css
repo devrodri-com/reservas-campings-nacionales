@@ -1666,6 +1666,79 @@ select.admin-native-select:disabled {
   }
 }
 
+/* Comprobante: línea secundaria solo al imprimir (pantalla sin cambios de jerarquía) */
+.confirmada-print-tagline {
+  display: none;
+}
+
+/* Comprobante: impresión limpia (sin nav, footer ni botones) */
+@media print {
+  @page {
+    margin: 20mm 18mm 22mm 18mm;
+    background: #fff;
+  }
+  /* Evitar que el fondo oscuro del tema (p. ej. dark mode) llene la hoja bajo el comprobante */
+  html:has(.confirmada-main) {
+    background: #fff !important;
+    background-color: #fff !important;
+    color-scheme: light;
+  }
+  body:has(.confirmada-main) {
+    background: #fff !important;
+    background-color: #fff !important;
+    color: #000 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body:has(.confirmada-main) > header,
+  body:has(.confirmada-main) > footer {
+    display: none !important;
+  }
+  .confirmada-no-print {
+    display: none !important;
+  }
+  .confirmada-main {
+    padding: 2mm 6mm 0 6mm !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  .confirmada-print-header {
+    margin: 0 0 16pt 0;
+    padding: 0 0 14pt 0;
+    border-bottom: 1px solid #ccc;
+  }
+  .confirmada-main h1 {
+    margin: 0 0 6pt 0 !important;
+    color: #000 !important;
+    font-size: 17pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  .confirmada-print-tagline {
+    display: block !important;
+    margin: 0;
+    padding: 0;
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #444 !important;
+  }
+  .confirmada-main > section {
+    margin-top: 4pt;
+    padding: 16pt 14pt !important;
+    box-shadow: none !important;
+    border: 1px solid #bbb !important;
+    background: #fff !important;
+    break-inside: avoid;
+  }
+}
+
 /* Métricas: cards compactas, sin competir */
 .home-stats {
   display: grid;

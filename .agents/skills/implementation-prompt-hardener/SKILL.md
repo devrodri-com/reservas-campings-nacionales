@@ -44,7 +44,8 @@ Do NOT use this skill for:
    - local change safety
 4. Add only the missing constraints needed to make the implementation safe and complete.
 5. Keep the task V1-scoped and avoid overengineering.
-6. Return an improved prompt ready to hand to Cursor.
+6. If the prompt is already close to execution-ready, prioritize identifying hidden breakage risks, legacy data issues, and missing verification steps over broad restructuring.
+7. Return an improved prompt ready to hand to Cursor.
 
 ## What to look for
 - type changes that also require runtime parsing changes
