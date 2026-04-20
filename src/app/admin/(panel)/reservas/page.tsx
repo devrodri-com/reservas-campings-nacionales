@@ -658,6 +658,7 @@ export default function AdminReservasPage() {
               busy={detailBusy}
               onOpenDetail={openDetail}
               showTitularContact={profile ? !isReservationViewerRole(profile.role) : false}
+              hideCampingColumn={Boolean(effectiveCampingFilter.trim())}
             />
           )}
         </Card>

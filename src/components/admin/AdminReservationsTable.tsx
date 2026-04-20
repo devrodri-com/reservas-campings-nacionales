@@ -125,8 +125,8 @@ const tdBase: CSSProperties = {
   lineHeight: 1.45,
 };
 
-const padAir = "14px 14px";
-const padTight = "12px 8px";
+const padAir = "11px 10px";
+const padTight = "10px 7px";
 
 const secondaryText: CSSProperties = {
   fontSize: 12,
@@ -140,6 +140,8 @@ type Props = {
   onOpenDetail: (r: Reserva) => void;
   /** Si es falso, no se muestra email del titular (roles viewer / viewer_global). */
   showTitularContact?: boolean;
+  /** Cuando el listado ya está acotado a un camping (filtro fijo), oculta la columna redundante. */
+  hideCampingColumn?: boolean;
 };
 
 export default function AdminReservationsTable({
@@ -147,35 +149,42 @@ export default function AdminReservationsTable({
   busy,
   onOpenDetail,
   showTitularContact = true,
+  hideCampingColumn = false,
 }: Props) {
+  const colCount = hideCampingColumn ? 7 : 8;
+  const tableMinWidth = hideCampingColumn ? 720 : 820;
+
   return (
     <div style={tableScroller}>
       <table
         style={{
           width: "100%",
-          minWidth: 920,
+          minWidth: tableMinWidth,
           borderCollapse: "collapse",
           tableLayout: "auto",
         }}
       >
         <thead>
           <tr>
-            <th style={{ ...thBase, padding: padAir, minWidth: 188 }}>Titular</th>
-            <th style={{ ...thBase, padding: padAir, minWidth: 140 }}>Camping</th>
-            <th style={{ ...thBase, padding: padAir, minWidth: 140 }}>Unidad</th>
-            <th style={{ ...thBase, padding: padAir, minWidth: 150 }}>Fechas</th>
-            <th style={{ ...thBase, padding: padTight, minWidth: 76 }}>Personas</th>
-            <th style={{ ...thBase, padding: padTight, minWidth: 100 }}>Total</th>
-            <th style={{ ...thBase, padding: padTight, minWidth: 96 }}>Estado</th>
-            <th style={{ ...thBase, padding: padTight, minWidth: 84 }}>Origen</th>
-            <th style={{ ...thBase, padding: padTight, minWidth: 104 }}>Acción</th>
+            <th style={{ ...thBase, padding: padAir, minWidth: 156 }}>Titular</th>
+            {hideCampingColumn ? null : (
+              <th style={{ ...thBase, padding: padAir, minWidth: 112 }}>Camping</th>
+            )}
+            <th style={{ ...thBase, padding: padAir, minWidth: 118 }}>Unidad</th>
+            <th style={{ ...thBase, padding: padAir, minWidth: 128 }}>Fechas</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 64 }} title="Personas">
+              Pers.
+            </th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 82 }}>Total</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 92 }}>Estado · origen</th>
+            <th style={{ ...thBase, padding: padTight, minWidth: 88 }}>Acción</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
               <td
-                colSpan={9}
+                colSpan={colCount}
                 style={{
                   ...tdBase,
                   padding: 28,
@@ -203,11 +212,13 @@ export default function AdminReservationsTable({
                       </div>
                     ) : null}
                   </td>
-                  <td style={{ ...tdBase, padding: padAir }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--color-text)", lineHeight: 1.35 }}>
-                      {campingNombre}
-                    </div>
-                  </td>
+                  {hideCampingColumn ? null : (
+                    <td style={{ ...tdBase, padding: padAir }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text)", lineHeight: 1.35 }}>
+                        {campingNombre}
+                      </div>
+                    </td>
+                  )}
                   <td style={{ ...tdBase, padding: padAir }}>
                     <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.35 }}>{unitLabel}</div>
                     {tipoUnidadLabel !== "—" ? (
@@ -240,19 +251,19 @@ export default function AdminReservationsTable({
                     </span>
                   </td>
                   <td style={{ ...tdBase, padding: padTight }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
-                      <SmallBadge text={eb.text} tone={eb.tone} compact />
-                      {adj ? <SmallBadge text={adj.text} tone={adj.tone} compact /> : null}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                        <SmallBadge text={eb.text} tone={eb.tone} compact />
+                        {adj ? <SmallBadge text={adj.text} tone={adj.tone} compact /> : null}
+                      </div>
+                      <SmallBadge text={ob.text} tone={ob.tone} compact />
                     </div>
-                  </td>
-                  <td style={{ ...tdBase, padding: padTight }}>
-                    <SmallBadge text={ob.text} tone={ob.tone} compact />
                   </td>
                   <td style={{ ...tdBase, padding: padTight, whiteSpace: "nowrap" }}>
                     <Button
                       variant="secondary"
                       disabled={busy}
-                      style={{ padding: "6px 10px", fontSize: 12, fontWeight: 600 }}
+                      style={{ padding: "5px 9px", fontSize: 12, fontWeight: 600 }}
                       onClick={() => onOpenDetail(r)}
                     >
                       Ver detalle
