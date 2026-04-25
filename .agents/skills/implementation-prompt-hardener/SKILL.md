@@ -58,13 +58,18 @@ Do NOT use this skill for:
 - files that parse or mirror the same entity shape in multiple places
 - risk of overwriting unrelated local changes
 - whether the requested change should stay inline or be extracted into a small focused component/helper for clarity
+- whether the prompt for Cursor is too large or open-ended
+- whether the task should be split into multiple smaller prompts
+- whether target files, invariants, or observable expected results are missing
+- whether Cursor would need to make architectural decisions
 
 ## Output format
 Return:
 1. brief verdict on the original prompt
 2. missing or risky points
-3. improved prompt
-4. what to review after implementation
+3. execution decision: one prompt or multiple sequential prompts
+4. improved prompt ready for Cursor
+5. what to review after implementation
 
 ## Rules
 - do not broaden the product scope
@@ -74,3 +79,7 @@ Return:
 - prefer precise additions over rewriting everything
 - avoid `any` unless there is no reasonable typed alternative
 - if suggesting extraction to a new component/helper, keep it small and justified by clarity, reuse, or file growth
+- the final Cursor prompt must be small, bounded, and executable
+- if the task is large, split it into sequential prompts
+- do not delegate architectural decisions to Cursor
+- if Cursor has to “figure out what to do”, the prompt is not ready

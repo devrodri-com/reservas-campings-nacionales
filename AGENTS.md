@@ -48,39 +48,21 @@ Improve the prompt only where needed:
 - unclear numeric/date semantics
 Do not rewrite the whole prompt unless necessary.
 
-## Validation
-Before considering work complete:
-- run the smallest relevant checks,
-- state what was actually validated,
-- propose a short smoke test for manual verification,
-- never claim production safety if only code/type checks were performed.
+## Cursor execution quality
+Every prompt for Cursor must be:
+- small and bounded
+- tied to specific files or clearly scoped discovery
+- not open-ended
+- not requiring architectural decisions
 
-## Output preference
-Be concise and structured.
-When useful, return:
-1. what is correct,
-2. what is missing,
-3. what should be added to the implementation prompt,
-4. what to manually test after implementation.
+If Cursor has to “figure out what to do”, the prompt is wrong.
 
-## Default execution mode
-Unless explicitly asked to implement, modify files, or apply a diff, default to analysis-only mode.
+Prefer:
+- multiple small prompts instead of one large prompt
+- explicit file targets
+- explicit expected results
 
-In analysis-only mode:
-- do not edit files
-- do not generate or apply code changes
-- do not assume implementation is desired
-- return:
-  1. brief diagnosis
-  2. technical recommendation
-  3. files likely involved
-  4. a precise implementation prompt ready for Cursor
-
-Cursor is the default execution layer.
-Codex should act as reviewer, implementation hardener, and technical translator unless implementation is explicitly requested.
-
-## When NOT to act
-- Do not intervene if the task is trivial or clearly scoped and safe.
-- Do not over-analyze small or isolated changes.
-- Do not expand the scope unless there is a clear technical risk.
-- Stay lightweight when the task does not require deep repo inspection.
+Avoid:
+- vague goals ("improve", "refactor", "fix flow")
+- mixed concerns in a single execution
+- letting Cursor infer architecture
