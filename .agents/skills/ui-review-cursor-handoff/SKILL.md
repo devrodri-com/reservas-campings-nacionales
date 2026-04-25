@@ -30,6 +30,7 @@ Review an existing UI critically, identify the most important improvements, and 
 4. Recommend only the highest-value improvements first.
 5. Avoid broad redesigns unless explicitly requested.
 6. Produce a prompt that Cursor can execute safely and precisely.
+7. If the UI change is broad, split it into small sequential Cursor prompts instead of one large prompt.
 
 ## What to look for
 - clarity of the main user action
@@ -46,8 +47,9 @@ Return:
 1. what is working
 2. what is weakening the screen
 3. the highest-priority improvement
-4. a short plan (V1/V2 only if useful)
-5. a precise Cursor prompt
+4. execution decision: one UI prompt or multiple smaller prompts
+5. a short plan (V1/V2 only if useful)
+6. a precise Cursor prompt
 
 ## Rules
 - do not implement changes
@@ -57,3 +59,6 @@ Return:
 - prefer MVP-safe, high-impact, low-risk improvements
 - avoid `any` in implementation guidance
 - if suggesting extraction, keep it small and justified
+- the Cursor prompt must be small, scoped, and executable
+- do not ask Cursor to make product or architecture decisions
+- if the UI improvement touches multiple sections, split it into separate prompts
