@@ -13,8 +13,8 @@
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",
     "next": "16.2.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "react-international-phone": "^4.7.0"
   },
   "devDependencies": {
